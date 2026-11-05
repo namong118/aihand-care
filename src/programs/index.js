@@ -4,9 +4,11 @@
 import step1 from './step1-memory/index.js';
 import step2 from './step2-rps/index.js';
 import step3 from './step3-stroop/index.js';
+import step4 from './step4-coach/index.js';
 
 export const PROGRAMS = {
   [step1.id]: step1,
   [step2.id]: step2,
   [step3.id]: step3,
+  [step4.id]: step4,
 };
