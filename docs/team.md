@@ -18,7 +18,7 @@ namong118 — STEP 1 기억손, core 공통 모듈, 펌웨어, 대시보드
 
 ## C
 
-(여기에 작성)
+gksdnd0519-commits — STEP 3 색깔손
 
 ## D
 
