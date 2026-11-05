@@ -25,16 +25,16 @@ function updateStatusbar() {
   renderStatusbar(statusEl, { devices: devices.status(), settings });
 }
 
-// ---- Mock 패널: 가상 로봇손, 손모양 버튼, 색 태그 버튼 ----
+// ---- Mock 패널: 가상 로봇손, 손모양 버튼, 색 카드 대신 입력 버튼 ----
 function mountMockPanel() {
   if (!settings.mock) return;
   const robotBox = h('section', { class: 'mock-box' });
   const handBox = h('section', { class: 'mock-box' });
-  const tagBox = h('section', { class: 'mock-box' });
-  mockEl.append(robotBox, handBox, tagBox);
+  const cardBox = h('section', { class: 'mock-box' });
+  mockEl.append(robotBox, handBox, cardBox);
   devices.robot.mountControls(robotBox);
   devices.hand.mountControls(handBox);
-  devices.tag.mountControls(tagBox);
+  devices.card.mountControls(cardBox);
 }
 
 // ---- 화면 전환 ----

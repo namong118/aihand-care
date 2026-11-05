@@ -1,8 +1,9 @@
 // STEP 3 색깔손: 문제 생성과 판정 (순수 함수, DOM·ctx 사용 금지)
 //
 // 화면에 색 이름 글자(예: "파랑")를 다른 색 잉크(예: 빨간색)로 보여준다.
-// 사용자는 글자의 "뜻"이 아니라 "글자 색"에 맞는 색 태그를 고른다.
-// colors 는 data/tags.json 모양: [{ id: 'RED', label: '빨강', color: '#...' }, ...]
+// 사용자는 글자의 "뜻"이 아니라 "글자 색"과 같은 색깔 카드를 WonderCam에 보여준다.
+// colors 는 data/colors.json 모양: [{ color: 'red', label: '빨강', hex: '#...' }, ...]
+// 색은 'red' | 'blue' | 'yellow' | 'green' 으로만 다룬다 (카드 ID는 몰라도 된다).
 
 /**
  * 난이도별 문제 종류
@@ -14,8 +15,8 @@ export const MODE_BY_DIFFICULTY = { easy: 'same', normal: 'mixed', hard: 'differ
 
 /**
  * 문제 하나 만들기
- * 반환: { wordId, inkId, congruent }
- *   wordId: 글자의 뜻, inkId: 글자 색(정답), congruent: 뜻과 색이 같은지
+ * 반환: { wordColor, inkColor, congruent }
+ *   wordColor: 글자의 뜻, inkColor: 글자 색(정답), congruent: 뜻과 색이 같은지
  */
 export function makeQuestion(colors, difficulty = 'easy', rand = Math.random) {
   if (colors.length < 2) throw new Error('색이 2개 이상 있어야 합니다.');
@@ -28,14 +29,14 @@ export function makeQuestion(colors, difficulty = 'easy', rand = Math.random) {
   else if (mode === 'different') same = false;
   else same = rand() < 0.5;
 
-  const ink = same ? word : pick(colors.filter((c) => c.id !== word.id));
-  return { wordId: word.id, inkId: ink.id, congruent: same };
+  const ink = same ? word : pick(colors.filter((c) => c.color !== word.color));
+  return { wordColor: word.color, inkColor: ink.color, congruent: same };
 }
 
-/** 판정: 고른 태그가 글자 색과 같으면 정답. 글자 뜻을 고른 것인지도 알려준다. */
-export function judge(question, tagId) {
+/** 판정: 보여준 카드 색이 글자 색과 같으면 정답. 글자 뜻을 고른 것인지도 알려준다. */
+export function judge(question, color) {
   return {
-    correct: tagId === question.inkId,
-    pickedWord: !question.congruent && tagId === question.wordId,
+    correct: color === question.inkColor,
+    pickedWord: !question.congruent && color === question.wordColor,
   };
 }

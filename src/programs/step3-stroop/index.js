@@ -1,6 +1,6 @@
 // STEP 3 색깔손: logic 과 screen 을 연결한다. core 는 import 하지 않고 ctx 만 쓴다.
 
-import colors from '../../data/tags.json';
+import colors from '../../data/colors.json';
 import { makeQuestion, judge } from './logic.js';
 import { createScreen } from './screen.js';
 
@@ -15,14 +15,14 @@ async function playRound(ctx, screen, s) {
   const shownAt = Date.now();
   let answered = false;
 
-  const answer = async (tagId, via) => {
+  const answer = async (color, via) => {
     if (answered || !s.alive) return;
     answered = true;
-    offTag();
+    offCard();
 
     const reactionMs = Date.now() - shownAt;
-    const result = judge(q, tagId);
-    screen.feedback({ correct: result.correct, inkId: q.inkId });
+    const result = judge(q, color);
+    screen.feedback({ correct: result.correct, inkColor: q.inkColor });
 
     await ctx.robot.react(result.correct ? 'ok' : 'retry');
     if (!s.alive) return;
@@ -38,23 +38,23 @@ async function playRound(ctx, screen, s) {
       avgReactionMs: reactionMs,
       detail: {
         difficulty: ctx.settings.difficulty,
-        word: q.wordId,
-        ink: q.inkId,
+        word: q.wordColor,
+        ink: q.inkColor,
         congruent: q.congruent,
-        picked: tagId,
+        picked: color,
         pickedWord: result.pickedWord,
-        inputVia: via, // 'tag' 색 태그 | 'button' 화면 버튼
+        inputVia: via, // 'card' 색 카드 | 'button' 화면 버튼
       },
     });
     screen.end(() => playRound(ctx, screen, s).catch((err) => console.error(err)));
   };
 
-  // 색 태그 입력 (Mock: 키보드 R/B/Y/G 또는 Mock 패널 버튼)
-  const offTag = ctx.tag.onTag((e) => answer(e.id, 'tag'));
-  s.offs.push(offTag);
+  // 색 카드 입력: ctx.card.onCard 는 { color } 만 준다 (Mock: 키보드 R/B/Y/G 또는 Mock 패널 버튼)
+  const offCard = ctx.card.onCard((e) => answer(e.color, 'card'));
+  s.offs.push(offCard);
 
   // 화면 버튼 입력 (대체 입력)
-  screen.question(q, (id) => answer(id, 'button'));
+  screen.question(q, (color) => answer(color, 'button'));
 }
 
 export default {

@@ -1,13 +1,18 @@
-// 색 태그 입력 Mock (WonderCam 대신).
-// 키보드 R/B/Y/G 또는 화면의 색 버튼으로 onTag 이벤트를 만든다.
+// 색 카드 입력 Mock: 카드를 WonderCam에 보여주는 대신 키보드나 화면 버튼으로 입력한다.
+// 키보드 R/B/Y/G 또는 색 버튼 → onCard({ color })
 
-export function createMockTag({ tags }) {
+import { isCardColor } from './cards.js';
+
+const KEYS = { r: 'red', b: 'blue', y: 'yellow', g: 'green' };
+
+/** @param colors data/colors.json ([{ color, label, hex }]) — 버튼 글자와 색 표시에 쓴다 */
+export function createMockCard({ colors }) {
   const listeners = new Set();
   const viewListeners = new Set();
 
-  function emit(id) {
-    if (!tags.some((t) => t.id === id)) throw new Error(`tags.json 에 없는 태그: ${id}`);
-    const event = { id };
+  function emit(color) {
+    if (!isCardColor(color)) throw new Error(`카드 색이 아닙니다: ${color}`);
+    const event = { color };
     listeners.forEach((cb) => cb(event));
     viewListeners.forEach((cb) => cb(event));
   }
@@ -17,8 +22,8 @@ export function createMockTag({ tags }) {
     const target = e.target;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
-    const tag = tags.find((t) => t.key.toLowerCase() === e.key.toLowerCase());
-    if (tag) emit(tag.id);
+    const color = KEYS[e.key.toLowerCase()];
+    if (color) emit(color);
   }
 
   let keyboardOn = false;
@@ -26,8 +31,8 @@ export function createMockTag({ tags }) {
   return {
     kind: 'mock',
 
-    // ---- ctx.tag 로 공개되는 부분 ----
-    onTag(cb) {
+    // ---- ctx.card 로 공개되는 부분 ----
+    onCard(cb) {
       listeners.add(cb);
       return () => listeners.delete(cb);
     },
@@ -46,31 +51,33 @@ export function createMockTag({ tags }) {
         window.addEventListener('keydown', onKey);
         keyboardOn = true;
       }
+      const keyOf = (color) => Object.keys(KEYS).find((k) => KEYS[k] === color).toUpperCase();
+
       container.innerHTML = '';
       const title = document.createElement('h2');
-      title.textContent = '색 태그 입력 (WonderCam 대신)';
+      title.textContent = '색 카드 — 카드 대신 입력(Mock)';
       const hint = document.createElement('p');
       hint.className = 'mock-status';
-      hint.textContent = '키보드 R 빨강 · B 파랑 · Y 노랑 · G 초록';
+      hint.textContent = 'WonderCam에 카드를 보여주는 대신 눌러요. 키보드 R 빨강 · B 파랑 · Y 노랑 · G 초록';
       const grid = document.createElement('div');
       grid.className = 'mock-grid';
-      for (const t of tags) {
+      for (const c of colors) {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'btn btn-small tag-btn';
-        btn.style.setProperty('--tag-color', t.color);
-        btn.textContent = `${t.label} (${t.key})`;
-        btn.addEventListener('click', () => emit(t.id));
+        btn.className = 'btn btn-small color-btn';
+        btn.style.setProperty('--card-color', c.hex);
+        btn.textContent = `${c.label} (${keyOf(c.color)})`;
+        btn.addEventListener('click', () => emit(c.color));
         grid.append(btn);
       }
       const last = document.createElement('p');
       last.className = 'mock-status';
-      last.textContent = '마지막 태그: 없음';
+      last.textContent = '마지막 카드: 없음';
       container.append(title, hint, grid, last);
 
       viewListeners.add((e) => {
-        const t = tags.find((x) => x.id === e.id);
-        last.textContent = `마지막 태그: ${t.label}`;
+        const c = colors.find((x) => x.color === e.color);
+        last.textContent = `마지막 카드: ${c.label}`;
       });
     },
   };

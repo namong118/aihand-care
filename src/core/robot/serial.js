@@ -6,7 +6,7 @@
 // TODO: protocol.js 로 만든 문자열을 TextEncoder 로 써서 보내기
 // TODO: 받은 바이트를 줄 단위로 나눠 protocol.parseLine 으로 해석
 // TODO: 보낸 명령마다 'DONE,<명령>' 을 기다렸다가 Promise resolve, 시간 초과 처리
-// TODO: 'TAG,<ID>' 줄은 tag 모듈로 넘기기  [검증 필요: WonderCam 태그 ID 전달]
+// TODO: 'TAG,<ID>' 줄은 card 모듈로 넘기기 (card/serial.js 참고)  [검증 필요: 카드 인식 방식 미정]
 // TODO: 연결 끊김 감지, 상태 표시줄 갱신
 // TODO: mock.js 와 같은 모양: { kind: 'serial', hello, showPose, react, rest }
 

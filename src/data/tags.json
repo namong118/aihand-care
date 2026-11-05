@@ -1,6 +1,0 @@
-[
-  { "id": "RED",    "key": "R", "label": "빨강", "color": "#ff5a5a" },
-  { "id": "BLUE",   "key": "B", "label": "파랑", "color": "#5aa8ff" },
-  { "id": "YELLOW", "key": "Y", "label": "노랑", "color": "#ffd400" },
-  { "id": "GREEN",  "key": "G", "label": "초록", "color": "#3ddc6a" }
-]

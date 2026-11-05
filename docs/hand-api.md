@@ -93,7 +93,7 @@ AIHand가 이 손모양을 모두 만들 수 있는지는 아직 확인하지 �
 | `ctx.robot.react('ok' \| 'retry')` | Promise | 칭찬 / "다시 해 볼까요" 반응 |
 | `ctx.robot.hello()` | Promise | 인사 |
 | `ctx.robot.rest()` | Promise | 손 내리기 |
-| `ctx.tag.onTag(cb)` | 구독 해제 함수 반환 | `cb({ id })`, id는 `RED`·`BLUE`·`YELLOW`·`GREEN`. Mock: 키보드 R/B/Y/G |
+| `ctx.card.onCard(cb)` | 구독 해제 함수 반환 | `cb({ color })`, color는 `'red'`·`'blue'`·`'yellow'`·`'green'`. 카드 ID는 넘어오지 않는다. Mock: 키보드 R/B/Y/G 또는 "카드 대신 입력" 버튼 |
 | `ctx.log.record(rec)` | 저장된 기록 | 회차가 끝날 때 공통 필드로 기록 (아래) |
 | `ctx.settings` | 객체 | `{ mock, user, difficulty: 'easy'\|'normal'\|'hard', speed: 'SLOW'\|'NORMAL' }` |
 

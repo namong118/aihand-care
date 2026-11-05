@@ -34,9 +34,9 @@ AIHand 로봇손과 웹캠 손동작 인식을 이용한 고령자 인지·손�
 src/
   main.js              앱 진입, 화면 전환                 (A)
   core/                공통 모듈. 프로그램 담당자는 수정 금지 (A)
-    hand/              손 인식: mediapipe.js, mock.js, index.js
+    hand/              손 인식: mediapipe.js, mock.js, wait.js(입력 확정), codes.js, index.js
     robot/             로봇 출력: serial.js, mock.js, protocol.js, index.js
-    tag/               태그 입력: serial.js, mock.js, index.js
+    card/              색 카드 입력: serial.js, mock.js, index.js, cards.js, tags.json(ID→색, core 전용)
     context.js         ctx 생성 (설정에 따라 실제/Mock 선택)
     log.js             결과 기록, CSV 내보내기
   dashboard/           웹 대시보드: 홈, 장치 상태, 결과 화면 (A)
@@ -46,7 +46,7 @@ src/
     step3-stroop/      STEP 3 색깔손                      (C)
     step4-coach/       STEP 4 손운동 코칭                 (B)
   ui/                  공통 UI 부품과 styles.css          (D)
-  data/                poses.json, tags.json, routines.json
+  data/                poses.json, colors.json, routines.json
 firmware/              micro:bit MakeCode 프로젝트, .hex  (A)
 docs/                  프로토콜, API, 테스트 기록, 회의록
 ```
@@ -79,7 +79,9 @@ export default {
   - 자세한 내용은 `docs/hand-api.md`
 - `ctx.robot.showPose(name)`, `ctx.robot.react('ok' | 'retry')`, `ctx.robot.hello()`, `ctx.robot.rest()`
   - 모두 Promise를 반환하고, 로봇이 `DONE`을 보내면 resolve 된다
-- `ctx.tag.onTag(cb)` → `cb({ id })`
+- `ctx.card.onCard(cb)` → `cb({ color })`, 구독 해제 함수 반환
+  - `color`: `'red' | 'blue' | 'yellow' | 'green'`. 사용자가 색깔 카드를 WonderCam에 보여주면 발생
+  - 프로그램은 카드 ID를 모른다. ID→색 변환은 `core/card` 안에서만 한다 (카드 인식 방식은 [검증 필요])
 - `ctx.log.record({ program, ...결과 })`
 - `ctx.settings` (Mock 여부, 진행 속도 등)
 
@@ -127,7 +129,7 @@ ctx.log.record({
 ## 하드웨어 관련 주의
 
 - AIHand·WonderCam 기능 중 공식 문서와 실물로 검증되지 않은 것이 있다. 검증 상태는 `docs/hardware-check.md`에 기록한다.
-- 검증되지 않은 기능(서보 속도 조절, WonderCam 태그 ID 전달 등)을 이미 동작하는 것처럼 코드를 쓰지 않는다. 필요하면 Mock으로 두고 TODO에 `[검증 필요]`를 적는다.
+- 검증되지 않은 기능(서보 속도 조절, WonderCam 카드 인식 방식 등)을 이미 동작하는 것처럼 코드를 쓰지 않는다. 필요하면 Mock으로 두고 TODO에 `[검증 필요]`를 적는다.
 - 하드웨어가 없어도 모든 프로그램이 Mock 모드로 처음부터 끝까지 동작해야 한다.
 
 ## 고령자 UX 기본값

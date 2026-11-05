@@ -25,7 +25,7 @@
 | 줄 | 뜻 |
 |---|---|
 | `DONE,<명령>` | 명령 동작을 마침. `<명령>`은 받은 명령의 이름 부분 (`POSE,ROCK` → `DONE,POSE`) |
-| `TAG,<ID>` | 색 태그 인식 (`RED`·`BLUE`·`YELLOW`·`GREEN`). **[검증 필요]** WonderCam이 태그 ID를 micro:bit로 넘길 수 있는지 미확인 |
+| `TAG,<ID>` | 색깔 카드의 태그 인식. 웹의 `core/card`가 `tags.json`으로 ID를 색(`red` 등)으로 바꿔 `ctx.card.onCard({ color })`로 넘긴다. **[검증 필요]** 카드 인식 방식 미정: AprilTag 방식이면 이 줄을 쓰고, WonderCam 색상 인식 방식이면 색을 바로 보내는 줄로 바꿀 수 있다 (그때 이 문서·`protocol.js`·`firmware/`를 함께 고친다) |
 | `PONG` | `PING` 응답 |
 | `ERR,<내용>` | 오류. 예: `ERR,UNKNOWN_POSE`, `ERR,BUSY` |
 

@@ -6,7 +6,7 @@ export function createScreen(container, colors) {
   container.innerHTML = '';
   const area = h('div', { class: 'program-body' });
   container.append(area);
-  const find = (id) => colors.find((c) => c.id === id);
+  const find = (color) => colors.find((c) => c.color === color);
 
   function set(...children) {
     area.innerHTML = '';
@@ -17,7 +17,7 @@ export function createScreen(container, colors) {
     intro(onStart) {
       set(
         message('글자를 읽지 말고, 글자의 "색깔"을 봐 주세요.', 'info'),
-        h('p', {}, '글자 색과 같은 색 카드를 로봇 카메라에 보여 주세요. 아래 버튼을 눌러도 돼요.'),
+        h('p', {}, '글자 색과 같은 색깔 카드를 로봇 카메라(WonderCam)에 보여 주세요. 아래 버튼을 눌러도 돼요.'),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
     },
@@ -26,15 +26,15 @@ export function createScreen(container, colors) {
       set(message(text, 'info'));
     },
 
-    /** 문제: 글자 뜻(word)을 글자 색(ink)으로 보여주고, 색 버튼(태그 대체 입력)을 둔다 */
-    question({ wordId, inkId }, onPick) {
-      const word = find(wordId);
-      const ink = find(inkId);
+    /** 문제: 글자 뜻(word)을 글자 색(ink)으로 보여주고, 색 버튼(카드 대체 입력)을 둔다 */
+    question({ wordColor, inkColor }, onPick) {
+      const word = find(wordColor);
+      const ink = find(inkColor);
       set(
         h('p', { class: 'big-prompt' }, '이 글자는 무슨 색깔인가요?'),
         h(
           'div',
-          { class: 'stroop-stage', style: { color: ink.color }, 'aria-label': `글자 "${word.label}"` },
+          { class: 'stroop-stage', style: { color: ink.hex }, 'aria-label': `글자 "${word.label}"` },
           word.label,
         ),
         h(
@@ -45,9 +45,9 @@ export function createScreen(container, colors) {
               'button',
               {
                 type: 'button',
-                class: 'btn btn-secondary tag-btn',
-                style: { '--tag-color': c.color },
-                onClick: () => onPick(c.id),
+                class: 'btn btn-secondary color-btn',
+                style: { '--card-color': c.hex },
+                onClick: () => onPick(c.color),
               },
               c.label,
             ),
@@ -56,8 +56,8 @@ export function createScreen(container, colors) {
       );
     },
 
-    feedback({ correct, inkId }) {
-      const ink = find(inkId);
+    feedback({ correct, inkColor }) {
+      const ink = find(inkColor);
       if (correct) {
         set(message(`잘하셨어요! 글자 색은 ${ink.label}이었어요.`, 'good'));
       } else {
