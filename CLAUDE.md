@@ -45,7 +45,7 @@ src/
     step2-rps/         STEP 2 사고력 가위바위보           (D)
     step3-stroop/      STEP 3 색깔손                      (C)
     step4-coach/       STEP 4 손운동 코칭                 (B)
-  ui/                  공통 UI 부품과 styles.css          (D)
+  ui/                  공통 UI 부품과 styles.css          (A)
   data/                poses.json, colors.json, routines.json
 firmware/              micro:bit MakeCode 프로젝트, .hex  (A)
 docs/                  프로토콜, API, 테스트 기록, 회의록

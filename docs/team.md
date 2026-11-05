@@ -10,7 +10,7 @@
 
 ## A
 
-namong118 — STEP 1 기억손, core 공통 모듈, 펌웨어, 대시보드
+namong118 — STEP 1 기억손, core 공통 모듈, 펌웨어, 대시보드, 공통 UI
 
 ## B
 
