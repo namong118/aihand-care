@@ -22,7 +22,8 @@
 
 ## 해야 할 기능
 
-- [x] 루틴 펼치기 `expandRoutine`, 동작 완료 판정 `isStepDone`, 회차 요약 `summarizeSteps` (테스트 있음)
+- [x] 루틴 펼치기 `expandRoutine`, 유지 게이지 `holdProgress`, 회차 요약 `summarizeSteps` (테스트 있음)
+- [x] 동작마다 완료 방식(`detected`·`manual`·`skipped`) 기록, 결과 화면 "자세히" 칸에 표시
 - [x] 기본 루틴 1개(주먹 쥐었다 펴기 × 2) → 동작마다 로봇 시범 → 따라 하기/건너뛰기 → 로봇 반응 → 기록
 - [ ] 루틴 더 만들기, 루틴 고르는 화면
 - [ ] 동작 사이 쉬는 시간, 숫자 세기 안내("하나, 둘, 셋")
@@ -31,13 +32,32 @@
 
 ## 입력 확정 기준 (지금 값)
 
-- 시범과 같은 손모양을 루틴의 `holdMs`(기본 1초) 이상 유지하면 그 동작 완료
-- 동작이 시작된 뒤에 만든 손모양만 인정
+- `ctx.hand.waitForPose({ holdMs: 루틴 holdMs, since: 동작 시작 시각, names: [시범 손모양] })`로 확인
+- 시범과 같은 손모양을 루틴의 `holdMs`(기본 1초) 이상 유지하면 그 동작 완료. 동작이 시작된 뒤에 만든 손모양만 인정 (공통 규칙)
+- 유지 게이지는 `ctx.hand.onPose`의 `stableMs`로 그린다 (확정 규칙과 똑같이, 시작 전부터 들고 있던 손은 0)
 - 손 인식이 어려울 때를 위해 "따라 했어요" 버튼(대체 입력)과 "건너뛰기" 버튼을 둔다
+
+### 완료 방식 (`method`)
+
+| 값 | 뜻 |
+|---|---|
+| `detected` | 손 인식으로 따라 한 것이 확인됨 |
+| `manual` | 사용자가 "따라 했어요" 버튼을 누름 (손 인식은 확인 못 함) |
+| `skipped` | 건너뜀 |
+
+`done` = `detected` + `manual`. 시연·발표 때 "손 인식으로 확인된 동작"과 "버튼으로 넘어간 동작"을 구분해서 말할 수 있게 둘을 나눠 기록한다.
 
 ## 기록 (`ctx.log.record`)
 
-공통 필드(`total` = 동작 수, `done` = 따라 한 수, `skipped` = 건너뛴 수) + `detail: { routine, steps }`
+공통 필드(`total` = 동작 수, `done` = 따라 한 수, `skipped` = 건너뛴 수) +
+
+```js
+detail: {
+  routine: 'basic-grip',
+  methods: { detected: 2, manual: 1, skipped: 1 },          // 결과 화면 "자세히" 칸
+  steps: [{ pose: 'ROCK', method: 'detected', reactionMs: 1200 }, ...],
+}
+```
 
 ## 하지 말아야 할 것
 

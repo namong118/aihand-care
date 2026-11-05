@@ -17,6 +17,19 @@ function formatTime(iso) {
   return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/**
+ * 회차 기록의 "자세히" 칸. 기록(detail)에 남은 값만 읽는다.
+ * STEP 4: 동작을 마친 방식 (손 인식 / 버튼 / 건너뜀)
+ */
+function detailText(r) {
+  if (r.program === 'step4-coach') {
+    const m = r.detail?.methods;
+    if (!m) return '-';
+    return `손 인식 ${m.detected ?? 0} · 버튼 ${m.manual ?? 0} · 건너뜀 ${m.skipped ?? 0}`;
+  }
+  return '-';
+}
+
 function programName(id) {
   const info = findProgramInfo(id);
   return info ? `STEP ${info.step} ${info.title}` : id;
@@ -108,7 +121,7 @@ export function renderResults(container, { log, filter = {}, onFilter, onHome })
               h(
                 'tr',
                 {},
-                ['회차', '날짜', '사용자', '프로그램', '해낸 수 / 전체', '건너뜀', '평균 반응 시간'].map((t) =>
+                ['회차', '날짜', '사용자', '프로그램', '해낸 수 / 전체', '건너뜀', '평균 반응 시간', '자세히'].map((t) =>
                   h('th', { scope: 'col' }, t),
                 ),
               ),
@@ -127,6 +140,7 @@ export function renderResults(container, { log, filter = {}, onFilter, onHome })
                   h('td', {}, `${r.done} / ${r.total}`),
                   h('td', {}, r.skipped ?? 0),
                   h('td', {}, seconds(r.avgReactionMs)),
+                  h('td', {}, detailText(r)),
                 ),
               ),
             ),

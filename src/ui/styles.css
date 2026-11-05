@@ -161,6 +161,21 @@ input[type='text'] {
   line-height: 1.2;
 }
 
+/* STEP 4 유지 게이지 (숫자 글자도 함께 표시) */
+.gauge {
+  height: 32px;
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.gauge-fill {
+  height: 100%;
+  width: 0;
+  background: var(--good);
+  transition: width 0.1s linear;
+}
+
 /* ---------- 표 ---------- */
 .table-wrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 22px; }

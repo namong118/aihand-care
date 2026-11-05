@@ -2,7 +2,7 @@
 
 import poses from '../../data/poses.json';
 import routines from '../../data/routines.json';
-import { expandRoutine, isStepDone, summarizeSteps } from './logic.js';
+import { expandRoutine, holdProgress, summarizeSteps } from './logic.js';
 import { createScreen } from './screen.js';
 
 const ID = 'step4-coach';
@@ -11,30 +11,40 @@ let session = null;
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** 동작 하나: 로봇 시범 → 사용자가 따라 하면(손 인식 또는 버튼) 'done', 건너뛰면 'skipped' */
-function runStep(ctx, screen, s, info) {
-  return new Promise((resolve) => {
-    const sinceMs = Date.now();
-    let settled = false;
+/**
+ * 동작 하나: 손 인식 확인('detected'), "따라 했어요"('manual'), 건너뛰기('skipped') 중 먼저 온 것.
+ * 화면이 닫히면 null.
+ */
+async function runStep(ctx, screen, s, info) {
+  const { step } = info;
+  const holdMs = step.holdMs ?? 1000;
+  const since = Date.now();
+  const stop = new AbortController();
+  s.waits.add(stop);
 
-    const finish = (status) => {
-      if (settled) return;
-      settled = true;
-      offPose();
-      resolve({ status, reactionMs: status === 'done' ? Date.now() - sinceMs : null });
-    };
-
-    const offPose = ctx.hand.onPose((pose) => {
-      if (isStepDone(pose, info.step, { now: Date.now(), sinceMs })) finish('done');
-    });
-    s.offs.push(offPose);
-    s.cancelStep = () => finish('skipped');
-
-    screen.step(info, {
-      onDone: () => finish('done'),
-      onSkip: () => finish('skipped'),
-    });
+  // 유지 게이지: onPose 의 stableMs 로 계속 보여준다.
+  // 동작 시작 전부터 들고 있던 손은 확정되지 않으므로 게이지도 0 으로 둔다.
+  const offGauge = ctx.hand.onPose((pose) => {
+    const fresh = Date.now() - pose.stableMs >= since;
+    screen.gauge(fresh ? holdProgress(pose, step) : 0, pose.stableMs, holdMs);
   });
+
+  const method = await Promise.race([
+    ctx.hand
+      .waitForPose({ holdMs, since, names: [step.pose], signal: stop.signal })
+      .then((pose) => (pose ? 'detected' : null)),
+    new Promise((resolve) => {
+      screen.step(info, {
+        onDone: () => resolve('manual'),
+        onSkip: () => resolve('skipped'),
+      });
+    }),
+  ]);
+  offGauge();
+  stop.abort();
+  s.waits.delete(stop);
+  if (!s.alive || !method) return null;
+  return { method, reactionMs: method === 'skipped' ? null : Date.now() - since };
 }
 
 async function playRound(ctx, screen, s, routine) {
@@ -50,11 +60,12 @@ async function playRound(ctx, screen, s, routine) {
     if (!s.alive) return;
 
     const result = await runStep(ctx, screen, s, { index: i + 1, count: steps.length, step });
-    if (!s.alive) return;
+    if (!result) return;
     results.push(result);
-    if (result.status === 'done') {
-      screen.stepDone();
+    if (result.method !== 'skipped') {
+      screen.stepDone(result.method);
       await wait(ctx.settings.speed === 'SLOW' ? 1000 : 500);
+      if (!s.alive) return;
     }
   }
 
@@ -76,7 +87,14 @@ async function playRound(ctx, screen, s, routine) {
     avgReactionMs: summary.avgReactionMs,
     detail: {
       routine: routine.id,
-      steps: steps.map((st, i) => ({ pose: st.pose, status: results[i].status })),
+      // 완료 방식별 개수 { detected, manual, skipped } — 결과 화면에 표시된다
+      methods: summary.methods,
+      // 동작마다 { pose, method, reactionMs }
+      steps: steps.map((st, i) => ({
+        pose: st.pose,
+        method: results[i].method,
+        reactionMs: results[i].reactionMs,
+      })),
     },
   });
   screen.end(() => playRound(ctx, screen, s, routine).catch((err) => console.error(err)));
@@ -87,7 +105,8 @@ export default {
   title: '손운동 코칭',
 
   mount(container, ctx) {
-    session = { alive: true, offs: [], cancelStep: null };
+    // waits: 기다리는 중인 손 입력들. unmount 할 때 모두 멈춘다
+    session = { alive: true, waits: new Set() };
     const s = session;
     const routine = routines[0]; // TODO: 루틴이 여러 개가 되면 고르는 화면 추가
     const screen = createScreen(container, poses);
@@ -97,8 +116,7 @@ export default {
   unmount() {
     if (!session) return;
     session.alive = false;
-    session.offs.forEach((off) => off());
-    session.cancelStep?.(); // 기다리던 동작을 끝내서 진행 루프가 멈추게 한다
+    session.waits.forEach((w) => w.abort());
     session = null;
   },
 };
