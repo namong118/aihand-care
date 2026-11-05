@@ -1,10 +1,10 @@
 # 폴더별 담당자. PR이 이 폴더를 고치면 담당자에게 리뷰 요청이 자동으로 간다.
 # 아래쪽 줄이 위쪽 줄보다 우선한다. 따로 적지 않은 경로(docs/, src/data/, .github/ 등)는 기본 담당(*)을 따른다.
 #
-# A namong118           STEP 1 기억손, core 공통 모듈, 펌웨어, 대시보드
+# A namong118           STEP 1 기억손, core 공통 모듈, 펌웨어, 대시보드, 공통 UI
 # B jen282              STEP 4 손운동 코칭
 # C gksdnd0519-commits  STEP 3 색깔손
-# D Juyeon-Kim-pjt      STEP 2 사고력 가위바위보, 공통 UI
+# D Juyeon-Kim-pjt      STEP 2 사고력 가위바위보
 
 # 기본 담당
 *                              @namong118
@@ -15,6 +15,7 @@
 /src/dashboard/                @namong118
 /firmware/                     @namong118
 /src/programs/step1-memory/    @namong118
+/src/ui/                       @namong118
 
 # B
 /src/programs/step4-coach/     @jen282
@@ -24,4 +25,3 @@
 
 # D
 /src/programs/step2-rps/       @Juyeon-Kim-pjt
-/src/ui/                       @Juyeon-Kim-pjt
