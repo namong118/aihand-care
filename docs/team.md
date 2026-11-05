@@ -18,7 +18,7 @@ jen282 — STEP 4 손운동 코칭
 
 ## C
 
-(여기에 작성)
+gksdnd0519-commits — STEP 3 색깔손
 
 ## D
 
