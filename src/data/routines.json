@@ -1,0 +1,12 @@
+[
+  {
+    "id": "basic-grip",
+    "title": "주먹 쥐었다 펴기",
+    "description": "로봇을 보면서 주먹을 쥐었다가 활짝 펴는 동작을 함께 해요.",
+    "repeat": 2,
+    "steps": [
+      { "pose": "ROCK",  "holdMs": 1000, "say": "주먹을 꼭 쥐어 보세요" },
+      { "pose": "PAPER", "holdMs": 1000, "say": "손을 활짝 펴 보세요" }
+    ]
+  }
+]
