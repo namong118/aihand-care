@@ -1,0 +1,25 @@
+# 폴더별 담당자. PR이 이 폴더를 고치면 담당자에게 리뷰 요청이 간다.
+#
+# TODO: 팀원 GitHub 아이디가 정해지면 아래 줄 앞의 "# " 를 지우고
+#       <A의 아이디> 같은 자리를 @아이디 로 바꾼다.
+#       (없는 아이디를 적으면 GitHub가 오류를 표시하므로 지금은 모두 주석으로 둔다.)
+#
+# 담당 A: core, 대시보드, STEP 1, 펌웨어, 데이터, 설정
+# 담당 B: STEP 4 손운동 코칭
+# 담당 C: STEP 3 색깔손
+# 담당 D: STEP 2 사고력 가위바위보, 공통 UI
+
+# *                              <A의 아이디>
+# /src/main.js                   <A의 아이디>
+# /src/core/                     <A의 아이디>
+# /src/dashboard/                <A의 아이디>
+# /src/data/                     <A의 아이디>
+# /src/programs/index.js         <A의 아이디>
+# /src/programs/step1-memory/    <A의 아이디>
+# /src/programs/step2-rps/       <D의 아이디>
+# /src/programs/step3-stroop/    <C의 아이디>
+# /src/programs/step4-coach/     <B의 아이디>
+# /src/ui/                       <D의 아이디>
+# /firmware/                     <A의 아이디>
+# /docs/                         <A의 아이디>
+# /.github/                      <A의 아이디>

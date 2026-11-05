@@ -1,0 +1,9 @@
+{
+  "note": "[검증 필요] 태그 ID → 카드 색 변환표. core/card 안에서만 쓴다. 지금 ID 값은 임시이며, AprilTag 방식이면 실제 태그 번호로, WonderCam 색상 인식 방식이면 이 표 대신 색 이름을 바로 쓴다. docs/hardware-check.md 4번 참고.",
+  "ids": {
+    "RED": "red",
+    "BLUE": "blue",
+    "YELLOW": "yellow",
+    "GREEN": "green"
+  }
+}

@@ -1,0 +1,6 @@
+[
+  { "color": "red",    "label": "빨강", "hex": "#ff5a5a" },
+  { "color": "blue",   "label": "파랑", "hex": "#5aa8ff" },
+  { "color": "yellow", "label": "노랑", "hex": "#ffd400" },
+  { "color": "green",  "label": "초록", "hex": "#3ddc6a" }
+]

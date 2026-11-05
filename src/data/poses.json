@@ -1,0 +1,9 @@
+[
+  { "name": "ROCK",  "code": "00000", "label": "주먹(바위)" },
+  { "name": "PAPER", "code": "11111", "label": "손바닥(보)" },
+  { "name": "V",     "code": "01100", "label": "브이(가위)" },
+  { "name": "INDEX", "code": "01000", "label": "검지 하나" },
+  { "name": "THREE", "code": "01110", "label": "손가락 셋" },
+  { "name": "FOUR",  "code": "01111", "label": "손가락 넷" },
+  { "name": "THUMB", "code": "10000", "label": "엄지 척" }
+]

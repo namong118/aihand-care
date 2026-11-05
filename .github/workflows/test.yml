@@ -1,0 +1,20 @@
+name: test
+
+# PR을 올리거나 main에 합쳐질 때 테스트와 빌드를 자동으로 돌린다.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
