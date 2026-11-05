@@ -52,7 +52,7 @@ export function createContext(settings) {
       return [
         { key: 'webcam', label: '웹캠', state: 'mock', mock: true, note: '사용 안 함' },
         { key: 'hand', label: '손 인식', state: 'mock', mock: hand.kind === 'mock', note: '화면 버튼' },
-        { key: 'robot', label: 'AIHand', state: 'mock', mock: robot.kind === 'mock', note: '가상 로봇손' },
+        { key: 'robot', label: 'AIHand', state: 'mock', mock: robot.kind === 'mock', note: '화면 속 로봇손' },
         { key: 'wondercam', label: 'WonderCam', state: 'mock', mock: tag.kind === 'mock', note: '키보드·버튼' },
       ];
     },
