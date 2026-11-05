@@ -4,6 +4,7 @@
 import { createMockHand } from './mock.js';
 
 export { codeToName, nameToCode } from './codes.js';
+export { makeWaitForPose, isConfirmedPose } from './wait.js';
 
 /**
  * 손 인식 장치를 만든다.

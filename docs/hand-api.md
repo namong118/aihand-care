@@ -21,7 +21,40 @@ off();
 | `handedness` | `'Right'` / `'Left'` / `null` | 오른손·왼손. Mock은 항상 `'Right'` |
 | `stableMs` | 숫자(ms) | 같은 `code`가 연속으로 유지된 시간 |
 
-**입력 확정 기준은 각 프로그램이 정한다.** 지금 프로그램들은 "1초 이상 유지 + 문제가 나온 뒤에 만든 손모양"을 기준으로 쓴다 (`logic.js`의 `shouldAcceptPose`, `isStepDone`).
+`onPose`는 0.1초마다 계속 불린다. 유지 게이지(예: STEP 4의 "0.6 / 1.0초")처럼 **지금 상태를 계속 보여줄 때** 쓴다.
+"이 손모양으로 답을 정한다"처럼 **입력을 확정할 때는 아래 `waitForPose`를 쓴다.**
+
+## `ctx.hand.waitForPose({ holdMs, since, names, signal })`
+
+손모양 입력이 **확정되면** resolve 되는 Promise를 돌려준다. 확정 규칙은 모든 프로그램이 같다 (`src/core/hand/wait.js`).
+
+1. 이름 있는 손모양이고 (`names`를 주면 그 안의 손모양만)
+2. `holdMs` 이상 같은 모양을 유지했고
+3. `since` 시각 이후에 **새로 만든** 손모양이어야 한다
+   (문제가 나오기 전부터 들고 있던 손이 바로 답이 되는 것을 막는다)
+
+| 옵션 | 기본값 | 설명 |
+|---|---|---|
+| `holdMs` | `1000` | 유지해야 하는 시간(ms). 입력 확정 시간은 각 프로그램이 정한다 |
+| `since` | 부른 시각 (`Date.now()`) | 이 시각 이후에 만든 손모양만 인정 |
+| `names` | `null` (모든 손모양) | 예: `['ROCK', 'PAPER', 'V']` |
+| `signal` | 없음 | `AbortController`의 `signal`. abort 하면 Promise가 **`null`로** resolve 된다 (에러 없음) |
+
+resolve 값: 확정된 `pose` (`{ code, name, handedness, stableMs }`) 또는 abort 됐을 때 `null`.
+
+### 화면 버튼(대체 입력)과 함께 쓰는 예
+
+```js
+const stop = new AbortController();
+const picked = await Promise.race([
+  ctx.hand.waitForPose({ holdMs: 1000, since: shownAt, names: HANDS, signal: stop.signal })
+    .then((pose) => pose && { hand: pose.name, via: 'hand' }),
+  new Promise((resolve) => showButtons((hand) => resolve({ hand, via: 'button' }))),
+]);
+stop.abort(); // 버튼이 먼저 눌렸으면 기다리던 손 입력을 멈춘다
+```
+
+`unmount()`에서는 기다리는 중인 `waitForPose`를 모두 abort 한다.
 
 ### 손모양 목록 (`src/data/poses.json`)
 
@@ -54,7 +87,8 @@ AIHand가 이 손모양을 모두 만들 수 있는지는 아직 확인하지 �
 
 | 이름 | 형태 | 설명 |
 |---|---|---|
-| `ctx.hand.onPose(cb)` | 구독 해제 함수 반환 | 위 참고 |
+| `ctx.hand.onPose(cb)` | 구독 해제 함수 반환 | 0.1초마다 현재 손 상태. 유지 게이지 등에 사용 |
+| `ctx.hand.waitForPose(opts)` | Promise | 손모양 입력 확정. 위 참고 |
 | `ctx.robot.showPose(name)` | Promise | 로봇이 손모양을 만든다. `DONE` 받으면 resolve |
 | `ctx.robot.react('ok' \| 'retry')` | Promise | 칭찬 / "다시 해 볼까요" 반응 |
 | `ctx.robot.hello()` | Promise | 인사 |

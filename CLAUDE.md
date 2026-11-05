@@ -71,7 +71,12 @@ export default {
 - `ctx.hand.onPose(cb)` → `cb({ code, name, handedness, stableMs })`, 구독 해제 함수 반환
   - `code`: 5비트 문자열 [엄지,검지,중지,약지,새끼], 1=펴짐. 손이 없으면 `null`
   - `name`: `data/poses.json`의 이름 (`ROCK`, `PAPER`, `V`, `INDEX` 등), 없으면 `null`
-  - `stableMs`: 같은 code가 연속 유지된 시간. 입력 확정 기준은 각 프로그램이 정한다
+  - `stableMs`: 같은 code가 연속 유지된 시간. 유지 게이지처럼 현재 상태를 보여줄 때 쓴다
+- `ctx.hand.waitForPose({ holdMs, since, names, signal })` → 확정된 pose로 resolve 되는 Promise
+  - 확정 규칙(공통): `since` 이후에 만든 손모양을 `holdMs` 이상 유지. `names`로 받을 손모양 제한
+  - `signal`(AbortController)을 abort 하면 `null`로 resolve. 화면 버튼과 `Promise.race`로 함께 쓴다
+  - 입력 확정 규칙을 프로그램 안에 따로 만들지 않는다. `holdMs` 값은 각 프로그램이 정한다
+  - 자세한 내용은 `docs/hand-api.md`
 - `ctx.robot.showPose(name)`, `ctx.robot.react('ok' | 'retry')`, `ctx.robot.hello()`, `ctx.robot.rest()`
   - 모두 Promise를 반환하고, 로봇이 `DONE`을 보내면 resolve 된다
 - `ctx.tag.onTag(cb)` → `cb({ id })`

@@ -42,13 +42,3 @@ export function judgeSequence(expected, given) {
   };
 }
 
-/**
- * 손 인식 입력을 확정할지 정한다.
- * - 이름 있는 손모양을 minStableMs 이상 유지했고
- * - sinceMs(문제 제시 또는 바로 앞 입력 확정) 이후에 만든 손모양이어야 한다
- */
-export function shouldAcceptPose(pose, { now, sinceMs, minStableMs }) {
-  if (!pose || !pose.name) return false;
-  if (pose.stableMs < minStableMs) return false;
-  return now - pose.stableMs >= sinceMs;
-}

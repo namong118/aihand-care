@@ -7,7 +7,6 @@ import {
   answerFor,
   makeQuestion,
   isRpsHand,
-  shouldAcceptPose,
 } from './logic.js';
 
 describe('outcome: 가위바위보 승패 (사용자 기준)', () => {
@@ -92,20 +91,10 @@ describe('makeQuestion', () => {
   });
 });
 
-describe('shouldAcceptPose', () => {
-  const opts = { now: 10_000, sinceMs: 8_000, minStableMs: 1_000 };
-  it('문제 뒤에 만든 손을 1초 유지하면 확정', () => {
-    expect(shouldAcceptPose({ name: 'ROCK', stableMs: 1_500 }, opts)).toBe(true);
-  });
-  it('유지 시간이 짧으면 아직', () => {
-    expect(shouldAcceptPose({ name: 'ROCK', stableMs: 500 }, opts)).toBe(false);
-  });
-  it('문제 전부터 들고 있던 손은 인정하지 않는다', () => {
-    expect(shouldAcceptPose({ name: 'ROCK', stableMs: 3_000 }, opts)).toBe(false);
-  });
-  it('가위바위보 손이 아니거나 손이 없으면 무시', () => {
-    expect(shouldAcceptPose({ name: 'INDEX', stableMs: 1_500 }, opts)).toBe(false);
-    expect(shouldAcceptPose({ name: null, stableMs: 0 }, opts)).toBe(false);
+describe('isRpsHand', () => {
+  it('가위·바위·보만 true', () => {
+    expect(HANDS.every(isRpsHand)).toBe(true);
     expect(isRpsHand('THUMB')).toBe(false);
+    expect(isRpsHand(null)).toBe(false);
   });
 });

@@ -90,16 +90,3 @@ export function makeQuestion(difficulty = 'easy', rand = Math.random) {
   };
 }
 
-/**
- * 손 인식 입력을 "확정"할지 정한다.
- * - 가위바위보 손이어야 하고
- * - minStableMs 이상 같은 모양을 유지했고
- * - 문제가 나온 뒤(sinceMs 이후)에 만든 손모양이어야 한다
- *   (문제 전부터 들고 있던 손이 바로 답이 되는 것을 막는다)
- */
-export function shouldAcceptPose(pose, { now, sinceMs, minStableMs }) {
-  if (!pose || !isRpsHand(pose.name)) return false;
-  if (pose.stableMs < minStableMs) return false;
-  const startedAt = now - pose.stableMs;
-  return startedAt >= sinceMs;
-}

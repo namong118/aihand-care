@@ -29,13 +29,14 @@
 
 ## 입력 확정 기준 (지금 값)
 
+- `ctx.hand.waitForPose({ holdMs, since })`로 한 개씩 받는다 (화면 버튼과 `Promise.race`)
 - 이름 있는 손모양을 **1초**(속도 "천천히"면 1.5초) 유지하면 한 개 확정
-- 문제가 나온 뒤, 또는 바로 앞 입력이 확정된 뒤에 만든 손모양만 인정
+- `since` = 입력 시작 시각, 또는 바로 앞 입력이 확정된 시각. 그 뒤에 만든 손모양만 인정
 - 난이도: 쉬움 1개, 보통 2개, 어려움 3개
 
 ## 기록 (`ctx.log.record`)
 
-공통 필드 + `detail: { difficulty, expected, given, matched, lastInputVia }`
+공통 필드 + `detail: { difficulty, expected, given, matched, inputVia }` (`inputVia`는 입력마다 `'hand'` 또는 `'button'`)
 
 ## 하지 말아야 할 것
 

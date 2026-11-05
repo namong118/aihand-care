@@ -3,7 +3,7 @@
 
 import poses from '../data/poses.json';
 import tags from '../data/tags.json';
-import { createHand } from './hand/index.js';
+import { createHand, makeWaitForPose } from './hand/index.js';
 import { createRobot } from './robot/index.js';
 import { createTag } from './tag/index.js';
 import { createLog } from './log.js';
@@ -30,7 +30,10 @@ export function createContext(settings) {
   const log = createLog();
 
   const ctx = {
-    hand: { onPose: (cb) => hand.onPose(cb) },
+    hand: {
+      onPose: (cb) => hand.onPose(cb),
+      waitForPose: makeWaitForPose((cb) => hand.onPose(cb)),
+    },
     robot: {
       showPose: (name) => robot.showPose(name),
       react: (kind) => robot.react(kind),

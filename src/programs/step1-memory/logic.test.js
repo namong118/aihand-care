@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sequenceLength, makeSequence, judgeSequence, shouldAcceptPose } from './logic.js';
+import { sequenceLength, makeSequence, judgeSequence } from './logic.js';
 
 const NAMES = ['ROCK', 'PAPER', 'V'];
 
@@ -44,19 +44,5 @@ describe('judgeSequence', () => {
   });
   it('개수가 모자라면 정답이 아니다', () => {
     expect(judgeSequence(['ROCK', 'V'], ['ROCK']).correct).toBe(false);
-  });
-});
-
-describe('shouldAcceptPose', () => {
-  const opts = { now: 10_000, sinceMs: 8_000, minStableMs: 1_000 };
-  it('제시 뒤에 만든 손모양을 유지하면 확정', () => {
-    expect(shouldAcceptPose({ name: 'THUMB', stableMs: 1_200 }, opts)).toBe(true);
-  });
-  it('이전부터 들고 있던 손은 인정하지 않는다', () => {
-    expect(shouldAcceptPose({ name: 'THUMB', stableMs: 2_500 }, opts)).toBe(false);
-  });
-  it('손이 없거나 짧으면 아직', () => {
-    expect(shouldAcceptPose({ name: null, stableMs: 0 }, opts)).toBe(false);
-    expect(shouldAcceptPose({ name: 'ROCK', stableMs: 300 }, opts)).toBe(false);
   });
 });
