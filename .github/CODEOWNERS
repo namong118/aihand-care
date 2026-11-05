@@ -1,25 +1,27 @@
-# 폴더별 담당자. PR이 이 폴더를 고치면 담당자에게 리뷰 요청이 간다.
+# 폴더별 담당자. PR이 이 폴더를 고치면 담당자에게 리뷰 요청이 자동으로 간다.
+# 아래쪽 줄이 위쪽 줄보다 우선한다. 따로 적지 않은 경로(docs/, src/data/, .github/ 등)는 기본 담당(*)을 따른다.
 #
-# TODO: 팀원 GitHub 아이디가 정해지면 아래 줄 앞의 "# " 를 지우고
-#       <A의 아이디> 같은 자리를 @아이디 로 바꾼다.
-#       (없는 아이디를 적으면 GitHub가 오류를 표시하므로 지금은 모두 주석으로 둔다.)
-#
-# 담당 A: core, 대시보드, STEP 1, 펌웨어, 데이터, 설정
-# 담당 B: STEP 4 손운동 코칭
-# 담당 C: STEP 3 색깔손
-# 담당 D: STEP 2 사고력 가위바위보, 공통 UI
+# A namong118           STEP 1 기억손, core 공통 모듈, 펌웨어, 대시보드
+# B jen282              STEP 4 손운동 코칭
+# C gksdnd0519-commits  STEP 3 색깔손
+# D Juyeon-Kim-pjt      STEP 2 사고력 가위바위보, 공통 UI
 
-# *                              <A의 아이디>
-# /src/main.js                   <A의 아이디>
-# /src/core/                     <A의 아이디>
-# /src/dashboard/                <A의 아이디>
-# /src/data/                     <A의 아이디>
-# /src/programs/index.js         <A의 아이디>
-# /src/programs/step1-memory/    <A의 아이디>
-# /src/programs/step2-rps/       <D의 아이디>
-# /src/programs/step3-stroop/    <C의 아이디>
-# /src/programs/step4-coach/     <B의 아이디>
-# /src/ui/                       <D의 아이디>
-# /firmware/                     <A의 아이디>
-# /docs/                         <A의 아이디>
-# /.github/                      <A의 아이디>
+# 기본 담당
+*                              @namong118
+
+# A
+/src/main.js                   @namong118
+/src/core/                     @namong118
+/src/dashboard/                @namong118
+/firmware/                     @namong118
+/src/programs/step1-memory/    @namong118
+
+# B
+/src/programs/step4-coach/     @jen282
+
+# C
+/src/programs/step3-stroop/    @gksdnd0519-commits
+
+# D
+/src/programs/step2-rps/       @Juyeon-Kim-pjt
+/src/ui/                       @Juyeon-Kim-pjt
