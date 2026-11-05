@@ -23,7 +23,7 @@
 
 - [x] 문제 만들기 `makeQuestion` (쉬움: 뜻=색, 보통: 섞임, 어려움: 항상 다름), 판정 `judge` (테스트 있음)
 - [x] 문제 1개 → 입력(색깔 카드 또는 화면 버튼) → 판정 → 로봇 반응 → 기록
-- [ ] 한 회차 여러 문제, 문제 사이 간격
+- [x] 한 회차 여러 문제(`makeRound`, 기본 5문제, 같은 문제 연달아 안 나옴), 문제 사이 간격(`gapMs`), 진행 표시(예: 2 / 5)
 - [ ] 카드를 잠깐 스치듯 보여줬을 때도 답으로 칠지 정하기 (실물 카드 인식 확인 후)
 - [ ] 색 구분이 어려운 사용자를 위한 안내 (아래 참고)
 - [ ] 로봇의 역할 정하기 (예: 문제 시작 신호 등. 가능한 동작은 `docs/hardware-check.md` 확인 후)
@@ -38,7 +38,9 @@
 
 ## 기록 (`ctx.log.record`)
 
-공통 필드 + `detail: { difficulty, word, ink, congruent, picked, pickedWord, inputVia }`
+한 회차(여러 문제)가 끝날 때 한 번 기록한다. `total`은 문제 수, `done`은 맞힌 수, `avgReactionMs`는 문제별 반응 시간의 평균.
+
+공통 필드 + `detail: { difficulty, questions: [{ word, ink, congruent, picked, pickedWord, inputVia, reactionMs }, ...] }`
 (`word`·`ink`·`picked`는 `'red'` 같은 색 이름, `inputVia`는 `'card'` 또는 `'button'`)
 
 ## 하지 말아야 할 것
