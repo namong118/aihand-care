@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeQuestion, judge } from './logic.js';
+import { makeQuestion, judge, makeRound, gapMs, summarizeRound, QUESTIONS_PER_ROUND } from './logic.js';
 import colors from '../../data/colors.json';
 
 describe('makeQuestion', () => {
@@ -45,6 +45,56 @@ describe('judge', () => {
   });
   it('다른 색', () => {
     expect(judge(q, 'green')).toEqual({ correct: false, pickedWord: false });
+  });
+});
+
+describe('makeRound', () => {
+  it('기본 문제 수만큼 만든다', () => {
+    expect(makeRound(colors, 'normal')).toHaveLength(QUESTIONS_PER_ROUND);
+    expect(makeRound(colors, 'normal', 3)).toHaveLength(3);
+  });
+
+  it('같은 문제가 연달아 나오지 않는다', () => {
+    for (const difficulty of ['easy', 'normal', 'hard']) {
+      for (let i = 0; i < 30; i++) {
+        const round = makeRound(colors, difficulty, 10);
+        for (let j = 1; j < round.length; j++) {
+          const same =
+            round[j].wordColor === round[j - 1].wordColor && round[j].inkColor === round[j - 1].inkColor;
+          expect(same).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('난이도 규칙을 회차 전체에서 지킨다', () => {
+    expect(makeRound(colors, 'easy', 10).every((q) => q.congruent)).toBe(true);
+    expect(makeRound(colors, 'hard', 10).every((q) => !q.congruent)).toBe(true);
+  });
+
+  it('rand 가 늘 같아도 멈추지 않고 끝난다', () => {
+    expect(makeRound(colors, 'easy', 3, () => 0)).toHaveLength(3);
+  });
+});
+
+describe('gapMs', () => {
+  it('천천히(SLOW)면 더 길게 쉰다', () => {
+    expect(gapMs('SLOW')).toBeGreaterThan(gapMs('NORMAL'));
+  });
+});
+
+describe('summarizeRound', () => {
+  it('정답 수와 평균 반응 시간', () => {
+    const answers = [
+      { correct: true, reactionMs: 1000 },
+      { correct: false, reactionMs: 2000 },
+      { correct: true, reactionMs: 1500 },
+    ];
+    expect(summarizeRound(answers)).toEqual({ total: 3, done: 2, avgReactionMs: 1500 });
+  });
+
+  it('답이 없으면 평균은 null', () => {
+    expect(summarizeRound([])).toEqual({ total: 0, done: 0, avgReactionMs: null });
   });
 });
 

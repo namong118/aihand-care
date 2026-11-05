@@ -33,6 +33,48 @@ export function makeQuestion(colors, difficulty = 'easy', rand = Math.random) {
   return { wordColor: word.color, inkColor: ink.color, congruent: same };
 }
 
+/** 한 회차 문제 수 */
+export const QUESTIONS_PER_ROUND = 5;
+
+/**
+ * 한 회차 문제 목록 만들기. 바로 앞 문제와 똑같은 문제(뜻·색 모두 같음)는 연달아 내지 않는다.
+ * rand 가 늘 같은 값을 주면(테스트 등) 다시 뽑아도 같아서, 20번 시도 후에는 그대로 넣는다.
+ */
+export function makeRound(colors, difficulty = 'easy', count = QUESTIONS_PER_ROUND, rand = Math.random) {
+  const list = [];
+  while (list.length < count) {
+    const prev = list[list.length - 1];
+    let q = makeQuestion(colors, difficulty, rand);
+    for (let tries = 0; prev && isSame(prev, q) && tries < 20; tries++) {
+      q = makeQuestion(colors, difficulty, rand);
+    }
+    list.push(q);
+  }
+  return list;
+}
+
+function isSame(a, b) {
+  return a.wordColor === b.wordColor && a.inkColor === b.inkColor;
+}
+
+/** 문제 사이 쉬는 시간(ms). 결과 문구를 읽을 시간을 준다. */
+export function gapMs(speed) {
+  return speed === 'SLOW' ? 2500 : 1500;
+}
+
+/**
+ * 회차 요약 (ctx.log.record 공통 필드용)
+ * answers: [{ correct, reactionMs }, ...]
+ */
+export function summarizeRound(answers) {
+  const total = answers.length;
+  const done = answers.filter((a) => a.correct).length;
+  const avgReactionMs = total
+    ? Math.round(answers.reduce((sum, a) => sum + a.reactionMs, 0) / total)
+    : null;
+  return { total, done, avgReactionMs };
+}
+
 /** 판정: 보여준 카드 색이 글자 색과 같으면 정답. 글자 뜻을 고른 것인지도 알려준다. */
 export function judge(question, color) {
   return {

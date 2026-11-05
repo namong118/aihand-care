@@ -26,11 +26,15 @@ export function createScreen(container, colors) {
       set(message(text, 'info'));
     },
 
-    /** 문제: 글자 뜻(word)을 글자 색(ink)으로 보여주고, 색 버튼(카드 대체 입력)을 둔다 */
-    question({ wordColor, inkColor }, onPick) {
+    /**
+     * 문제: 글자 뜻(word)을 글자 색(ink)으로 보여주고, 색 버튼(카드 대체 입력)을 둔다
+     * progress: { index, count } → "2 / 5" 진행 표시
+     */
+    question({ wordColor, inkColor }, { index, count }, onPick) {
       const word = find(wordColor);
       const ink = find(inkColor);
       set(
+        h('p', { 'aria-label': `${count}문제 중 ${index}번째` }, `${index} / ${count}`),
         h('p', { class: 'big-prompt' }, '이 글자는 무슨 색깔인가요?'),
         h(
           'div',
@@ -65,9 +69,12 @@ export function createScreen(container, colors) {
       }
     },
 
-    end(onAgain) {
-      area.append(
-        h('p', {}, '이번 회차가 끝났어요. 위의 "활동 기록 보기"에서 기록을 볼 수 있어요.'),
+    /** 회차 끝: summary = { total, done } */
+    end({ total, done }, onAgain) {
+      set(
+        message(`${total}문제를 모두 마쳤어요. 수고하셨어요!`, 'good'),
+        h('p', {}, `글자 색과 같은 카드를 고른 문제: ${done}개`),
+        h('p', {}, '위의 "활동 기록 보기"에서 기록을 볼 수 있어요.'),
         h('div', { class: 'row' }, button('한 번 더 하기', onAgain)),
       );
     },
