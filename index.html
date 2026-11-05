@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIHand 손활동</title>
+  </head>
+  <body>
+    <!-- 장치 상태 표시줄: 항상 맨 위에 보인다 -->
+    <header id="statusbar" aria-live="polite"></header>
+
+    <div class="layout">
+      <!-- 홈·프로그램·결과 화면이 바뀌어 들어가는 자리 -->
+      <main id="app"></main>
+
+      <!-- Mock 모드일 때 가상 로봇손과 화면 입력 버튼이 들어가는 자리 -->
+      <aside id="mock-panel" aria-label="가상 장치 패널"></aside>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

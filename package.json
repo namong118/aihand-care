@@ -1,0 +1,17 @@
+{
+  "name": "aihand-care",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AIHand 로봇손과 웹캠 손동작 인식을 이용한 고령자 인지·손운동 활동 웹 앱",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
+}
