@@ -1,0 +1,184 @@
+/* 고령자 UX 기본값: 본문 24px 이상, 버튼 최소 높이 64px, 고대비.
+   색만으로 정보를 전달하지 않는다 (✔, ○, ↻ 같은 글자 표시를 함께 쓴다). */
+
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #3a3a3a;
+  --line: #222222;
+  --card: #f4f4f4;
+  --primary: #0b3d91;
+  --primary-fg: #ffffff;
+  --good: #0a6b2d;
+  --good-bg: #e3f5e8;
+  --retry: #8a4b00;
+  --retry-bg: #fff1dc;
+  --info-bg: #e6eefc;
+  --focus: #ff9e00;
+  --robot-up: #ffd8a8;
+  --robot-down: #c9a27a;
+  --robot-palm: #ffe4c4;
+  --stage: #1d1d1d;
+
+  font-size: 24px;
+  line-height: 1.5;
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+h1 { font-size: 40px; margin: 0 0 16px; }
+h2 { font-size: 30px; margin: 0 0 12px; }
+h3 { font-size: 26px; margin: 0 0 8px; }
+p  { margin: 0 0 12px; }
+
+:focus-visible {
+  outline: 5px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* ---------- 전체 배치 ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  padding: 24px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+}
+#app { min-width: 0; }
+
+/* ---------- 버튼 ---------- */
+.btn {
+  min-height: 64px;
+  padding: 12px 28px;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 700;
+  border: 3px solid var(--line);
+  border-radius: 14px;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--fg);
+}
+.btn-primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+.btn-secondary { background: var(--bg); color: var(--fg); }
+.btn-choice[aria-pressed='true'],
+.btn[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--primary-fg);
+  border-color: var(--primary);
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:hover:not(:disabled) { filter: brightness(1.08); }
+
+.btn-small { font-size: 22px; padding: 8px 14px; } /* 높이 64px 은 유지 */
+
+.row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 12px 0; }
+
+/* ---------- 상태 표시줄 ---------- */
+#statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: center;
+  padding: 12px 24px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 22px;
+}
+.status-item { white-space: nowrap; }
+.status-item strong { font-weight: 700; }
+.status-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: #ffe08a;
+  color: #111;
+  font-weight: 700;
+}
+.status-user { margin-left: auto; }
+
+/* ---------- 안내 문구 ---------- */
+.msg { padding: 16px 20px; border-radius: 12px; border: 3px solid var(--line); font-size: 28px; font-weight: 700; }
+.msg-info { background: var(--info-bg); }
+.msg-good { background: var(--good-bg); color: var(--good); border-color: var(--good); }
+.msg-retry { background: var(--retry-bg); color: var(--retry); border-color: var(--retry); }
+
+/* ---------- 카드 ---------- */
+.card {
+  background: var(--card);
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 24px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+.step-card { display: flex; flex-direction: column; gap: 12px; }
+.step-card .step-no { font-size: 22px; font-weight: 700; color: var(--muted); }
+.step-card p { flex: 1; }
+
+.section { margin-bottom: 32px; }
+
+input[type='text'] {
+  min-height: 64px;
+  font: inherit;
+  padding: 8px 16px;
+  border: 3px solid var(--line);
+  border-radius: 12px;
+  min-width: 260px;
+}
+
+/* ---------- 프로그램 화면 틀 ---------- */
+.program-bar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 20px; }
+.program-bar h1 { margin: 0; flex: 1; }
+.program-body { display: flex; flex-direction: column; gap: 16px; }
+
+.big-prompt { font-size: 40px; font-weight: 800; text-align: center; margin: 8px 0; }
+
+/* STEP 3 색 글자 무대: 노랑도 잘 보이도록 어두운 배경 */
+.stroop-stage {
+  background: var(--stage);
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  font-size: 120px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+/* ---------- 표 ---------- */
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 22px; }
+th, td { border: 2px solid var(--line); padding: 8px 12px; text-align: left; }
+th { background: var(--card); }
+
+/* ---------- Mock 패널 ---------- */
+#mock-panel { display: flex; flex-direction: column; gap: 20px; }
+#mock-panel:empty { display: none; }
+.mock-box {
+  border: 3px dashed var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--card);
+}
+.mock-box h2 { font-size: 24px; }
+.mock-status { font-size: 22px; color: var(--muted); margin: 8px 0; }
+.mock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.robot-figure svg { width: 100%; max-width: 240px; display: block; margin: 0 auto; }
+.robot-label { font-size: 24px; font-weight: 700; text-align: center; }
+.tag-btn { border-left: 18px solid var(--tag-color); }
