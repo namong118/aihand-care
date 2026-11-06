@@ -78,18 +78,20 @@ STEP 3에서는 사용자가 **색깔 카드**(빨강·파랑·노랑·초록)�
 
 | 방식 | 흐름 | 웹에서 바꿀 곳 | 상태 |
 |---|---|---|---|
-| A) AprilTag 등 태그 인식 | 카드에 태그 인쇄 → WonderCam이 태그 ID 인식 → micro:bit가 `TAG,<ID>` 전송 → 웹 `core/card`가 `tags.json`으로 ID→색 변환 | `src/core/card/tags.json`의 ID를 실제 태그 번호로 | 미확인 |
-| B) WonderCam 색상 인식 | 카드 색 자체를 WonderCam이 인식 → micro:bit가 색을 전송 → 웹은 변환 없이 색 사용 | 프로토콜에 색 전송 줄 추가 (`protocol.js`·`firmware/`·`docs/protocol.md`), `tags.json` 불필요 | 미확인 |
+| A) AprilTag 태그 인식 | 카드에 태그 인쇄 → WonderCam이 태그 ID 인식 → micro:bit가 `TAG,<ID>` 전송 → 웹 `core/card`가 `tags.json`으로 ID→색 변환 | `src/core/card/tags.json`의 ID를 실제 태그 번호로 | 화면에 띄운 태그로 확인됨, 종이 카드 미확인 |
+| B) WonderCam 색상 인식 | 카드 색 자체를 WonderCam이 인식 → micro:bit가 색을 전송 → 웹은 변환 없이 색 사용 | 프로토콜에 색 전송 줄 추가 (`protocol.js`·`firmware/`·`docs/protocol.md`), `tags.json` 불필요 | 모니터에서 초록↔파랑 혼동, 종이 카드 미확인 |
 
 | 항목 | 상태 | 날짜 | 확인 | 방법·메모 |
 |---|---|---|---|---|
-| WonderCam이 micro:bit에 연결되어 MakeCode에서 쓸 수 있음 | 미확인 | | | |
-| 색상 인식으로 4색 카드를 구분 (방식 B) | 미확인 | | | 조명·카드 재질에 따라 노랑/초록 혼동 여부 |
-| 태그(AprilTag 등) 인식 가능 여부와 ID 값 얻기 (방식 A) | 미확인 | | | |
-| **인식 결과(태그 ID 또는 색)를 micro:bit가 받아 시리얼로 전달** | 미확인 | | | [검증 필요] 안 되면 STEP 3은 화면 버튼·키보드(카드 대신 입력)로 시연 |
-| 카드 방식 결정 (A 또는 B) | 미정 | | | 정해지면 `core/card/serial.js` TODO 정리 |
-| 실내 조명에서 인식 거리·각도 | 미확인 | | | |
-| 로봇 동작 중에도 카드 인식이 동시에 되는지 | 미확인 | | | |
+| WonderCam이 micro:bit에 연결되어 MakeCode에서 쓸 수 있음 | 확인됨 | 2026-11-06 | A | 실물 테스트. **I2C 연결, 주소 0x32**(공식 확장 [Hiwonder/WonderCam](https://github.com/Hiwonder/WonderCam) 기본값). 테스트 코드 CAM1(부록 6)이 0번 레지스터 `'v'` 응답으로 카메라를 찾고 현재 기능 번호를 읽음. 확장보드 연결 포트: (기록 필요). I2C라서 USB 시리얼 통로(1번 표 마지막 줄)와 겹치지 않음 |
+| micro:bit에서 WonderCam 기능(모드) 전환 | 확인됨 | 2026-11-06 | A | 실물 테스트. `MODE,TAG` → 기능 번호 10(숫자 인식) → 7(AprilTag), `MODE,COLOR` → 5(색상 인식). 시연 때 카메라 메뉴를 손으로 맞출 필요 없이 펌웨어가 켜질 때 모드를 정하면 됨 |
+| 태그(AprilTag) 인식 가능 여부와 ID 값 얻기 (방식 A) | 확인됨 | 2026-11-06 | A | 실물 테스트. 태그 종류 **tag36h11**([공식 문서](https://docs.hiwonder.com/projects/AiNova/en/latest/docs/6.AI_Vision_lesson.html)). [AprilRobotics 이미지](https://github.com/AprilRobotics/apriltag-imgs/tree/master/tag36h11) ID 0~3을 **모니터에 띄워** 약 20~30cm에서 보여줌 → 4개 모두 맞는 ID, 다른 번호 오인식 없음. 두 태그가 함께 보이면 두 ID 모두 보고됨(`0 1`). **같은 태그를 계속 보여줘도 0.17~0.34초씩 `NONE`으로 끊김**(결과 읽기 주기 약 0.17초) → 부록 6 펌웨어 반영 사항 |
+| 색상 인식으로 4색 카드를 구분 (방식 B) | 부분 가능 | 2026-11-06 | A | 실물 테스트, **모니터 기준 참고 결과**. 카메라에서 ID 1 빨강·2 파랑·3 노랑·4 초록을 모니터 색(`src/data/colors.json`과 같은 색)으로 학습 후 한 색씩 비춤 → 빨강 `1`, 파랑 `2`, 노랑 `3`은 정확하고 끊김 없음. **초록은 `2 4`(파랑으로도 인식)**. 노랑↔초록 혼동은 없었음. 한때 파랑도 `2 4`로 나왔다가 보조등 조치 후 `2`만 나옴. 색 학습은 카메라 레버로 직접 함(공식 문서는 사용 전 학습하라고 안내). 색상 인식은 **화면에 보이는 같은 색 물건을 모두 보고**함(테스트 화면의 색 버튼까지 함께 인식된 적 있음). **종이 카드로는 미확인** [검증 필요] |
+| micro:bit에서 WonderCam 보조등 끄기 | 안 됨 | 2026-11-06 | A | 실물 테스트. 공식 확장 `TurnOnOrOffLed(OFF)`(레지스터 0x30) 명령은 보냈지만 보조등이 꺼지지 않음. 카메라 메뉴 System Settings → Fill light brightness로 조절 (결과 기록 필요) |
+| **인식 결과(태그 ID 또는 색)를 micro:bit가 받아 시리얼로 전달** | 확인됨 | 2026-11-06 | A | 실물 테스트. CAM1이 인식 결과가 바뀔 때마다 `SEE,TAG,<개수>,<ID들>` / `SEE,COLOR,<개수>,<ID들>`을 USB 시리얼로 보냄. 정식 프로토콜(`TAG,<ID>`)은 #6에서 구현 |
+| 카드 방식 결정 (A 또는 B) | 임시 결정: A | 2026-11-06 | A | **방식 A(AprilTag tag36h11) 임시 결정**, 팀 확인 필요(`docs/meetings/2026-11-06.md`). 근거: 위 태그·색상 줄. 종이 카드 테스트에서 문제없으면 확정, 잘 안 읽히면 방식 B 재검토. 확정 후 `core/card/serial.js` TODO·`tags.json` 정리 |
+| 실내 조명에서 인식 거리·각도 | 미확인 | | | 종이 카드로 확인 |
+| 로봇 동작 중에도 카드 인식이 동시에 되는지 | 미확인 | | | CAM1(서보 없음)과 서보 테스트 코드 v8을 합친 코드 필요 |
 
 ## 5. 웹캠 손 인식 (MediaPipe)
 
@@ -374,3 +376,188 @@ H2를 300ms로 하면 보통 속도 약 2.8초 (손바닥 0.6 + 흔들기 4 × 0
 3. 오타가 나면 지우지 말고 Enter로 그 줄을 버린 뒤 다시 입력한다
 4. 후보 동작을 하나씩 실행하고, 각 동작 뒤 `DONE`을 받은 다음 지속음·발열·간섭을 확인한다
 5. 결과를 이 부록 표에 기록하고, 확정된 동작만 `docs/protocol.md`와 #6 펌웨어에 반영한다
+
+## 부록 6: WonderCam 테스트 방법과 결과 (2026-11-06, A, 테스트 코드 CAM1)
+
+실제 펌웨어(`firmware/`)가 아니라 테스트용 코드다. 서보는 움직이지 않는다.
+
+### 준비
+
+1. WonderCam을 확장보드 I2C 포트에 꽂고 외부 어댑터 전원을 켠다
+2. MakeCode 새 프로젝트 → 톱니바퀴 → 확장 → `https://github.com/Hiwonder/WonderCam` 추가
+3. JavaScript 탭에 아래 코드 전체를 붙여 넣고 다운로드 → **MakeCode 탭을 닫는다**
+4. Serial Terminal 115200 연결 (부록 1과 같은 설정). micro:bit 화면 ✔ = 카메라 찾음, ✖ = 못 찾음
+5. 카메라 메뉴가 중국어면: 왼쪽 레버로 系统设置(System Settings) → 오른쪽 레버 누르기 → 语言(Language) → English 선택 → 확인 → 자동 재시작
+
+### 명령
+
+| 보내기 | 응답 |
+|---|---|
+| `VER` | `VER,CAM1,USB115200,I2C0x32,NOSERVO` |
+| `INFO` | `INFO,FUNC=<번호>,<COLOR/TAG/OTHER>` (5 = 색상, 7 = AprilTag, 10 = 숫자 인식) |
+| `MODE,TAG` / `MODE,COLOR` | `DONE,MODE,FUNC=<번호>` |
+| `LED,ON` / `LED,OFF` | `DONE,LED,...` (실제로 꺼지지 않음, 4번 표) |
+| (자동) | 인식 결과가 바뀔 때마다 `SEE,TAG,<개수>,<ID들>,t=<ms>` 또는 `SEE,COLOR,...`, 없으면 `NONE` |
+
+### 색 학습 방법 (방식 B)
+
+카메라를 Color Recognition 화면에 두고 → 오른쪽 레버를 왼쪽으로 밀어 학습 화면(`+`, `Color ID:1`) → `+`를 색에 맞추고 흰 테두리가 잡히면 오른쪽 레버를 왼쪽으로 밀어 학습 → 성공하면 오른쪽 레버 누르기. ID 1 빨강, 2 파랑, 3 노랑, 4 초록. 학습 화면에서 나갈 때 확인 창에서 **Yes**(No는 변경 내용을 버림).
+
+### 테스트에서 배운 점 (정식 펌웨어 #6·`core/card` 반영 사항)
+
+| 확인한 것 | 반영할 것 |
+|---|---|
+| 공식 `wondercam_init`은 카메라를 못 찾으면 `E`를 띄우며 무한 대기한다 | 펌웨어는 먼저 0번 레지스터로 연결을 확인하고, 못 찾으면 `ERR,CAM` 같은 응답을 보낸 뒤 로봇 기능은 계속 동작하게 한다 (프로토콜 변경이므로 함께 논의) |
+| 태그가 계속 보여도 0.17~0.34초씩 끊긴다 (모니터 기준) | 같은 ID가 몇 번 연속 보이면 `TAG,<ID>`를 **한 번만** 보내고, 일정 시간(예: 0.5초) 넘게 안 보여야 사라진 것으로 친다. 값은 종이 카드 테스트 후 정함 (C의 "스치듯 보여준 카드" 결정과 연결) |
+| 여러 태그·여러 색이 한 번에 보고된다 | 시연 안내: 보여주는 카드 외의 카드는 카메라에 보이지 않게 둔다. 방식 B면 가장 큰 색 덩어리 하나만 답으로 치는 규칙 필요 (공식 확장에 크기 읽기 기능 있음) |
+| 모드 전환 중에도 결과 읽기가 돌아 `DONE` 전에 결과가 출력됐다 | 모드 전환 중에는 결과를 보내지 않는다 |
+| 터미널은 방향키도 ESC 글자(`27 91 66` = ↓)로 보내 명령이 깨진다 | 손으로 칠 때만 해당. 입력 칸은 마우스로 클릭 |
+
+### CAM1 코드
+
+```js
+// WonderCam 검증용 테스트 코드 CAM1 (정식 펌웨어 아님)
+// 준비: MakeCode 확장에서 https://github.com/Hiwonder/WonderCam 추가 → JavaScript 탭에 전체 붙여 넣기
+// 서보는 움직이지 않는다. 시리얼 통로는 USB만 쓴다 (WonderCam은 I2C).
+//
+// 명령 (Serial Terminal, 115200):
+//   VER          버전
+//   PING         → PONG
+//   INFO         WonderCam 현재 기능 번호 (5=색상, 7=AprilTag)
+//   MODE,TAG     AprilTag 모드로 전환
+//   MODE,COLOR   색상 인식 모드로 전환
+//   LED,ON / LED,OFF   보조등
+// 자동 출력: 보이는 대상이 바뀔 때마다
+//   SEE,TAG,<개수>,<ID들>,t=<ms>      예) SEE,TAG,1,3,t=12345
+//   SEE,COLOR,<개수>,<ID들>,t=<ms>    예) SEE,COLOR,1,2,t=12345
+//   없으면 개수 0, ID 칸은 NONE
+
+const CAM_ADDR = 0x32
+let camOk = false
+let lastSeen = ""
+let buf = ""
+
+serial.redirectToUSB()
+serial.setBaudRate(BaudRate.BaudRate115200)
+
+// 연결 확인: 0번 레지스터가 'v'(118)이면 WonderCam
+// (공식 wondercam_init 은 못 찾으면 E를 띄우며 무한 대기하므로 직접 확인)
+function camAlive(): boolean {
+    let req = pins.createBuffer(2)
+    req.setNumber(NumberFormat.UInt8LE, 0, 0)
+    req.setNumber(NumberFormat.UInt8LE, 1, 0)
+    pins.i2cWriteBuffer(CAM_ADDR, req)
+    let r = pins.i2cReadBuffer(CAM_ADDR, 1)
+    return r.getNumber(NumberFormat.UInt8LE, 0) == 118
+}
+
+function funcName(f: number): string {
+    if (f == 5) return "COLOR"
+    if (f == 7) return "TAG"
+    return "OTHER"
+}
+
+basic.pause(1500) // WonderCam 부팅 대기
+for (let k = 0; k < 10; k++) {
+    if (camAlive()) {
+        camOk = true
+        break
+    }
+    basic.pause(500)
+}
+if (camOk) {
+    wondercam.wondercam_init(wondercam.DEV_ADDR.x32)
+    basic.showIcon(IconNames.Yes)
+    serial.writeLine("CAM,OK,FUNC=" + wondercam.CurrentFunc())
+} else {
+    basic.showIcon(IconNames.No)
+    serial.writeLine("CAM,NOT_FOUND")
+}
+
+function handle(cmd: string) {
+    if (cmd == "VER") {
+        serial.writeLine("VER,CAM1,USB115200,I2C0x32,NOSERVO")
+    } else if (cmd == "PING") {
+        serial.writeLine("PONG")
+    } else if (!camOk) {
+        serial.writeLine("ERR,CAM_NOT_FOUND")
+    } else if (cmd == "INFO") {
+        let f = wondercam.CurrentFunc()
+        serial.writeLine("INFO,FUNC=" + f + "," + funcName(f))
+    } else if (cmd == "MODE,TAG") {
+        wondercam.ChangeFunc(wondercam.Functions.AprilTag)
+        lastSeen = ""
+        serial.writeLine("DONE,MODE,FUNC=" + wondercam.CurrentFunc())
+    } else if (cmd == "MODE,COLOR") {
+        wondercam.ChangeFunc(wondercam.Functions.ColorDetect)
+        lastSeen = ""
+        serial.writeLine("DONE,MODE,FUNC=" + wondercam.CurrentFunc())
+    } else if (cmd == "LED,ON") {
+        wondercam.TurnOnOrOffLed(wondercam.LED_STATE.ON)
+        serial.writeLine("DONE,LED,ON")
+    } else if (cmd == "LED,OFF") {
+        wondercam.TurnOnOrOffLed(wondercam.LED_STATE.OFF)
+        serial.writeLine("DONE,LED,OFF")
+    } else {
+        let codes = ""
+        for (let j = 0; j < cmd.length; j++) {
+            codes = codes + cmd.charCodeAt(j) + " "
+        }
+        serial.writeLine("ERR," + cmd + ",LEN=" + cmd.length + ",CODES=" + codes)
+    }
+}
+
+// 명령 받기 (오타는 지우지 말고 Enter로 버리기)
+basic.forever(function () {
+    let s = serial.readString()
+    for (let i = 0; i < s.length; i++) {
+        let c = s.charAt(i)
+        if (c == "\n" || c == "\r") {
+            if (buf.length > 0) handle(buf)
+            buf = ""
+        } else {
+            buf = buf + c
+        }
+    }
+    basic.pause(20)
+})
+
+// 인식 결과 읽기: 100ms마다, 바뀔 때만 출력
+basic.forever(function () {
+    if (!camOk) {
+        basic.pause(500)
+        return
+    }
+    wondercam.UpdateResult()
+    let f = wondercam.CurrentFunc()
+    let line = ""
+    if (f == 7) {
+        let ids = ""
+        let n = 0
+        for (let id = 0; id < 30; id++) { // 카드용 태그는 0~29 안에서 고른다
+            if (wondercam.isDetecteAprilTagId(id)) {
+                ids = ids + (n > 0 ? " " : "") + id
+                n += 1
+            }
+        }
+        line = "SEE,TAG," + n + "," + (n > 0 ? ids : "NONE")
+    } else if (f == 5) {
+        let ids = ""
+        let n = 0
+        for (let id = 1; id <= 7; id++) {
+            if (wondercam.isDetectedColorId(id)) {
+                ids = ids + (n > 0 ? " " : "") + id
+                n += 1
+            }
+        }
+        line = "SEE,COLOR," + n + "," + (n > 0 ? ids : "NONE")
+    } else {
+        line = "SEE,FUNC=" + f + ",NOT_TAG_OR_COLOR"
+    }
+    if (line != lastSeen) {
+        serial.writeLine(line + ",t=" + input.runningTime())
+        lastSeen = line
+    }
+    basic.pause(100)
+})
+```
