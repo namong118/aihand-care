@@ -34,7 +34,11 @@ export function createScreen(container, colors) {
       const word = find(wordColor);
       const ink = find(inkColor);
       set(
-        h('p', { 'aria-label': `${count}문제 중 ${index}번째` }, `${index} / ${count}`),
+        h(
+          'p',
+          { 'aria-label': `${count}문제 중 ${index}번째`, style: { 'font-size': '30px', 'font-weight': '700' } },
+          `문제 ${index} / ${count}`,
+        ),
         h('p', { class: 'big-prompt' }, '이 글자는 무슨 색깔인가요?'),
         h(
           'div',
