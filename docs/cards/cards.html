@@ -3,108 +3,189 @@
 <head>
 <meta charset="utf-8">
 <title>STEP 3 색깔 카드 인쇄본</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=East+Sea+Dokdo&family=Gowun+Dodum&display=swap" rel="stylesheet">
 <style>
   /*
    * STEP 3 색깔손 시연용 색깔 카드 4장 (A4 한 장, 2쪽은 양면 인쇄용 뒷면).
    * 인쇄: Chrome에서 이 파일 열기 → Ctrl+P → 용지 A4, 배율 100%(실제 크기), 여백 "없음", "배경 그래픽" 켜기.
    *   한 면만: 페이지 "1"만 인쇄. 양면: 양면 인쇄 "긴 쪽으로 넘기기".
+   *   글꼴은 인터넷이 되면 Google Fonts(East Sea Dokdo, Gowun Dodum), 안 되면 맑은 고딕으로 나온다.
+   *   카드 색 가장자리를 따라 자른다.
    * 색은 src/data/colors.json 의 화면 색과 같다. 프린터마다 색이 다르게 나올 수 있으니 실물로 확인한다.
    * 태그: AprilTag tag36h11, 빨강 0 · 파랑 1 · 노랑 2 · 초록 3 (#5 임시 결정, 종이 카드 테스트 후 확정).
    *   태그 그림은 공식 이미지(AprilRobotics/apriltag-imgs tag36h11)의 칸을 그대로 옮겼다.
-   *   태그 둘레의 흰 여백(흰 판)을 자르거나 가리지 않는다.
+   *   태그는 흰 판 안에 두고, 둘레 흰 여백을 자르거나 가리지 않는다. 종이 질감·오린 모양·테이프는 흰 판의 태그 위에 겹치지 않는다.
+   * 모양: 종이를 오려 붙인 판화 느낌. 같은 색의 짙은 톤으로 오린 잎 모양, 붓글씨 색 이름, 종이 질감, 테이프로 붙인 흰 라벨.
    */
+  :root {
+    --ink: #1f1b18;
+    --ink-soft: #6b625b;
+    --paper: #fff;
+    --tape: rgba(240, 228, 196, 0.85);
+    --radius: 2mm;
+    --red: #ff5a5a;    --red-deep: #e23f3c;
+    --blue: #5aa8ff;   --blue-deep: #3c8ae6;
+    --yellow: #ffd400; --yellow-deep: #f0b400;
+    --green: #3ddc6a;  --green-deep: #20b553;
+  }
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Malgun Gothic", "Noto Sans KR", sans-serif; background: #fff; }
+  body { margin: 0; word-break: keep-all; font-family: "Gowun Dodum", "Malgun Gothic", sans-serif; background: var(--paper); color: var(--ink); }
   .sheet {
     width: 210mm; height: 297mm; padding: 10mm;
-    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10mm;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8mm;
     break-after: page;
   }
   .sheet:last-child { break-after: auto; }
   .card {
-    border: 0.5mm dashed #888; /* 자르는 선 */
-    border-radius: 6mm;
-    padding: 8mm;
-    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    position: relative; overflow: hidden; isolation: isolate;
+    border-radius: var(--radius); padding: 7mm;
+    display: flex; flex-direction: column; justify-content: space-between;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
-  /* 색 이름 글자: 흰 판 위 검은 글씨로 어느 색에서도 잘 읽히게 (색만으로 구분하지 않기) */
-  .label {
-    background: #fff; color: #111; border-radius: 4mm;
-    font-size: 26mm; font-weight: 900; line-height: 1; padding: 4mm 8mm;
+  /* 종이 질감 (흰 판보다 아래) */
+  .card::after {
+    content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 40mm 40mm;
+    mix-blend-mode: multiply; opacity: 0.18;
   }
-  /* 태그 둘레 흰 여백. 태그 그림 자체에도 한 칸 흰 테두리가 있다 */
-  .plate { background: #fff; padding: 4mm; border-radius: 2mm; }
-  .tag { display: block; width: 42mm; height: 42mm; }
-  .meta { font-size: 3.5mm; color: #111; background: #fff; padding: 1mm 3mm; border-radius: 2mm; }
-  .red { background: #ff5a5a; }
-  .blue { background: #5aa8ff; }
-  .yellow { background: #ffd400; }
-  .green { background: #3ddc6a; }
+  .art { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  .red .art { fill: var(--red-deep); }
+  .blue .art { fill: var(--blue-deep); }
+  .yellow .art { fill: var(--yellow-deep); }
+  .green .art { fill: var(--green-deep); }
+  /* 색 이름: 붓으로 쓴 듯 크게, 살짝 기울여서 */
+  .label {
+    position: relative; z-index: 2;
+    font-family: "East Sea Dokdo", "Malgun Gothic", sans-serif;
+    font-size: 44mm; line-height: 0.9; transform: rotate(var(--tilt)); transform-origin: left center;
+    margin-left: -1mm;
+  }
+  /* 흰 라벨: 태그 + 안내. 질감보다 위에 둔다 */
+  .panel {
+    position: relative; z-index: 2;
+    background: var(--paper); border-radius: 0.8mm; padding: 6mm 4mm 4mm;
+    display: grid; grid-template-columns: auto 1fr; gap: 4mm;
+    transform: rotate(-0.6deg);
+  }
+  /* 마스킹 테이프: 라벨 위쪽 가장자리에만, 태그와 겹치지 않게 */
+  .tape {
+    position: absolute; top: -3mm; left: 50%; width: 22mm; height: 6mm;
+    background: var(--tape); transform: translateX(-50%) rotate(-3deg);
+  }
+  .tag { display: block; width: 46mm; height: 46mm; }
+  .side { display: flex; flex-direction: column; justify-content: space-between; padding: 1mm 0; }
+  .meta { font-size: 2.8mm; line-height: 1.4; color: var(--ink-soft); }
+  .hint { font-size: 4.8mm; font-weight: 700; line-height: 1.3; }
+  .red { background: var(--red); }
+  .blue { background: var(--blue); }
+  .yellow { background: var(--yellow); }
+  .green { background: var(--green); }
 </style>
 </head>
 <body>
   <!-- 앞면 -->
   <div class="sheet">
     <div class="card red">
-      <div class="label">빨강</div>
-      <div class="plate">
+      <svg class="art" viewBox="0 0 91 134" preserveAspectRatio="none" aria-hidden="true"><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(38 22) rotate(18 31 31) scale(0.62)"/><path d="M52 6C70 4 92 18 94 40C96 60 84 76 66 88C50 98 26 96 14 80C2 64 6 40 18 24C26 13 38 7 52 6Z" transform="translate(-12 46) rotate(0 17 17) scale(0.34)"/></svg>
+      <div class="label" style="--tilt: -4deg">빨강</div>
+      <div class="panel">
+        <span class="tape" aria-hidden="true"></span>
         <svg class="tag" viewBox="0 0 10 10" shape-rendering="crispEdges" role="img" aria-label="AprilTag tag36h11 0번"><rect width="10" height="10" fill="#fff"/><path d="M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM1 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z" fill="#000"/></svg>
+        <div class="side">
+          <div class="meta">색깔손 카드<br>태그 0</div>
+          <div class="hint">이 면을<br>카메라에<br>보여<br>주세요</div>
+        </div>
       </div>
-      <div class="meta">STEP 3 색깔손 · red · 태그 0번</div>
     </div>
     <div class="card blue">
-      <div class="label">파랑</div>
-      <div class="plate">
+      <svg class="art" viewBox="0 0 91 134" preserveAspectRatio="none" aria-hidden="true"><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(30 30) rotate(-24 33 33) scale(0.66)"/><path d="M52 6C70 4 92 18 94 40C96 60 84 76 66 88C50 98 26 96 14 80C2 64 6 40 18 24C26 13 38 7 52 6Z" transform="translate(58 -6) rotate(30 13 13) scale(0.26)"/></svg>
+      <div class="label" style="--tilt: 3deg">파랑</div>
+      <div class="panel">
+        <span class="tape" aria-hidden="true"></span>
         <svg class="tag" viewBox="0 0 10 10" shape-rendering="crispEdges" role="img" aria-label="AprilTag tag36h11 1번"><rect width="10" height="10" fill="#fff"/><path d="M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM1 2h1v1h-1zM4 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM4 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM1 6h1v1h-1zM3 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM8 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z" fill="#000"/></svg>
+        <div class="side">
+          <div class="meta">색깔손 카드<br>태그 1</div>
+          <div class="hint">이 면을<br>카메라에<br>보여<br>주세요</div>
+        </div>
       </div>
-      <div class="meta">STEP 3 색깔손 · blue · 태그 1번</div>
     </div>
     <div class="card yellow">
-      <div class="label">노랑</div>
-      <div class="plate">
+      <svg class="art" viewBox="0 0 91 134" preserveAspectRatio="none" aria-hidden="true"><path d="M52 6C70 4 92 18 94 40C96 60 84 76 66 88C50 98 26 96 14 80C2 64 6 40 18 24C26 13 38 7 52 6Z" transform="translate(34 18) rotate(12 29 29) scale(0.58)"/><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(-6 40) rotate(-36 22 22) scale(0.44)"/></svg>
+      <div class="label" style="--tilt: -2deg">노랑</div>
+      <div class="panel">
+        <span class="tape" aria-hidden="true"></span>
         <svg class="tag" viewBox="0 0 10 10" shape-rendering="crispEdges" role="img" aria-label="AprilTag tag36h11 2번"><rect width="10" height="10" fill="#fff"/><path d="M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM1 2h1v1h-1zM4 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z" fill="#000"/></svg>
+        <div class="side">
+          <div class="meta">색깔손 카드<br>태그 2</div>
+          <div class="hint">이 면을<br>카메라에<br>보여<br>주세요</div>
+        </div>
       </div>
-      <div class="meta">STEP 3 색깔손 · yellow · 태그 2번</div>
     </div>
     <div class="card green">
-      <div class="label">초록</div>
-      <div class="plate">
+      <svg class="art" viewBox="0 0 91 134" preserveAspectRatio="none" aria-hidden="true"><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(44 16) rotate(10 29 29) scale(0.58)"/><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(-4 34) rotate(-28 25 25) scale(0.5)"/></svg>
+      <div class="label" style="--tilt: 4deg">초록</div>
+      <div class="panel">
+        <span class="tape" aria-hidden="true"></span>
         <svg class="tag" viewBox="0 0 10 10" shape-rendering="crispEdges" role="img" aria-label="AprilTag tag36h11 3번"><rect width="10" height="10" fill="#fff"/><path d="M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM1 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z" fill="#000"/></svg>
+        <div class="side">
+          <div class="meta">색깔손 카드<br>태그 3</div>
+          <div class="hint">이 면을<br>카메라에<br>보여<br>주세요</div>
+        </div>
       </div>
-      <div class="meta">STEP 3 색깔손 · green · 태그 3번</div>
     </div>
   </div>
   <!-- 뒷면 (양면 인쇄용, 긴 쪽으로 넘기기) -->
   <div class="sheet">
     <div class="card blue">
-      <div class="label">파랑</div>
-      <div class="plate">
+      <svg class="art" viewBox="0 0 91 134" preserveAspectRatio="none" aria-hidden="true"><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(30 30) rotate(-24 33 33) scale(0.66)"/><path d="M52 6C70 4 92 18 94 40C96 60 84 76 66 88C50 98 26 96 14 80C2 64 6 40 18 24C26 13 38 7 52 6Z" transform="translate(58 -6) rotate(30 13 13) scale(0.26)"/></svg>
+      <div class="label" style="--tilt: 3deg">파랑</div>
+      <div class="panel">
+        <span class="tape" aria-hidden="true"></span>
         <svg class="tag" viewBox="0 0 10 10" shape-rendering="crispEdges" role="img" aria-label="AprilTag tag36h11 1번"><rect width="10" height="10" fill="#fff"/><path d="M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM1 2h1v1h-1zM4 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM4 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM1 6h1v1h-1zM3 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM8 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z" fill="#000"/></svg>
+        <div class="side">
+          <div class="meta">색깔손 카드<br>태그 1</div>
+          <div class="hint">이 면을<br>카메라에<br>보여<br>주세요</div>
+        </div>
       </div>
-      <div class="meta">STEP 3 색깔손 · blue · 태그 1번</div>
     </div>
     <div class="card red">
-      <div class="label">빨강</div>
-      <div class="plate">
+      <svg class="art" viewBox="0 0 91 134" preserveAspectRatio="none" aria-hidden="true"><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(38 22) rotate(18 31 31) scale(0.62)"/><path d="M52 6C70 4 92 18 94 40C96 60 84 76 66 88C50 98 26 96 14 80C2 64 6 40 18 24C26 13 38 7 52 6Z" transform="translate(-12 46) rotate(0 17 17) scale(0.34)"/></svg>
+      <div class="label" style="--tilt: -4deg">빨강</div>
+      <div class="panel">
+        <span class="tape" aria-hidden="true"></span>
         <svg class="tag" viewBox="0 0 10 10" shape-rendering="crispEdges" role="img" aria-label="AprilTag tag36h11 0번"><rect width="10" height="10" fill="#fff"/><path d="M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM1 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z" fill="#000"/></svg>
+        <div class="side">
+          <div class="meta">색깔손 카드<br>태그 0</div>
+          <div class="hint">이 면을<br>카메라에<br>보여<br>주세요</div>
+        </div>
       </div>
-      <div class="meta">STEP 3 색깔손 · red · 태그 0번</div>
     </div>
     <div class="card green">
-      <div class="label">초록</div>
-      <div class="plate">
+      <svg class="art" viewBox="0 0 91 134" preserveAspectRatio="none" aria-hidden="true"><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(44 16) rotate(10 29 29) scale(0.58)"/><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(-4 34) rotate(-28 25 25) scale(0.5)"/></svg>
+      <div class="label" style="--tilt: 4deg">초록</div>
+      <div class="panel">
+        <span class="tape" aria-hidden="true"></span>
         <svg class="tag" viewBox="0 0 10 10" shape-rendering="crispEdges" role="img" aria-label="AprilTag tag36h11 3번"><rect width="10" height="10" fill="#fff"/><path d="M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM1 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z" fill="#000"/></svg>
+        <div class="side">
+          <div class="meta">색깔손 카드<br>태그 3</div>
+          <div class="hint">이 면을<br>카메라에<br>보여<br>주세요</div>
+        </div>
       </div>
-      <div class="meta">STEP 3 색깔손 · green · 태그 3번</div>
     </div>
     <div class="card yellow">
-      <div class="label">노랑</div>
-      <div class="plate">
+      <svg class="art" viewBox="0 0 91 134" preserveAspectRatio="none" aria-hidden="true"><path d="M52 6C70 4 92 18 94 40C96 60 84 76 66 88C50 98 26 96 14 80C2 64 6 40 18 24C26 13 38 7 52 6Z" transform="translate(34 18) rotate(12 29 29) scale(0.58)"/><path d="M50 98C47 84 34 80 24 70C35 69 41 72 45 74C39 63 22 58 15 45C29 46 38 53 44 59C40 46 27 36 25 20C37 28 44 39 47 49C46 34 44 18 50 3C57 17 55 33 53 49C57 39 65 27 77 19C75 35 61 45 56 59C62 52 72 45 86 44C80 57 63 62 56 73C61 71 67 68 78 68C69 79 55 83 50 98Z" transform="translate(-6 40) rotate(-36 22 22) scale(0.44)"/></svg>
+      <div class="label" style="--tilt: -2deg">노랑</div>
+      <div class="panel">
+        <span class="tape" aria-hidden="true"></span>
         <svg class="tag" viewBox="0 0 10 10" shape-rendering="crispEdges" role="img" aria-label="AprilTag tag36h11 2번"><rect width="10" height="10" fill="#fff"/><path d="M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM1 2h1v1h-1zM4 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z" fill="#000"/></svg>
+        <div class="side">
+          <div class="meta">색깔손 카드<br>태그 2</div>
+          <div class="hint">이 면을<br>카메라에<br>보여<br>주세요</div>
+        </div>
       </div>
-      <div class="meta">STEP 3 색깔손 · yellow · 태그 2번</div>
     </div>
   </div>
 </body>
