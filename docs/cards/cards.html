@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>STEP 3 색깔 카드 인쇄본 (초안)</title>
+<style>
+  /*
+   * STEP 3 색깔손 시연용 색깔 카드 4장 (A4 한 장).
+   * 인쇄: Chrome에서 이 파일 열기 → Ctrl+P → 용지 A4, 여백 "없음", "배경 그래픽" 켜기.
+   * 색은 src/data/colors.json 의 화면 색과 같다. 프린터마다 색이 다르게 나올 수 있으니 실물로 확인한다.
+   * [검증 필요] 태그 자리: #5에서 방식 A(AprilTag)로 정해지면 태그를 넣고, 방식 B(색상 인식)면 태그 자리를 지운다.
+   */
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Malgun Gothic", "Noto Sans KR", sans-serif; background: #fff; }
+  .sheet {
+    width: 210mm; height: 297mm; padding: 10mm;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10mm;
+  }
+  .card {
+    border: 0.5mm dashed #888; /* 자르는 선 */
+    border-radius: 6mm;
+    padding: 8mm;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  /* 색 이름 글자: 흰 판 위 검은 글씨로 어느 색에서도 잘 읽히게 (색만으로 구분하지 않기) */
+  .label {
+    background: #fff; color: #111; border-radius: 4mm;
+    font-size: 26mm; font-weight: 900; line-height: 1; padding: 4mm 8mm;
+  }
+  .tag {
+    width: 45mm; height: 45mm; background: #fff;
+    border: 0.8mm dashed #111; border-radius: 2mm;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-size: 4mm; color: #111; padding: 3mm;
+  }
+  .meta { font-size: 3.5mm; color: #111; background: #fff; padding: 1mm 3mm; border-radius: 2mm; }
+  .red { background: #ff5a5a; }
+  .blue { background: #5aa8ff; }
+  .yellow { background: #ffd400; }
+  .green { background: #3ddc6a; }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="card red">
+      <div class="label">빨강</div>
+      <div class="tag">태그 자리<br>[검증 필요]<br>#5 결과 후 확정</div>
+      <div class="meta">STEP 3 색깔손 · red</div>
+    </div>
+    <div class="card blue">
+      <div class="label">파랑</div>
+      <div class="tag">태그 자리<br>[검증 필요]<br>#5 결과 후 확정</div>
+      <div class="meta">STEP 3 색깔손 · blue</div>
+    </div>
+    <div class="card yellow">
+      <div class="label">노랑</div>
+      <div class="tag">태그 자리<br>[검증 필요]<br>#5 결과 후 확정</div>
+      <div class="meta">STEP 3 색깔손 · yellow</div>
+    </div>
+    <div class="card green">
+      <div class="label">초록</div>
+      <div class="tag">태그 자리<br>[검증 필요]<br>#5 결과 후 확정</div>
+      <div class="meta">STEP 3 색깔손 · green</div>
+    </div>
+  </div>
+</body>
+</html>
