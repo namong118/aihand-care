@@ -49,10 +49,170 @@ STEP 3 색깔손에서 사용자가 WonderCam에 보여주는 실물 색깔 카�
 
 | 카드 색 | `color` 값 | WonderCam 색 번호/설정 | 인식 확인 |
 |---|---|---|---|
-| 빨강 | `red` | | |
-| 파랑 | `blue` | | |
-| 노랑 | `yellow` | | |
-| 초록 | `green` | | |
+| 빨강 | `red` | Color ID 1 | |
+| 파랑 | `blue` | Color ID 2 | |
+| 노랑 | `yellow` | Color ID 3 | |
+| 초록 | `green` | Color ID 4 | |
+
+번호는 #5 테스트에서 학습한 번호와 같다 (`docs/hardware-check.md` 부록 6 "색 학습 방법").
+
+### 색 인식은 WonderCam 안에서 한다
+
+색 인식 처리는 WonderCam 카메라 안에 이미 들어 있다. micro:bit는 결과(보인 색 번호와 색 덩어리의 위치·크기)만 I2C로 읽는다. 따로 학습 모델을 만들거나 웹에서 색을 계산할 필요는 없다.
+
+- 공식 확장: https://github.com/Hiwonder/WonderCam (`custom.ts`의 "Color detection" 블록)
+  - `UpdateResult()`: 결과 새로 읽기 (색상 인식은 레지스터 `0x1000`에서 400바이트)
+  - `isDetectedColorId(id)`: 색 번호 1~7이 보이는지
+  - `XOfColorId(Options.Width / Height, id)`: 그 색 덩어리의 가로·세로 크기
+- 공식 예제: AiHand 문서 6장 Color Recognition, 예제 프로그램 `ai_vision_games_lesson.zip`의 `02 Color Recognition Program.hex` (https://docs.hiwonder.com/projects/AiHand/en/latest/docs/Appendix.html)
+
+### 공식 문서의 색 학습 요령 (6장 Color Recognition)
+
+- 밝고 채도가 높은 색을 쓴다. 흰색이나 여러 색이 섞인 것은 학습하지 않는다
+- 카드 색과 배경색이 확실히 달라야 한다
+- 주변이 충분히 밝아야 한다. 어두우면 보조등을 켠다
+- 학습할 때 `+`를 카드에 맞추고 흰 테두리가 카드를 잡은 뒤 학습한다
+- 카드 거리는 공식 숫자 인식·랜드마크 인식 예제 기준 15~20cm (색상 인식 거리는 문서에 없음, [검증 필요])
+
+### 초록↔파랑 혼동 줄이기 (#5에서 모니터 기준으로 생긴 문제)
+
+시도할 순서다. 하나씩 해 보고 4번 표에 결과를 적는다.
+
+1. **모니터 말고 인쇄한 종이 카드로 다시 학습한다.** 모니터 색과 종이 색은 다르다. 시연할 장소의 조명에서 학습한다
+2. **카드를 단색으로 만든다.** 지금 카드의 짙은 톤 잎 그림과 질감이 색 덩어리를 쪼갤 수 있다 (2번 디자인 메모)
+3. **보조등 밝기를 고정한다.** 보조등은 완전히 꺼지지 않으니(#5), 학습할 때와 시연할 때 같은 밝기로 둔다
+4. **가장 큰 색 덩어리 하나만 답으로 친다.** 초록 카드가 `2 4`로 보고되어도 초록 덩어리가 훨씬 크면 초록으로 친다 (아래 CAM2 코드)
+5. 그래도 안 되면 초록을 노란빛 초록처럼 파랑과 더 먼 색으로 바꾸는 것을 A와 논의한다 (`src/data/colors.json`은 A 담당)
+
+### 색 카드 테스트 코드 CAM2 (정식 펌웨어 아님)
+
+#5의 CAM1 코드를 바탕으로, 색상 인식 결과를 **카드 하나의 색**으로 정리해서 보내는 테스트 코드다.
+C가 종이 카드 테스트를 할 때 쓴다. 정식 펌웨어(`firmware/`, #6)와 프로토콜은 A 담당이므로, 결과가 좋으면 이 규칙을 A에게 넘긴다.
+
+규칙:
+
+- 학습한 4색 중 **가장 큰 색 덩어리** 하나만 고른다. 너무 작은 덩어리(`MIN_AREA` 미만)는 무시한다 (배경의 작은 물건, 화면 속 색 버튼 등)
+- 같은 색이 `HOLD_READS`번 연속 보여야 카드로 친다 (스치듯 보인 색은 무시)
+- 카드 색은 **한 번만** 보낸다. `GONE_MS` 넘게 안 보여야 카드를 내린 것으로 치고 `CARD,NONE`을 보낸다
+- `MIN_AREA`·`HOLD_READS`·`GONE_MS` 값은 임시값이다. 종이 카드 테스트 후 정한다 [검증 필요]
+
+준비: MakeCode에서 확장 `https://github.com/Hiwonder/WonderCam` 추가 → JavaScript 탭에 전체 붙여 넣기 → 다운로드 → Serial Terminal(115200)에서 확인.
+카메라는 미리 Color Recognition에서 ID 1 빨강, 2 파랑, 3 노랑, 4 초록으로 학습해 둔다.
+
+```js
+// 색 카드 테스트 코드 CAM2 (정식 펌웨어 아님). 서보는 움직이지 않는다.
+// 출력 (USB 시리얼 115200):
+//   CARD,<색>,AREA=<크기>,t=<ms>   카드가 확정됐을 때 한 번   예) CARD,GREEN,AREA=5400,t=12345
+//   CARD,NONE,t=<ms>               카드를 내렸을 때 한 번
+//   RAW,<번호:크기 ...>            보이는 색이 바뀔 때마다 (테스트 기록용)
+//   CAM,OK / CAM,NOT_FOUND         시작할 때
+
+const CAM_ADDR = 0x32
+const NAMES = ["NONE", "RED", "BLUE", "YELLOW", "GREEN"] // Color ID 1~4
+const MIN_AREA = 1500   // 이보다 작은 색 덩어리는 무시 [검증 필요]
+const HOLD_READS = 3    // 같은 색이 몇 번 연속 보여야 카드로 칠지 (100ms 간격) [검증 필요]
+const GONE_MS = 500     // 이만큼 안 보이면 카드를 내린 것으로 침 [검증 필요]
+
+let camOk = false
+let candidate = 0  // 지금 연속으로 보이는 색 번호
+let count = 0      // candidate 가 연속으로 보인 횟수
+let sent = 0       // 마지막으로 보낸 카드 색 번호 (0 = 없음)
+let sentSeenAt = 0 // sent 색이 마지막으로 보인 시각
+let lastRaw = ""
+
+serial.redirectToUSB()
+serial.setBaudRate(BaudRate.BaudRate115200)
+
+// 0번 레지스터가 'v'(118)이면 WonderCam (CAM1과 같은 방법)
+function camAlive(): boolean {
+    let req = pins.createBuffer(2)
+    req.setNumber(NumberFormat.UInt8LE, 0, 0)
+    req.setNumber(NumberFormat.UInt8LE, 1, 0)
+    pins.i2cWriteBuffer(CAM_ADDR, req)
+    let r = pins.i2cReadBuffer(CAM_ADDR, 1)
+    return r.getNumber(NumberFormat.UInt8LE, 0) == 118
+}
+
+basic.pause(1500) // WonderCam 부팅 대기
+for (let k = 0; k < 10; k++) {
+    if (camAlive()) {
+        camOk = true
+        break
+    }
+    basic.pause(500)
+}
+if (camOk) {
+    wondercam.wondercam_init(wondercam.DEV_ADDR.x32)
+    wondercam.ChangeFunc(wondercam.Functions.ColorDetect)
+    basic.showIcon(IconNames.Yes)
+    serial.writeLine("CAM,OK")
+} else {
+    basic.showIcon(IconNames.No)
+    serial.writeLine("CAM,NOT_FOUND")
+}
+
+basic.forever(function () {
+    if (!camOk) {
+        basic.pause(500)
+        return
+    }
+    wondercam.UpdateResult()
+
+    // 1. 학습한 4색 중 가장 큰 색 덩어리 고르기
+    let best = 0
+    let bestArea = 0
+    let raw = ""
+    for (let id = 1; id <= 4; id++) {
+        if (wondercam.isDetectedColorId(id)) {
+            let w = wondercam.XOfColorId(wondercam.Options.Width, id)
+            let h = wondercam.XOfColorId(wondercam.Options.Height, id)
+            let area = w * h
+            raw = raw + id + ":" + area + " "
+            if (area > bestArea) {
+                best = id
+                bestArea = area
+            }
+        }
+    }
+    if (bestArea < MIN_AREA) best = 0
+    if (raw != lastRaw) {
+        serial.writeLine("RAW," + (raw == "" ? "NONE" : raw))
+        lastRaw = raw
+    }
+
+    // 2. 같은 색이 연속으로 보인 횟수 세기
+    if (best == candidate) {
+        count += 1
+    } else {
+        candidate = best
+        count = 1
+    }
+    let now = input.runningTime()
+    if (sent != 0 && best == sent) sentSeenAt = now
+
+    // 3. 새 카드가 확정되면 한 번만 보내기
+    if (candidate != 0 && count >= HOLD_READS && candidate != sent) {
+        sent = candidate
+        sentSeenAt = now
+        serial.writeLine("CARD," + NAMES[sent] + ",AREA=" + bestArea + ",t=" + now)
+    }
+
+    // 4. 보낸 카드가 한동안 안 보이면 내린 것으로 치기
+    if (sent != 0 && now - sentSeenAt > GONE_MS) {
+        sent = 0
+        serial.writeLine("CARD,NONE,t=" + now)
+    }
+
+    basic.pause(100)
+})
+```
+
+테스트할 때 볼 것 (4번 표에 기록):
+
+- 카드마다 `CARD,<색>`이 맞게 한 번만 나오는지, 초록 카드에서 `RAW`에 `2`(파랑)가 같이 나와도 `CARD,GREEN`이 되는지
+- `RAW`의 크기 값: 카드를 15·20·30cm에 둘 때 몇인지 → `MIN_AREA`를 정한다
+- 카드를 스치듯 보여줬을 때 `CARD`가 나오는지 → `HOLD_READS`를 정한다
+- 카드를 들고 있는데 `CARD,NONE`이 나오는지 → 나오면 `GONE_MS`를 늘린다
 
 ## 4. 실물 인식 테스트 기록
 
