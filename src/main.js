@@ -22,20 +22,43 @@ if (settings.user && !users.includes(settings.user)) settings.user = null;
 const { ctx, devices } = createContext(settings);
 
 function updateStatusbar() {
-  renderStatusbar(statusEl, { devices: devices.status(), settings });
+  renderStatusbar(statusEl, { devices: devices.status(), settings, actions: { connectRobot } });
+}
+
+// "AIHand 연결" 버튼. 포트 고르기 창은 클릭 안에서만 열리므로 await 앞에 다른 일을 하지 않는다.
+function connectRobot() {
+  devices.robot.connect({ speed: settings.speed });
 }
 
 // ---- Mock 패널: 가상 로봇손, 손모양 버튼, 색 카드 대신 입력 버튼 ----
+// 장치마다 따로 붙인다. 가상 로봇손은 AIHand 가 연결되면 숨기고, 끊기면 다시 보여준다.
+const robotBox = h('section', { class: 'mock-box' });
+
 function mountMockPanel() {
-  if (!settings.mock) return;
-  const robotBox = h('section', { class: 'mock-box' });
-  const handBox = h('section', { class: 'mock-box' });
-  const cardBox = h('section', { class: 'mock-box' });
-  mockEl.append(robotBox, handBox, cardBox);
+  mockEl.append(robotBox);
   devices.robot.mountControls(robotBox);
-  devices.hand.mountControls(handBox);
-  devices.card.mountControls(cardBox);
+  if (devices.hand.kind === 'mock') {
+    const handBox = h('section', { class: 'mock-box' });
+    mockEl.append(handBox);
+    devices.hand.mountControls(handBox);
+  }
+  if (devices.card.kind === 'mock') {
+    const cardBox = h('section', { class: 'mock-box' });
+    mockEl.append(cardBox);
+    devices.card.mountControls(cardBox);
+  }
+  updateRobotBox();
 }
+
+function updateRobotBox() {
+  robotBox.hidden = devices.robot.kind !== 'mock';
+}
+
+// 로봇 연결 상태가 바뀌면 (연결됨·끊김·응답 없음) 상태 표시줄과 가상 로봇손을 갱신
+devices.robot.onChange(() => {
+  updateStatusbar();
+  updateRobotBox();
+});
 
 // ---- 화면 전환 ----
 let current = null; // 지금 실행 중인 프로그램 모듈
@@ -76,6 +99,7 @@ function showHome() {
     setSetting(key, value) {
       settings[key] = value;
       saveSettings(settings);
+      if (key === 'speed') devices.robot.setSpeed(value); // 실제 AIHand 에 연결되어 있으면 SPEED 전송
       showHome();
     },
     startProgram: showProgram,
