@@ -1,5 +1,6 @@
 // ctx 만들기: 설정에 따라 실제 장치 또는 Mock 을 골라 프로그램에 넘길 ctx 를 만든다.
-// 지금은 Mock 만 연결되어 있다.
+// 실제/Mock 은 장치별로 정한다. 로봇은 "AIHand 연결" 버튼으로 실제 AIHand 로 바뀌고,
+// 손 인식·카드 입력은 아직 Mock 이다.
 
 import poses from '../data/poses.json';
 import colors from '../data/colors.json';
@@ -9,7 +10,7 @@ import { createCard } from './card/index.js';
 import { createLog } from './log.js';
 
 export const DEFAULT_SETTINGS = {
-  mock: true, // true: 가상 장치. 실제 장치 연결은 아직 구현 전
+  mock: true, // 손 인식·카드 입력은 가상 장치. 로봇은 연결 버튼으로 장치별 전환 (devices.status() 참고)
   user: null, // 대시보드에서 고른 사용자 이름
   difficulty: 'easy', // 'easy' | 'normal' | 'hard'
   speed: 'NORMAL', // 'SLOW' | 'NORMAL' (진행 속도)
@@ -23,7 +24,7 @@ export const DEFAULT_SETTINGS = {
  *   devices: 대시보드·Mock 패널 전용 (장치 원본과 상태 목록)
  */
 export function createContext(settings) {
-  // TODO: settings.mock === false 일 때 실제 장치 연결 (mediapipe.js, robot/serial.js, card/serial.js)
+  // TODO: 손 인식(mediapipe.js, #7)·카드(card/serial.js) 실제 장치 연결
   const hand = createHand({ poses });
   const robot = createRobot({ poses });
   const card = createCard({ colors });
@@ -55,7 +56,7 @@ export function createContext(settings) {
       return [
         { key: 'webcam', label: '웹캠', state: 'mock', mock: true, note: '사용 안 함' },
         { key: 'hand', label: '손 인식', state: 'mock', mock: hand.kind === 'mock', note: '화면 버튼' },
-        { key: 'robot', label: 'AIHand', state: 'mock', mock: robot.kind === 'mock', note: '화면 속 로봇손' },
+        { key: 'robot', label: 'AIHand', ...robot.status() },
         { key: 'wondercam', label: 'WonderCam', state: 'mock', mock: card.kind === 'mock', note: '카드 대신 키보드·버튼' },
       ];
     },

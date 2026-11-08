@@ -47,7 +47,7 @@ export function rest() {
 
 /**
  * SPEED,SLOW|NORMAL
- * [검증 필요] AIHand 서보 속도 조절이 실제로 되는지 확인 전. docs/hardware-check.md 참고.
+ * 모든 이동·대기 시간 ×2 / ×1. 펌웨어 F1 실물 확인 (2026-11-09, docs/hardware-check.md 부록 7).
  */
 export function speed(value) {
   if (!SPEEDS.includes(value)) throw new Error(`속도는 SLOW 또는 NORMAL 입니다: ${value}`);
@@ -63,7 +63,7 @@ export function ping() {
  *   'DONE,POSE'  → { type: 'DONE', command: 'POSE' }
  *   'TAG,RED'    → { type: 'TAG', id: 'RED' }
  *   'PONG'       → { type: 'PONG' }
- *   'ERR,BUSY'   → { type: 'ERR', message: 'BUSY' }
+ *   'ERR,UNKNOWN_POSE' → { type: 'ERR', message: 'UNKNOWN_POSE' }
  *   그 밖        → { type: 'UNKNOWN', raw }
  */
 export function parseLine(raw) {
