@@ -70,7 +70,7 @@ export function createMockRobot({ poses, delayMs = MOCK_DELAY_MS }) {
     react(kind) {
       const line = protocol.react(kind);
       return send(line, () => {
-        // [검증 필요] 실제 AIHand 의 OK/RETRY 반응 동작은 펌웨어에서 정한다.
+        // 실제 AIHand 의 OK/RETRY 동작은 펌웨어(firmware/main.ts)에 있다. Mock 은 글자로만 보여준다.
         state.label = kind === 'ok' ? '잘했어요 반응' : '다시 해 볼까요 반응';
       });
     },
