@@ -4,6 +4,8 @@ import './ui/styles.css';
 import { createContext, DEFAULT_SETTINGS } from './core/context.js';
 import { renderStatusbar } from './dashboard/statusbar.js';
 import { renderHome } from './dashboard/home.js';
+import { renderSettings } from './dashboard/settings.js';
+import { createDevPanel } from './dashboard/devpanel.js';
 import { renderResults } from './dashboard/results.js';
 import { findProgramInfo } from './dashboard/catalog.js';
 import { loadSavedSettings, saveSettings, removeOldUsers } from './dashboard/prefs.js';
@@ -13,6 +15,11 @@ import { PROGRAMS } from './programs/index.js';
 const appEl = document.querySelector('#app');
 const statusEl = document.querySelector('#statusbar');
 const mockEl = document.querySelector('#mock-panel');
+const layoutEl = document.querySelector('.layout');
+
+// 설정 영역(상단 바 바로 아래)과 개발자 입력 영역(맨 아래)은 여기서 만들어 붙인다
+const settingsEl = h('div', { class: 'settings-wrap', hidden: true });
+statusEl.after(settingsEl);
 
 // ---- 설정과 ctx ----
 removeOldUsers(); // 사용자 이름 기능 제거: 예전에 저장한 이름 목록 지우기
@@ -20,8 +27,37 @@ const settings = { ...DEFAULT_SETTINGS, ...loadSavedSettings() };
 
 const { ctx, devices } = createContext(settings);
 
+let screen = 'home'; // 'home' | 'program' | 'results'
+let settingsOpen = false;
+
 function updateStatusbar() {
-  renderStatusbar(statusEl, { devices: devices.status(), actions: { connectRobot } });
+  const list = devices.status();
+  renderStatusbar(statusEl, {
+    devices: list,
+    actions: { connectRobot, showResults: () => showResults(), toggleSettings },
+    settingsOpen,
+  });
+  devPanel.renderStatus(list);
+}
+
+// ---- 설정 영역 ----
+function setSetting(key, value) {
+  settings[key] = value;
+  saveSettings(settings);
+  if (key === 'speed') devices.robot.setSpeed(value); // 실제 AIHand 에 연결되어 있으면 SPEED 전송
+  updateSettings();
+  if (screen === 'home') showHome(); // 제목 아래 "난이도 · 속도" 알약 갱신
+}
+
+function updateSettings() {
+  renderSettings(settingsEl, { open: settingsOpen, settings, setSetting, close: () => toggleSettings(false) });
+}
+
+function toggleSettings(open = !settingsOpen) {
+  settingsOpen = open;
+  updateSettings();
+  updateStatusbar();
+  if (open) settingsEl.scrollIntoView?.({ block: 'nearest' });
 }
 
 // "AIHand 연결" 버튼. 포트 고르기 창은 클릭 안에서만 열리므로 await 앞에 다른 일을 하지 않는다.
@@ -29,28 +65,29 @@ function connectRobot() {
   devices.robot.connect({ speed: settings.speed });
 }
 
-// ---- Mock 패널: 가상 로봇손, 손모양 버튼, 색 카드 대신 입력 버튼 ----
-// 장치마다 따로 붙인다. 가상 로봇손은 AIHand 가 연결되면 숨기고, 끊기면 다시 보여준다.
+// ---- 개발자 입력 (Mock): 손모양·색 카드 입력 패널, 웹캠·WonderCam 상태. 맨 아래, 기본 접힘 ----
+const devPanel = createDevPanel(devices);
+layoutEl.after(h('footer', { class: 'dev-wrap' }, devPanel.el));
+
+// ---- 가상 로봇손: 활동 화면에서 로봇이 Mock 일 때만 오른쪽에 보인다 (홈·결과 화면에서는 숨김) ----
 const robotBox = h('section', { class: 'mock-box' });
 
 function mountMockPanel() {
   mockEl.append(robotBox);
   devices.robot.mountControls(robotBox);
-  if (devices.hand.kind === 'mock') {
-    const handBox = h('section', { class: 'mock-box' });
-    mockEl.append(handBox);
-    devices.hand.mountControls(handBox);
-  }
-  if (devices.card.kind === 'mock') {
-    const cardBox = h('section', { class: 'mock-box' });
-    mockEl.append(cardBox);
-    devices.card.mountControls(cardBox);
-  }
   updateRobotBox();
 }
 
 function updateRobotBox() {
-  robotBox.hidden = devices.robot.kind !== 'mock';
+  const show = screen === 'program' && devices.robot.kind === 'mock';
+  mockEl.hidden = !show;
+  layoutEl.classList.toggle('with-side', show);
+}
+
+function setScreen(name) {
+  screen = name;
+  document.body.dataset.screen = name;
+  updateRobotBox();
 }
 
 // 로봇 연결 상태가 바뀌면 (연결됨·끊김·응답 없음) 상태 표시줄과 가상 로봇손을 갱신
@@ -76,21 +113,17 @@ function leaveProgram() {
 
 function showHome() {
   leaveProgram();
+  setScreen('home');
   renderHome(appEl, {
     settings,
-    setSetting(key, value) {
-      settings[key] = value;
-      saveSettings(settings);
-      if (key === 'speed') devices.robot.setSpeed(value); // 실제 AIHand 에 연결되어 있으면 SPEED 전송
-      showHome();
-    },
+    openSettings: () => toggleSettings(true),
     startProgram: showProgram,
-    showResults: () => showResults(),
   });
 }
 
 function showProgram(id) {
   leaveProgram();
+  setScreen('program');
   const info = findProgramInfo(id);
   const program = PROGRAMS[id];
   const body = h('div', { class: 'program-body' });
@@ -121,6 +154,7 @@ function showProgram(id) {
 
 function showResults(filter = {}) {
   leaveProgram();
+  setScreen('results');
   const state = { program: null, ...filter };
   renderResults(appEl, {
     log: devices.log,
