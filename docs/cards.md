@@ -84,6 +84,23 @@ STEP 3 색깔손에서 사용자가 WonderCam에 보여주는 실물 색깔 카�
 4. **가장 큰 색 덩어리 하나만 답으로 친다.** 초록 카드가 `2 4`로 보고되어도 초록 덩어리가 훨씬 크면 초록으로 친다 (아래 CAM2 코드)
 5. 그래도 안 되면 초록을 노란빛 초록처럼 파랑과 더 먼 색으로 바꾸는 것을 A와 논의한다 (`src/data/colors.json`은 A 담당)
 
+### 사람이 입은 옷 색은 인식하지 않기 (A 요청, 2026-11-09)
+
+색상 인식은 화면에 보이는 같은 색을 **모두** 보고한다(#5). 그래서 사용자나 옆 사람이 빨강·파랑·노랑·초록 옷을 입고 있으면 카드를 보여주지 않아도 카드로 인식될 수 있다.
+카드와 옷은 **위치·크기·모양**이 다르다는 점을 이용해, 아래 세 조건을 모두 통과한 색 덩어리만 카드로 친다 (CAM2 코드 `checkBlob`).
+
+| 조건 | 카드 | 옷 | 코드 값 (임시) |
+|---|---|---|---|
+| 위치: 덩어리 중심이 화면 가운데 영역 안 | 카메라 정면에 들고 보여준다 | 화면 아래쪽·가장자리에 걸치는 경우가 많다 | `ROI_X1`~`ROI_X2`, `ROI_Y1`~`ROI_Y2` |
+| 크기: 너무 작지도 크지도 않음 | 15~20cm에서 일정한 크기 | 가까우면 화면 대부분을 덮는다 | `MIN_AREA`~`MAX_AREA` |
+| 모양: 가로세로 비율이 카드에 가까움 | 약 90 × 133mm 직사각형 (세로로 들면 비율 약 0.68) | 모양이 일정하지 않다 | `MIN_RATIO`~`MAX_RATIO` (가로 ÷ 세로 × 100) |
+
+- 화면 좌표는 가로 0~320 기준이다. 공식 Color Tracking 예제가 가로 중심을 150~170으로 본다 (세로 범위 240은 [검증 필요])
+- 위 값은 모두 임시값이다. 종이 카드와 실제 옷으로 테스트하면서 `RAW` 출력(위치·크기)을 보고 정한다 [검증 필요]
+- **한계:** 공식 확장은 같은 색 번호의 덩어리를 **하나만** 알려준다(`XOfColorId`는 처음 찾은 덩어리). 카드와 옷이 같은 색이면 옷 덩어리만 보고되어 카드가 걸러질 수 있다 [검증 필요]
+- 그래서 시연 안내도 함께 한다: 시연자는 4색(빨강·파랑·노랑·초록)이 크게 들어간 옷을 피하고, 카메라 뒤 배경에도 4색 물건을 두지 않는다
+- 방식 A(태그)는 옷에 태그가 없으므로 이 문제가 생기지 않는다. 방식을 정할 때 참고한다
+
 ### 색 카드 테스트 코드 CAM2 (정식 펌웨어 아님)
 
 #5의 CAM1 코드를 바탕으로, 색상 인식 결과를 **카드 하나의 색**으로 정리해서 보내는 테스트 코드다.
@@ -91,10 +108,11 @@ C가 종이 카드 테스트를 할 때 쓴다. 정식 펌웨어(`firmware/`, #6
 
 규칙:
 
-- 학습한 4색 중 **가장 큰 색 덩어리** 하나만 고른다. 너무 작은 덩어리(`MIN_AREA` 미만)는 무시한다 (배경의 작은 물건, 화면 속 색 버튼 등)
+- 학습한 4색 각각에 대해 위치·크기·모양 조건(`checkBlob`)을 통과한 덩어리만 남긴다 (옷·배경 무시)
+- 남은 것 중 **가장 큰 색 덩어리** 하나를 고른다
 - 같은 색이 `HOLD_READS`번 연속 보여야 카드로 친다 (스치듯 보인 색은 무시)
 - 카드 색은 **한 번만** 보낸다. `GONE_MS` 넘게 안 보여야 카드를 내린 것으로 치고 `CARD,NONE`을 보낸다
-- `MIN_AREA`·`HOLD_READS`·`GONE_MS` 값은 임시값이다. 종이 카드 테스트 후 정한다 [검증 필요]
+- 기준값은 모두 임시값이다. 종이 카드 테스트 후 정한다 [검증 필요]
 
 준비: MakeCode에서 확장 `https://github.com/Hiwonder/WonderCam` 추가 → JavaScript 탭에 전체 붙여 넣기 → 다운로드 → Serial Terminal(115200)에서 확인.
 카메라는 미리 Color Recognition에서 ID 1 빨강, 2 파랑, 3 노랑, 4 초록으로 학습해 둔다.
@@ -104,14 +122,25 @@ C가 종이 카드 테스트를 할 때 쓴다. 정식 펌웨어(`firmware/`, #6
 // 출력 (USB 시리얼 115200):
 //   CARD,<색>,AREA=<크기>,t=<ms>   카드가 확정됐을 때 한 번   예) CARD,GREEN,AREA=5400,t=12345
 //   CARD,NONE,t=<ms>               카드를 내렸을 때 한 번
-//   RAW,<번호:크기 ...>            보이는 색이 바뀔 때마다 (테스트 기록용)
+//   RAW,<번호>:<x>,<y>,<w>,<h>,<판정> ...   보이는 색이 바뀔 때마다 (테스트 기록용)
+//        판정: OK 카드로 인정 / POS 위치 밖 / SMALL 너무 작음 / BIG 너무 큼 / SHAPE 모양 다름
 //   CAM,OK / CAM,NOT_FOUND         시작할 때
 
 const CAM_ADDR = 0x32
 const NAMES = ["NONE", "RED", "BLUE", "YELLOW", "GREEN"] // Color ID 1~4
-const MIN_AREA = 1500   // 이보다 작은 색 덩어리는 무시 [검증 필요]
-const HOLD_READS = 3    // 같은 색이 몇 번 연속 보여야 카드로 칠지 (100ms 간격) [검증 필요]
-const GONE_MS = 500     // 이만큼 안 보이면 카드를 내린 것으로 침 [검증 필요]
+
+// 옷·배경을 거르는 조건 (모두 임시값) [검증 필요]
+const ROI_X1 = 60       // 덩어리 중심이 이 가로 범위 안이어야 함 (화면 가로 0~320)
+const ROI_X2 = 260
+const ROI_Y1 = 30       // 덩어리 중심이 이 세로 범위 안이어야 함 (화면 세로 0~240 [검증 필요])
+const ROI_Y2 = 190
+const MIN_AREA = 1500   // 이보다 작으면 무시 (멀리 있는 작은 물건)
+const MAX_AREA = 30000  // 이보다 크면 무시 (가까운 옷이 화면을 덮을 때)
+const MIN_RATIO = 40    // 가로 ÷ 세로 × 100. 카드를 세로로 들면 약 68, 가로로 들면 약 148
+const MAX_RATIO = 250
+
+const HOLD_READS = 3    // 같은 색이 몇 번 연속 보여야 카드로 칠지 (100ms 간격)
+const GONE_MS = 500     // 이만큼 안 보이면 카드를 내린 것으로 침
 
 let camOk = false
 let candidate = 0  // 지금 연속으로 보이는 색 번호
@@ -119,6 +148,7 @@ let count = 0      // candidate 가 연속으로 보인 횟수
 let sent = 0       // 마지막으로 보낸 카드 색 번호 (0 = 없음)
 let sentSeenAt = 0 // sent 색이 마지막으로 보인 시각
 let lastRaw = ""
+let blobInfo = ""  // checkBlob 이 남기는 RAW 기록
 
 serial.redirectToUSB()
 serial.setBaudRate(BaudRate.BaudRate115200)
@@ -131,6 +161,27 @@ function camAlive(): boolean {
     pins.i2cWriteBuffer(CAM_ADDR, req)
     let r = pins.i2cReadBuffer(CAM_ADDR, 1)
     return r.getNumber(NumberFormat.UInt8LE, 0) == 118
+}
+
+// 색 번호 id 의 덩어리가 카드처럼 보이면 크기를, 아니면 0 을 돌려준다
+function checkBlob(id: number): number {
+    let x = wondercam.XOfColorId(wondercam.Options.Pos_X, id)
+    let y = wondercam.XOfColorId(wondercam.Options.Pos_Y, id)
+    let w = wondercam.XOfColorId(wondercam.Options.Width, id)
+    let h = wondercam.XOfColorId(wondercam.Options.Height, id)
+    let area = w * h
+    let verdict = "OK"
+    if (x < ROI_X1 || x > ROI_X2 || y < ROI_Y1 || y > ROI_Y2) {
+        verdict = "POS"
+    } else if (area < MIN_AREA) {
+        verdict = "SMALL"
+    } else if (area > MAX_AREA) {
+        verdict = "BIG"
+    } else if (h <= 0 || w * 100 < MIN_RATIO * h || w * 100 > MAX_RATIO * h) {
+        verdict = "SHAPE"
+    }
+    blobInfo = id + ":" + x + "," + y + "," + w + "," + h + "," + verdict
+    return verdict == "OK" ? area : 0
 }
 
 basic.pause(1500) // WonderCam 부팅 대기
@@ -158,23 +209,20 @@ basic.forever(function () {
     }
     wondercam.UpdateResult()
 
-    // 1. 학습한 4색 중 가장 큰 색 덩어리 고르기
+    // 1. 조건을 통과한 덩어리 중 가장 큰 것 고르기
     let best = 0
     let bestArea = 0
     let raw = ""
     for (let id = 1; id <= 4; id++) {
         if (wondercam.isDetectedColorId(id)) {
-            let w = wondercam.XOfColorId(wondercam.Options.Width, id)
-            let h = wondercam.XOfColorId(wondercam.Options.Height, id)
-            let area = w * h
-            raw = raw + id + ":" + area + " "
+            let area = checkBlob(id)
+            raw = raw + blobInfo + " "
             if (area > bestArea) {
                 best = id
                 bestArea = area
             }
         }
     }
-    if (bestArea < MIN_AREA) best = 0
     if (raw != lastRaw) {
         serial.writeLine("RAW," + (raw == "" ? "NONE" : raw))
         lastRaw = raw
@@ -210,7 +258,9 @@ basic.forever(function () {
 테스트할 때 볼 것 (4번 표에 기록):
 
 - 카드마다 `CARD,<색>`이 맞게 한 번만 나오는지, 초록 카드에서 `RAW`에 `2`(파랑)가 같이 나와도 `CARD,GREEN`이 되는지
-- `RAW`의 크기 값: 카드를 15·20·30cm에 둘 때 몇인지 → `MIN_AREA`를 정한다
+- **옷 테스트:** 4색 옷(또는 큰 색 천)을 입고 시연 자리에 앉았을 때 `CARD`가 나오지 않는지. `RAW`에 옷이 `POS`·`BIG`·`SHAPE` 중 무엇으로 걸러지는지 적는다
+- **같은 색 옷 + 카드:** 빨간 옷을 입고 빨강 카드를 보여줬을 때 `CARD,RED`가 나오는지 (위 "한계" 확인)
+- `RAW`의 위치·크기 값: 카드를 15·20·30cm에 둘 때 몇인지 → `ROI`·`MIN_AREA`·`MAX_AREA`를 정한다
 - 카드를 스치듯 보여줬을 때 `CARD`가 나오는지 → `HOLD_READS`를 정한다
 - 카드를 들고 있는데 `CARD,NONE`이 나오는지 → 나오면 `GONE_MS`를 늘린다
 
