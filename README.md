@@ -5,6 +5,8 @@ AIHand 로봇손과 함께하는 **어르신 두뇌·손 놀이 활동** 웹 앱
 
 2026 청년 피지컬AI 일경험 프로젝트 · 4인 팀
 
+**바로 써 보기: <https://namong118.github.io/aihand-care/>** (PC의 Chrome에서 열어 주세요. 하드웨어가 없으면 Mock 모드로 동작합니다.)
+
 ---
 
 ## 1. 프로젝트 소개
@@ -101,7 +103,7 @@ aihand-care/
 │  └─ data/                손모양 · 카드 색 · 운동 루틴 데이터
 ├─ firmware/               micro:bit 펌웨어 (MakeCode)
 ├─ docs/                   통신 규약, 손 인식 API, 하드웨어 검증 기록, 회의록
-└─ .github/workflows/      PR마다 테스트 · 빌드 자동 실행
+└─ .github/workflows/      PR마다 테스트 · 빌드, main 합치면 GitHub Pages 배포
 ```
 
 프로그램 폴더는 모두 같은 모양입니다. 판정 규칙은 `logic`, 화면은 `screen`, 진행 흐름은 `index`, 담당과 할 일은 `CLAUDE.md`, 그리고 테스트 파일이 있습니다.
@@ -129,6 +131,12 @@ npm run dev
 
 터미널에 나온 `http://localhost:5173` 주소를 **Chrome**에서 엽니다. 로봇 연결에 쓰는 Web Serial은 PC의 Chrome에서만 동작합니다. 끄려면 터미널에서 `Ctrl + C`를 누릅니다.
 
+### 설치 없이 열어 보기 (배포 주소)
+
+<https://namong118.github.io/aihand-care/>
+
+`main`에 PR이 합쳐질 때마다 GitHub Actions가 테스트·빌드한 뒤 이 주소에 자동으로 올립니다(`.github/workflows/deploy.yml`). 반영까지 1~2분 걸립니다. 로봇 연결(Web Serial)도 이 주소에서 Chrome으로 동작합니다.
+
 ### 하드웨어 없이 해 보기 (Mock 모드)
 
 - 화면 오른쪽 **가상 로봇손**이 로봇이 할 동작을 손가락 그림으로 보여줍니다.
@@ -140,6 +148,7 @@ npm run dev
 ```
 npm test        # 판정 로직 테스트 (Vitest)
 npm run build   # 배포용 파일을 dist/ 에 만들기
+npm run preview # dist/ 를 배포 주소와 같은 경로(/aihand-care/)로 미리 보기
 ```
 
 PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요. PR을 올리면 GitHub Actions에서도 자동으로 실행됩니다.
