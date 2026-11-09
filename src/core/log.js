@@ -1,13 +1,13 @@
 // 활동 기록: 회차가 끝날 때마다 공통 필드로 저장하고, 요약·CSV 내보내기를 한다.
 // 기록은 브라우저 localStorage 에 저장된다 (이 컴퓨터, 이 브라우저에만 남는다).
-// 개인정보는 저장하지 않는다. 사용자는 대시보드에서 고른 "이름"만 기록한다.
+// 개인정보는 저장하지 않는다. 사용자 구분 없이 날짜순 기록만 남긴다.
+// (예전 버전 기록에 있던 user 값은 읽을 때 버린다)
 
 export const STORAGE_KEY = 'aihand-care.records.v1';
 
 // CLAUDE.md 의 공통 필드. CSV 열 순서도 이 순서를 따른다.
 export const FIELDS = [
   'program',
-  'user',
   'startedAt',
   'endedAt',
   'total',
@@ -17,7 +17,7 @@ export const FIELDS = [
   'detail',
 ];
 
-const REQUIRED = ['program', 'user', 'startedAt', 'endedAt', 'total', 'done'];
+const REQUIRED = ['program', 'startedAt', 'endedAt', 'total', 'done'];
 
 /**
  * 기록 한 건을 검사하고 빠진 선택 필드를 기본값으로 채운다.
@@ -33,7 +33,6 @@ export function normalizeRecord(input) {
   }
   return {
     program: input.program,
-    user: input.user,
     startedAt: input.startedAt,
     endedAt: input.endedAt,
     total: input.total,
@@ -121,6 +120,39 @@ function defaultStorage() {
 }
 
 /**
+ * 저장소에서 읽은 기록 한 건을 지금 모양으로 바꾼다. 읽을 수 없는 기록이면 null.
+ * 예전 버전 기록(user 포함)도 깨지지 않게 읽고, user 는 버린다.
+ */
+export function fromStored(raw) {
+  if (!raw || typeof raw !== 'object' || typeof raw.program !== 'string') return null;
+  const total = Number(raw.total);
+  const done = Number(raw.done);
+  if (!Number.isFinite(total) || !Number.isFinite(done)) return null;
+  return {
+    program: raw.program,
+    startedAt: raw.startedAt ?? '',
+    endedAt: raw.endedAt ?? '',
+    total,
+    done,
+    skipped: Number.isFinite(raw.skipped) ? raw.skipped : 0,
+    avgReactionMs: Number.isFinite(raw.avgReactionMs) ? raw.avgReactionMs : null,
+    detail: raw.detail && typeof raw.detail === 'object' ? raw.detail : {},
+  };
+}
+
+/** 시작 시각 오름차순 (오래된 것부터). 시각이 같거나 읽을 수 없으면 저장된 순서를 지킨다. */
+export function sortByDate(records) {
+  const time = (r) => {
+    const t = Date.parse(r.startedAt);
+    return Number.isNaN(t) ? Infinity : t;
+  };
+  return records
+    .map((r, i) => [r, i])
+    .sort(([a, i], [b, j]) => time(a) - time(b) || i - j)
+    .map(([r]) => r);
+}
+
+/**
  * 기록 저장소를 만든다.
  * ctx.log 로 공개되는 것은 record 하나지만, 대시보드는 list·clear·downloadCSV 도 쓴다.
  */
@@ -129,7 +161,7 @@ export function createLog({ storage = defaultStorage() } = {}) {
     try {
       const raw = storage.getItem(STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed) ? parsed.map(fromStored).filter(Boolean) : [];
     } catch {
       return [];
     }
@@ -150,11 +182,9 @@ export function createLog({ storage = defaultStorage() } = {}) {
       listeners.forEach((cb) => cb(rec));
       return rec;
     },
-    /** 저장된 기록 전체 (오래된 것부터). program 을 주면 그 프로그램만. */
-    list({ program, user } = {}) {
-      return load().filter(
-        (r) => (!program || r.program === program) && (!user || r.user === user),
-      );
+    /** 저장된 기록 전체, 날짜순 (오래된 것부터). program 을 주면 그 프로그램만. */
+    list({ program } = {}) {
+      return sortByDate(load().filter((r) => !program || r.program === program));
     },
     clear() {
       save([]);

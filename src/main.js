@@ -6,7 +6,7 @@ import { renderStatusbar } from './dashboard/statusbar.js';
 import { renderHome } from './dashboard/home.js';
 import { renderResults } from './dashboard/results.js';
 import { findProgramInfo } from './dashboard/catalog.js';
-import { loadUsers, saveUsers, loadSavedSettings, saveSettings } from './dashboard/prefs.js';
+import { loadSavedSettings, saveSettings, removeOldUsers } from './dashboard/prefs.js';
 import { h, button, message } from './ui/components.js';
 import { PROGRAMS } from './programs/index.js';
 
@@ -15,14 +15,13 @@ const statusEl = document.querySelector('#statusbar');
 const mockEl = document.querySelector('#mock-panel');
 
 // ---- 설정과 ctx ----
+removeOldUsers(); // 사용자 이름 기능 제거: 예전에 저장한 이름 목록 지우기
 const settings = { ...DEFAULT_SETTINGS, ...loadSavedSettings() };
-let users = loadUsers();
-if (settings.user && !users.includes(settings.user)) settings.user = null;
 
 const { ctx, devices } = createContext(settings);
 
 function updateStatusbar() {
-  renderStatusbar(statusEl, { devices: devices.status(), settings, actions: { connectRobot } });
+  renderStatusbar(statusEl, { devices: devices.status(), actions: { connectRobot } });
 }
 
 // "AIHand 연결" 버튼. 포트 고르기 창은 클릭 안에서만 열리므로 await 앞에 다른 일을 하지 않는다.
@@ -79,23 +78,6 @@ function showHome() {
   leaveProgram();
   renderHome(appEl, {
     settings,
-    users,
-    selectUser(name) {
-      settings.user = name;
-      saveSettings(settings);
-      updateStatusbar();
-      showHome();
-    },
-    addUser(name) {
-      if (!users.includes(name)) {
-        users = [...users, name];
-        saveUsers(users);
-      }
-      settings.user = name;
-      saveSettings(settings);
-      updateStatusbar();
-      showHome();
-    },
     setSetting(key, value) {
       settings[key] = value;
       saveSettings(settings);
@@ -139,7 +121,7 @@ function showProgram(id) {
 
 function showResults(filter = {}) {
   leaveProgram();
-  const state = { user: settings.user, program: null, ...filter };
+  const state = { program: null, ...filter };
   renderResults(appEl, {
     log: devices.log,
     filter: state,

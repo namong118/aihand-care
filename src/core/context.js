@@ -11,7 +11,6 @@ import { createLog } from './log.js';
 
 export const DEFAULT_SETTINGS = {
   mock: true, // 손 인식·카드 입력은 가상 장치. 로봇은 연결 버튼으로 장치별 전환 (devices.status() 참고)
-  user: null, // 대시보드에서 고른 사용자 이름
   difficulty: 'easy', // 'easy' | 'normal' | 'hard'
   speed: 'NORMAL', // 'SLOW' | 'NORMAL' (진행 속도)
 };
