@@ -110,9 +110,18 @@ C가 종이 카드 테스트를 할 때 쓴다. 정식 펌웨어(`firmware/`, #6
 
 - 학습한 4색 각각에 대해 위치·크기·모양 조건(`checkBlob`)을 통과한 덩어리만 남긴다 (옷·배경 무시)
 - 남은 것 중 **가장 큰 색 덩어리** 하나를 고른다
-- 같은 색이 `HOLD_READS`번 연속 보여야 카드로 친다 (스치듯 보인 색은 무시)
+- 같은 색이 `HOLD_MS` 동안 계속 보여야 카드로 친다 (스치듯 보인 색은 무시)
 - 카드 색은 **한 번만** 보낸다. `GONE_MS` 넘게 안 보여야 카드를 내린 것으로 치고 `CARD,NONE`을 보낸다
 - 기준값은 모두 임시값이다. 종이 카드 테스트 후 정한다 [검증 필요]
+
+반응 속도 (카드를 보여준 뒤 `CARD`가 나올 때까지):
+
+- 결과를 `LOOP_MS`(20ms)마다 읽는다. 처음 버전은 100ms마다 읽고 3번 연속 확인해서 최소 약 0.3초가 걸렸다
+- 같은 색 확인은 횟수가 아니라 시간(`HOLD_MS`, 150ms)으로 한다. 읽는 간격을 바꿔도 기준이 그대로다
+- `RAW` 출력은 카드가 조금만 움직여도 바뀌어서 매번 찍으면 느려진다. `RAW_EVERY_MS`(300ms)에 한 번만 찍고, 속도를 잴 때는 `RAW_ON = false`로 끈다
+- `CARD` 줄에 `HOLD`(처음 보인 뒤 보낼 때까지 ms)와 `LOOP`(한 번 읽는 데 걸린 ms)를 찍어서 실제 속도를 잰다
+- WonderCam 자체가 결과를 새로 만드는 간격보다 빨라지지는 않는다. #5에서 AprilTag 결과 간격이 약 0.17초였고, 색상 인식 간격은 [검증 필요]
+- `HOLD_MS`를 줄일수록 빨라지지만 스치듯 지나간 색도 카드로 칠 수 있다. 테스트로 정한다
 
 준비: MakeCode에서 확장 `https://github.com/Hiwonder/WonderCam` 추가 → JavaScript 탭에 전체 붙여 넣기 → 다운로드 → Serial Terminal(115200)에서 확인.
 카메라는 미리 Color Recognition에서 ID 1 빨강, 2 파랑, 3 노랑, 4 초록으로 학습해 둔다.
@@ -120,9 +129,11 @@ C가 종이 카드 테스트를 할 때 쓴다. 정식 펌웨어(`firmware/`, #6
 ```js
 // 색 카드 테스트 코드 CAM2 (정식 펌웨어 아님). 서보는 움직이지 않는다.
 // 출력 (USB 시리얼 115200):
-//   CARD,<색>,AREA=<크기>,t=<ms>   카드가 확정됐을 때 한 번   예) CARD,GREEN,AREA=5400,t=12345
+//   CARD,<색>,AREA=<크기>,HOLD=<ms>,LOOP=<ms>,t=<ms>   카드가 확정됐을 때 한 번
+//        예) CARD,GREEN,AREA=5400,HOLD=160,LOOP=12,t=12345
+//        HOLD: 처음 보인 뒤 보낼 때까지 걸린 시간, LOOP: 결과 한 번 읽는 데 걸린 시간
 //   CARD,NONE,t=<ms>               카드를 내렸을 때 한 번
-//   RAW,<번호>:<x>,<y>,<w>,<h>,<판정> ...   보이는 색이 바뀔 때마다 (테스트 기록용)
+//   RAW,<번호>:<x>,<y>,<w>,<h>,<판정> ...   RAW_EVERY_MS 마다, 바뀌었을 때만 (테스트 기록용)
 //        판정: OK 카드로 인정 / POS 위치 밖 / SMALL 너무 작음 / BIG 너무 큼 / SHAPE 모양 다름
 //   CAM,OK / CAM,NOT_FOUND         시작할 때
 
@@ -139,15 +150,21 @@ const MAX_AREA = 30000  // 이보다 크면 무시 (가까운 옷이 화면을 �
 const MIN_RATIO = 40    // 가로 ÷ 세로 × 100. 카드를 세로로 들면 약 68, 가로로 들면 약 148
 const MAX_RATIO = 250
 
-const HOLD_READS = 3    // 같은 색이 몇 번 연속 보여야 카드로 칠지 (100ms 간격)
+// 반응 속도 (모두 임시값) [검증 필요]
+const LOOP_MS = 20      // 결과를 읽는 간격
+const HOLD_MS = 150     // 같은 색이 이만큼 계속 보여야 카드로 침 (줄이면 빨라지지만 스치는 색도 잡힘)
 const GONE_MS = 500     // 이만큼 안 보이면 카드를 내린 것으로 침
+const RAW_ON = true     // 속도를 잴 때는 false (RAW 출력이 읽기를 늦춘다)
+const RAW_EVERY_MS = 300
 
 let camOk = false
-let candidate = 0  // 지금 연속으로 보이는 색 번호
-let count = 0      // candidate 가 연속으로 보인 횟수
+let candidate = 0      // 지금 계속 보이는 색 번호
+let candidateSince = 0 // candidate 가 처음 보인 시각
 let sent = 0       // 마지막으로 보낸 카드 색 번호 (0 = 없음)
 let sentSeenAt = 0 // sent 색이 마지막으로 보인 시각
 let lastRaw = ""
+let lastRawAt = 0
+let loopMs = 0
 let blobInfo = ""  // checkBlob 이 남기는 RAW 기록
 
 serial.redirectToUSB()
@@ -207,6 +224,7 @@ basic.forever(function () {
         basic.pause(500)
         return
     }
+    let start = input.runningTime()
     wondercam.UpdateResult()
 
     // 1. 조건을 통과한 덩어리 중 가장 큰 것 고르기
@@ -223,26 +241,26 @@ basic.forever(function () {
             }
         }
     }
-    if (raw != lastRaw) {
+    let now = input.runningTime()
+    loopMs = now - start
+    if (RAW_ON && raw != lastRaw && now - lastRawAt >= RAW_EVERY_MS) {
         serial.writeLine("RAW," + (raw == "" ? "NONE" : raw))
         lastRaw = raw
+        lastRawAt = now
     }
 
-    // 2. 같은 색이 연속으로 보인 횟수 세기
-    if (best == candidate) {
-        count += 1
-    } else {
+    // 2. 같은 색이 처음 보인 시각 기억하기
+    if (best != candidate) {
         candidate = best
-        count = 1
+        candidateSince = now
     }
-    let now = input.runningTime()
     if (sent != 0 && best == sent) sentSeenAt = now
 
     // 3. 새 카드가 확정되면 한 번만 보내기
-    if (candidate != 0 && count >= HOLD_READS && candidate != sent) {
+    if (candidate != 0 && now - candidateSince >= HOLD_MS && candidate != sent) {
         sent = candidate
         sentSeenAt = now
-        serial.writeLine("CARD," + NAMES[sent] + ",AREA=" + bestArea + ",t=" + now)
+        serial.writeLine("CARD," + NAMES[sent] + ",AREA=" + bestArea + ",HOLD=" + (now - candidateSince) + ",LOOP=" + loopMs + ",t=" + now)
     }
 
     // 4. 보낸 카드가 한동안 안 보이면 내린 것으로 치기
@@ -251,7 +269,7 @@ basic.forever(function () {
         serial.writeLine("CARD,NONE,t=" + now)
     }
 
-    basic.pause(100)
+    basic.pause(LOOP_MS)
 })
 ```
 
@@ -261,7 +279,8 @@ basic.forever(function () {
 - **옷 테스트:** 4색 옷(또는 큰 색 천)을 입고 시연 자리에 앉았을 때 `CARD`가 나오지 않는지. `RAW`에 옷이 `POS`·`BIG`·`SHAPE` 중 무엇으로 걸러지는지 적는다
 - **같은 색 옷 + 카드:** 빨간 옷을 입고 빨강 카드를 보여줬을 때 `CARD,RED`가 나오는지 (위 "한계" 확인)
 - `RAW`의 위치·크기 값: 카드를 15·20·30cm에 둘 때 몇인지 → `ROI`·`MIN_AREA`·`MAX_AREA`를 정한다
-- 카드를 스치듯 보여줬을 때 `CARD`가 나오는지 → `HOLD_READS`를 정한다
+- 카드를 스치듯 보여줬을 때 `CARD`가 나오는지 → `HOLD_MS`를 정한다
+- **반응 속도:** `RAW_ON = false`로 두고 카드를 보여줬을 때 `CARD` 줄의 `HOLD`·`LOOP` 값과, 체감으로 늦다고 느껴지는지 적는다
 - 카드를 들고 있는데 `CARD,NONE`이 나오는지 → 나오면 `GONE_MS`를 늘린다
 
 ## 4. 실물 인식 테스트 기록
