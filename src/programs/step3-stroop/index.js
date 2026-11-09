@@ -74,7 +74,6 @@ async function playRound(ctx, screen, s) {
   const summary = summarizeRound(answers);
   ctx.log.record({
     program: ID,
-    user: ctx.settings.user,
     startedAt,
     endedAt: new Date().toISOString(),
     ...summary,
