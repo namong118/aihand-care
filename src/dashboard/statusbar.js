@@ -1,38 +1,93 @@
-// 장치 상태 표시줄: 웹캠, 손 인식, AIHand, WonderCam 상태와 실제/Mock 여부를 항상 표시.
-// 상태는 색이 아니라 글자로 보여준다.
+// 상단 바: 앱 이름, 장치 상태 알약 2개(AIHand, 손 인식), "활동 기록"·"설정" 버튼.
+// 웹캠·WonderCam 상태는 맨 아래 개발자 입력 영역에 보여준다 (devpanel.js).
+// 상태는 색만이 아니라 글자로도 보여준다.
 
-import { h, button } from '../ui/components.js';
+import { h } from '../ui/components.js';
 
-const STATE_TEXT = {
-  mock: '가상',
-  connected: '연결됨',
-  disconnected: '연결 안 됨',
-};
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/**
- * @param actions  { connectRobot() } "AIHand 연결" 버튼을 눌렀을 때 부를 함수
- */
-export function renderStatusbar(el, { devices, actions = {} }) {
-  el.innerHTML = '';
-  for (const d of devices) {
-    // AIHand 가 연결되어 있지 않으면 연결 버튼을 함께 보여준다
-    const connectBtn =
-      d.key === 'robot' && d.state !== 'connected' && actions.connectRobot
-        ? button(d.connecting ? '연결 중…' : 'AIHand 연결', actions.connectRobot, {
-            variant: 'secondary',
-            disabled: d.connecting,
-          })
-        : null;
-    el.append(
+/** 문자열 SVG 를 요소로 만든다 (그림 전용, 화면 읽기 프로그램에서는 숨김) */
+export function svgIcon(markup) {
+  const wrap = document.createElement('span');
+  wrap.className = 'icon';
+  wrap.setAttribute('aria-hidden', 'true');
+  wrap.innerHTML = markup;
+  return wrap;
+}
+
+const LOGO = `<svg width="30" height="30" viewBox="0 0 30 30" xmlns="${SVG_NS}"><rect x="3" y="9" width="4.5" height="13" rx="2.25" fill="var(--c-accent)"/><rect x="9" y="3" width="4.5" height="19" rx="2.25" fill="var(--c-accent)"/><rect x="15" y="3" width="4.5" height="19" rx="2.25" fill="var(--c-accent)"/><rect x="21" y="12" width="4.5" height="10" rx="2.25" fill="#AFC0EA"/><rect x="2" y="18" width="25" height="10" rx="4" fill="#DCE4F7"/></svg>`;
+const ICON_CHART = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="${SVG_NS}"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15l4-4 3 3 5-6"/></svg>`;
+const ICON_GEAR = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="${SVG_NS}"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
+
+/** 테두리 버튼 (상단 바·설정·개발자 영역 공통, 높이 48px) */
+export function outlineButton(label, onClick, { icon, pressed, expanded, disabled } = {}) {
+  return h(
+    'button',
+    {
+      type: 'button',
+      class: 'btn-outline',
+      onClick,
+      'aria-pressed': pressed === undefined ? null : String(Boolean(pressed)),
+      'aria-expanded': expanded === undefined ? null : String(Boolean(expanded)),
+      disabled: disabled ? true : null,
+    },
+    icon ? svgIcon(icon) : null,
+    label,
+  );
+}
+
+function robotPill(d, actions) {
+  if (d.state === 'connected') {
+    return [
       h(
         'span',
-        { class: 'status-item' },
-        h('strong', {}, `${d.label}: `),
-        STATE_TEXT[d.state] ?? d.state,
-        d.note ? ` (${d.note})` : '',
-        d.mock ? h('span', { class: 'status-badge' }, 'Mock') : h('span', { class: 'status-badge' }, '실제'),
+        { class: 'pill pill-ok' },
+        h('span', { class: 'pill-dot', 'aria-hidden': 'true' }),
+        'AIHand 연결됨',
+        d.note ? ` · ${d.note}` : '',
       ),
-    );
-    if (connectBtn) el.append(connectBtn);
+    ];
   }
+  // 연결 안 됨: 회색 알약 + "AIHand 연결" 버튼. 안내(Chrome에서 열어 주세요 등)는 알약 안에 쓴다
+  const text = d.state === 'disconnected' ? 'AIHand 연결 안 됨' : 'AIHand';
+  return [
+    h('span', { class: 'pill' }, text, d.note ? ` · ${d.note}` : ''),
+    actions.connectRobot
+      ? outlineButton(d.connecting ? '연결 중…' : 'AIHand 연결', actions.connectRobot, {
+          disabled: d.connecting,
+        })
+      : null,
+  ];
+}
+
+/**
+ * @param el        상단 바 자리 (#statusbar)
+ * @param devices   devices.status() 결과
+ * @param actions   { connectRobot(), showResults(), toggleSettings(), goHome() }
+ * @param settingsOpen  설정 영역이 열려 있는지
+ */
+export function renderStatusbar(el, { devices, actions = {}, settingsOpen = false }) {
+  el.innerHTML = '';
+  const robot = devices.find((d) => d.key === 'robot');
+  const hand = devices.find((d) => d.key === 'hand');
+
+  el.append(
+    h(
+      'div',
+      { class: 'topbar' },
+      h('div', { class: 'topbar-brand' }, svgIcon(LOGO), h('span', { class: 'topbar-name' }, 'aihand-care')),
+      h(
+        'div',
+        { class: 'topbar-status', role: 'status', 'aria-label': '장치 상태' },
+        robot ? robotPill(robot, actions) : null,
+        hand ? h('span', { class: 'pill' }, `${hand.label} · ${hand.note ?? ''}`) : null,
+      ),
+      h(
+        'div',
+        { class: 'topbar-actions' },
+        outlineButton('활동 기록', actions.showResults, { icon: ICON_CHART }),
+        outlineButton('설정', actions.toggleSettings, { icon: ICON_GEAR, expanded: settingsOpen }),
+      ),
+    ),
+  );
 }
