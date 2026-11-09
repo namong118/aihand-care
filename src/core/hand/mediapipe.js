@@ -1,6 +1,9 @@
 // 웹캠 + MediaPipe Hand Landmarker 로 손모양을 인식하는 모듈 (아직 구현 전).
 //
 // TODO: @mediapipe/tasks-vision 패키지 추가 (추가 전 팀 확인 필요)
+// TODO: 모델 파일(.task)을 public/models/ 에 두면, 경로는 '/models/...' 가 아니라
+//       `${import.meta.env.BASE_URL}models/hand_landmarker.task` 로 쓴다.
+//       GitHub Pages 주소(/aihand-care/)에서도 맞게 하기 위해서다. (vite.config.js 참고)
 // TODO: 웹캠 열기 (getUserMedia), 실패 시 상태를 '연결 안 됨'으로 표시
 // TODO: 랜드마크 21개 → 손가락별 펴짐 여부 → 5비트 code [엄지,검지,중지,약지,새끼]
 // TODO: 같은 code 가 이어진 시간을 stableMs 로 계산
