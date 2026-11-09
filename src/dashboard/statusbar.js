@@ -12,7 +12,7 @@ const STATE_TEXT = {
 /**
  * @param actions  { connectRobot() } "AIHand 연결" 버튼을 눌렀을 때 부를 함수
  */
-export function renderStatusbar(el, { devices, settings, actions = {} }) {
+export function renderStatusbar(el, { devices, actions = {} }) {
   el.innerHTML = '';
   for (const d of devices) {
     // AIHand 가 연결되어 있지 않으면 연결 버튼을 함께 보여준다
@@ -35,7 +35,4 @@ export function renderStatusbar(el, { devices, settings, actions = {} }) {
     );
     if (connectBtn) el.append(connectBtn);
   }
-  el.append(
-    h('span', { class: 'status-item status-user' }, h('strong', {}, '사용자: '), settings.user ?? '선택 안 함'),
-  );
 }

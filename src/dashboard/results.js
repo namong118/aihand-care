@@ -37,11 +37,11 @@ function programName(id) {
 
 /**
  * @param container
- * @param opts { log, filter: { program, user }, onFilter(filter), onHome() }
+ * @param opts { log, filter: { program }, onFilter(filter), onHome() }
  */
 export function renderResults(container, { log, filter = {}, onFilter, onHome }) {
   container.innerHTML = '';
-  const all = log.list({ user: filter.user });
+  const all = log.list(); // 날짜순
   const records = filter.program ? all.filter((r) => r.program === filter.program) : all;
   const summary = summarize(all);
 
@@ -51,15 +51,6 @@ export function renderResults(container, { log, filter = {}, onFilter, onHome })
     { class: 'program-bar' },
     h('h1', {}, '활동 기록'),
     button('← 홈으로', onHome, { variant: 'secondary' }),
-  );
-
-  const userNote = h(
-    'div',
-    { class: 'row' },
-    h('span', {}, filter.user ? `${filter.user} 님의 기록` : '모든 사용자의 기록'),
-    filter.user
-      ? button('모든 사용자 보기', () => onFilter({ ...filter, user: null }), { variant: 'secondary' })
-      : null,
   );
 
   // ---- 프로그램별 요약 ----
@@ -121,7 +112,7 @@ export function renderResults(container, { log, filter = {}, onFilter, onHome })
               h(
                 'tr',
                 {},
-                ['회차', '날짜', '사용자', '프로그램', '해낸 수 / 전체', '건너뜀', '평균 반응 시간', '자세히'].map((t) =>
+                ['회차', '날짜', '프로그램', '해낸 수 / 전체', '건너뜀', '평균 반응 시간', '자세히'].map((t) =>
                   h('th', { scope: 'col' }, t),
                 ),
               ),
@@ -135,7 +126,6 @@ export function renderResults(container, { log, filter = {}, onFilter, onHome })
                   {},
                   h('td', {}, rows.length - i),
                   h('td', {}, formatTime(r.startedAt)),
-                  h('td', {}, r.user),
                   h('td', {}, programName(r.program)),
                   h('td', {}, `${r.done} / ${r.total}`),
                   h('td', {}, r.skipped ?? 0),
@@ -151,7 +141,6 @@ export function renderResults(container, { log, filter = {}, onFilter, onHome })
 
   container.append(
     bar,
-    userNote,
     h('section', { class: 'section' }, h('h2', {}, '프로그램별 모아 보기'), h('div', { class: 'table-wrap' }, summaryTable)),
     h(
       'section',
