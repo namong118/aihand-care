@@ -17,8 +17,9 @@ export const CMD = Object.freeze({
 
 const REACT_KINDS = { ok: 'OK', retry: 'RETRY' };
 const SPEEDS = ['SLOW', 'NORMAL'];
-// WonderCam 모드. 지금은 TAG(AprilTag)만. 숫자 인식(NUM)은 실물 확인 뒤 다음 PR [검증 필요]
-const CAM_MODES = ['TAG'];
+// WonderCam 모드: TAG(AprilTag, 색 카드) / NUM(숫자 인식, 숫자 카드 1~5). 펌웨어 F3
+export const CAM_MODES = ['TAG', 'NUM'];
+const CARD_NUMBER = /^[1-5]$/;
 const POSE_NAME = /^[A-Z][A-Z0-9_]*$/;
 
 function line(text) {
@@ -62,8 +63,9 @@ export function ping() {
 }
 
 /**
- * CAM,TAG: WonderCam 을 태그(AprilTag) 인식 모드로 바꾼다 (펌웨어 F2).
+ * CAM,TAG | CAM,NUM: WonderCam 을 태그 / 숫자 인식 모드로 바꾼다 (TAG 는 펌웨어 F2, NUM 은 F3).
  * 응답: DONE,CAM / 카메라가 없으면 ERR,NO_CAM / 모드가 안 바뀌면 ERR,CAM_MODE
+ *       F2 에 CAM,NUM 을 보내면 ERR,BAD_ARG (모드는 그대로)
  */
 export function cam(mode) {
   if (!CAM_MODES.includes(mode)) throw new Error(`WonderCam 모드는 ${CAM_MODES.join(', ')} 입니다: ${mode}`);
@@ -75,6 +77,9 @@ export function cam(mode) {
  *   'DONE,POSE'  → { type: 'DONE', command: 'POSE' }
  *   'TAG,3'      → { type: 'TAG', id: '3' }     (WonderCam 에 태그 3번 카드가 보임)
  *   'TAG,NONE'   → { type: 'TAG', id: null }    (보이던 카드가 사라짐)
+ *   'NUM,3'      → { type: 'NUM', number: 3 }   (숫자 카드 3 이 보임, 1~5 만)
+ *   'NUM,NONE'   → { type: 'NUM', number: null }
+ *   'RAW,NUM,…'  → UNKNOWN (펌웨어 DEBUG_NUM 측정용 줄, 웹은 무시)
  *   'PONG'       → { type: 'PONG' }
  *   'ERR,UNKNOWN_POSE' → { type: 'ERR', message: 'UNKNOWN_POSE' }
  *   그 밖        → { type: 'UNKNOWN', raw }
@@ -91,6 +96,10 @@ export function parseLine(raw) {
       break;
     case 'TAG':
       if (rest) return { type: 'TAG', id: rest === 'NONE' ? null : rest };
+      break;
+    case 'NUM':
+      if (rest === 'NONE') return { type: 'NUM', number: null };
+      if (CARD_NUMBER.test(rest)) return { type: 'NUM', number: Number(rest) };
       break;
     case 'PONG':
       if (!rest) return { type: 'PONG' };

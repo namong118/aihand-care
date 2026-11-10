@@ -1,4 +1,4 @@
-// AIHand 펌웨어 F2 (로봇 통신 프로토콜 v1 + WonderCam 태그 인식)
+// AIHand 펌웨어 F3 (로봇 통신 프로토콜 v1 + WonderCam 태그·숫자 인식)
 // MakeCode(micro:bit) JavaScript 탭에 이 파일 전체를 붙여 넣는다.
 // Hiwonder 확장(StartbitV2, WonderCam 모두)은 추가하지 않는다. "Initialize StartbitV2" 블록도 쓰지 않는다.
 // WonderCam 은 공식 확장(github.com/Hiwonder/WonderCam)과 같은 I2C 읽기·쓰기를 이 파일 안에 직접 넣었다.
@@ -14,16 +14,25 @@
 //   REST               → DONE,REST
 //   SPEED,SLOW|NORMAL  → DONE,SPEED
 //   CAM,TAG            → DONE,CAM       (WonderCam 태그 모드. 카메라 없음 ERR,NO_CAM / 전환 안 됨 ERR,CAM_MODE)
-//                                        켜질 때는 모드를 바꾸지 않는다. TAG 줄은 CAM,TAG 뒤부터 나온다
+//   CAM,NUM            → DONE,CAM       (WonderCam 숫자 인식 모드. 오류는 CAM,TAG 와 같음)
+//                                        켜질 때는 모드를 바꾸지 않는다. TAG·NUM 줄은 CAM 명령이 성공한 뒤부터 나온다
+//                                        카메라는 한 번에 한 모드: 태그 모드면 TAG 줄만, 숫자 모드면 NUM 줄만
 //   그 밖              → ERR,UNKNOWN_CMD / ERR,UNKNOWN_POSE / ERR,BAD_ARG
 //
 // 로봇 → 웹 (명령과 상관없이 보냄)
 //   TAG,<번호>         WonderCam 에 보이는 태그가 바뀌었을 때 한 번 (예: TAG,0)
 //   TAG,NONE           보이던 태그가 0.5초 넘게 안 보일 때 한 번
+//   NUM,<1~5>          보이는 숫자 카드가 바뀌었을 때 한 번 (예: NUM,3)
+//   NUM,NONE           보이던 숫자가 0.5초 넘게 안 보일 때 한 번
+//   RAW,NUM,<숫자>,<확신도×100>   DEBUG_NUM = true 일 때만. 기준값 MIN_CONF 정하기용 (웹은 무시)
 //
 // DONE 은 정해진 시간이 지나면 보낸다. 서보가 실제로 도착했다는 뜻이 아니다 (부록 4).
 
-const FIRMWARE_VERSION = "F2" // 켜질 때 LED에 잠깐 보여준다 (프로토콜과 무관)
+const FIRMWARE_VERSION = "F3" // 켜질 때 LED에 잠깐 보여준다 (프로토콜과 무관)
+
+// 숫자 인식 확신도 기준값 정하기용. true 로 바꾸면 숫자 모드에서 카메라 결과가 바뀔 때마다
+// RAW,NUM,<숫자>,<확신도×100> 줄을 보낸다 (웹은 이 줄을 무시한다). 평소에는 false
+const DEBUG_NUM = false
 
 // ---------- 안전 범위 (상수: 실행 중 바꾸는 명령을 두지 않는다) ----------
 const FINGER_MIN = 50
@@ -139,18 +148,25 @@ function doHello() {
 // ---------- WonderCam (I2C 주소 0x32, hardware-check.md 4번·부록 6) ----------
 // I2C 는 USB 시리얼·확장보드 시리얼과 다른 핀이라 통로 전환과 상관없다.
 const CAM_ADDR = 0x32
-const FUNC_TAG = 7         // WonderCam 기능 번호: 7 = AprilTag (5 = 색상, 10 = 숫자 인식)
+const FUNC_TAG = 7         // WonderCam 기능 번호: 7 = AprilTag (5 = 색상)
+const FUNC_NUM = 10        // 10 = 숫자 인식 (공식 확장 Functions.NumberRecognition, 실물에서 10 확인)
 const REG_FUNC = 0x0035    // 지금 기능 번호 (읽기) / 기능 바꾸기 (쓰기)
 const REG_TAG = 0x1E00     // AprilTag 결과: [1] = 태그 개수, [2..] = 태그 번호들
 const TAG_LEN = 512        // 공식 확장과 같은 길이로 읽는다 (CAM1 실물 확인한 방식 그대로)
+const REG_NUM = 0x0D00     // 숫자 인식 결과: [1] = 가장 확신하는 숫자, [2..3] = 그 확신도 (UInt16LE, ÷10000 하면 0~1)
+const NUM_LEN = 128        // 공식 확장과 같은 길이
+// 확신도 기준 (% 단위, 확신도 × 100). 숫자 인식은 "안 보임"을 따로 알려 주지 않아서
+// 이보다 낮거나 숫자가 1~5 가 아니면 안 보인 것으로 친다. [검증 필요] 임시값. DEBUG_NUM 으로 실물 측정 후 정한다
+const MIN_CONF = 60
 const POLL_MS = 100        // 명령이 없을 때 이 간격으로 카메라 결과를 읽는다
 const LOST_MS = 500        // 이 시간 넘게 안 보여야 카드가 사라진 것으로 친다 (인식이 0.17~0.34초씩 끊김)
 
 let camOk = false
-let tagOn = false          // CAM,TAG 가 성공한 뒤에만 true. 이때만 카메라를 읽고 TAG 줄을 보낸다
-let shownTag = -1          // 웹에 마지막으로 알린 태그 번호. -1 = 없음
-let lastSeenAt = 0         // shownTag 를 마지막으로 본 시각
+let camMode = 0            // 지금 모드: 0 = 없음, FUNC_TAG, FUNC_NUM. CAM 명령이 성공했을 때만 바뀐다
+let shown = -1             // 웹에 마지막으로 알린 값 (태그 번호 또는 숫자). -1 = 없음
+let lastSeenAt = 0         // shown 을 마지막으로 본 시각
 let lastPoll = 0
+let lastRaw = ""           // DEBUG_NUM: 마지막으로 보낸 RAW 줄
 
 function camRead(reg: number, len: number): Buffer {
     let req = pins.createBuffer(2)
@@ -192,6 +208,22 @@ function camSwitch(func: number): boolean {
     return true
 }
 
+// 웹에 알리는 규칙 (태그·숫자 공통): 값이 바뀔 때만 보낸다. 사라짐은 LOST_MS 동안 계속 안 보일 때만
+// kind: "TAG" 또는 "NUM", id: 지금 보이는 값 (-1 = 안 보임)
+function report(kind: string, id: number) {
+    let now = input.runningTime()
+    if (id >= 0) {
+        lastSeenAt = now
+        if (id != shown) {
+            shown = id
+            send(kind + "," + id)
+        }
+    } else if (shown >= 0 && now - lastSeenAt > LOST_MS) {
+        shown = -1
+        send(kind + ",NONE")
+    }
+}
+
 // 보이는 태그 하나 고르기: 알린 태그가 아직 보이면 그대로, 아니면 가장 작은 번호. 없으면 -1
 function seeTag(): number {
     if (camRead(REG_FUNC, 1)[0] != FUNC_TAG) return -1 // 카메라 메뉴에서 기능을 바꾼 경우
@@ -200,26 +232,35 @@ function seeTag(): number {
     let pick = -1
     for (let i = 2; i < 2 + n && i < r.length; i++) {
         let id = r[i]
-        if (id == shownTag) return id
+        if (id == shown) return id
         if (pick < 0 || id < pick) pick = id
     }
     return pick
 }
 
-// 바뀔 때만 보낸다. 사라짐은 LOST_MS 동안 계속 안 보일 때만
 function pollTag() {
-    let id = seeTag()
-    let now = input.runningTime()
-    if (id >= 0) {
-        lastSeenAt = now
-        if (id != shownTag) {
-            shownTag = id
-            send("TAG," + id)
+    report("TAG", seeTag())
+}
+
+// 보이는 숫자: 가장 확신하는 숫자가 1~5 이고 확신도가 MIN_CONF 이상이면 그 숫자, 아니면 -1
+function seeNum(): number {
+    if (camRead(REG_FUNC, 1)[0] != FUNC_NUM) return -1 // 카메라 메뉴에서 기능을 바꾼 경우
+    let r = camRead(REG_NUM, NUM_LEN)
+    let n = r[1]
+    let pct = Math.idiv(r.getNumber(NumberFormat.UInt16LE, 2), 100) // 확신도 × 100 (0~100)
+    if (DEBUG_NUM) {
+        let raw = "RAW,NUM," + n + "," + pct
+        if (raw != lastRaw) {
+            lastRaw = raw
+            send(raw)
         }
-    } else if (shownTag >= 0 && now - lastSeenAt > LOST_MS) {
-        shownTag = -1
-        send("TAG,NONE")
     }
+    if (n < 1 || n > 5 || pct < MIN_CONF) return -1
+    return n
+}
+
+function pollNum() {
+    report("NUM", seeNum())
 }
 
 // ---------- 명령 처리 ----------
@@ -252,17 +293,22 @@ function cmdRest(arg: string) {
     doRest()
     send("DONE,REST")
 }
-// CAM,TAG: WonderCam 을 태그 모드로. 켜질 때 못 찾았으면 여기서 다시 찾는다 (카메라가 늦게 켜진 경우)
+// CAM,TAG / CAM,NUM: WonderCam 모드 바꾸기. 켜질 때 못 찾았으면 여기서 다시 찾는다 (카메라가 늦게 켜진 경우)
 // 걸리는 시간: 카메라 없음 약 1초 / 있음 보통 0.1~0.2초, 최악 약 5.1초 (찾기 1초 + 전환 4.1초). 웹 시간 초과 6초
 // 모드를 바꾸면 보이던 카드는 없는 것으로 치고 처음부터 다시 알린다 (웹도 DONE,CAM 을 받으면 같은 규칙)
-// [검증 필요] 숫자 인식 모드(CAM,NUM)는 실물 확인 뒤 다음 PR
+// 실패하면 모드 없음(0)이 되어 TAG·NUM 줄을 보내지 않는다. 값이 틀린 경우(ERR,BAD_ARG)만 지금 모드를 그대로 둔다
 function cmdCam(arg: string) {
-    if (arg != "TAG") { send("ERR,BAD_ARG"); return }
+    let func = 0
+    if (arg == "TAG") func = FUNC_TAG
+    else if (arg == "NUM") func = FUNC_NUM
+    else { send("ERR,BAD_ARG"); return }
+    camMode = 0
+    shown = -1
     if (!camOk) camOk = camFind(3)
-    if (!camOk) { tagOn = false; send("ERR,NO_CAM"); return }
-    if (!camSwitch(FUNC_TAG)) { tagOn = false; send("ERR,CAM_MODE"); return }
-    shownTag = -1
-    tagOn = true
+    if (!camOk) { send("ERR,NO_CAM"); return }
+    if (!camSwitch(func)) { send("ERR,CAM_MODE"); return }
+    camMode = func
+    lastRaw = ""
     send("DONE,CAM")
 }
 function cmdSpeed(arg: string) {
@@ -293,10 +339,10 @@ toUSB()
 basic.showString(FIRMWARE_VERSION) // 펌웨어 버전 확인용. 켜질 때 서보는 움직이지 않는다 (글자가 지나가는 약 2.5초 동안 카메라도 켜진다)
 // 켜질 때는 카메라를 한 번만 확인하고 기다리지 않는다. 모드 전환(최악 4.1초)도 하지 않는다.
 // 여기서 오래 막히면 반복문에 늦게 들어가 웹의 PING(1.5초 × 3번)에 답하지 못하기 때문. 반복문까지 F1 과 같은 약 3초
-// 태그 모드 전환은 웹이 연결할 때 보내는 CAM,TAG 에서 한다 (Serial Terminal 에서는 직접 CAM,TAG 입력)
+// 모드 전환은 웹이 보내는 CAM,TAG / CAM,NUM 에서 한다 (Serial Terminal 에서는 직접 입력)
 camOk = camAlive()
 if (camOk) basic.showIcon(IconNames.Yes) // ✓ 로봇·WonderCam 준비
-else basic.showIcon(IconNames.No)        // ✖ 지금은 WonderCam 이 안 보임. CAM,TAG 때 다시 찾는다 (로봇 명령은 그대로)
+else basic.showIcon(IconNames.No)        // ✖ 지금은 WonderCam 이 안 보임. CAM 명령 때 다시 찾는다 (로봇 명령은 그대로)
 
 const MAX_LINE = 40 // 이보다 긴 줄은 잡음으로 보고 버린다
 let buf = ""
@@ -315,9 +361,10 @@ basic.forever(function () {
             buf = buf + c
         }
     }
-    if (tagOn && input.runningTime() - lastPoll >= POLL_MS) {
+    if (camMode != 0 && input.runningTime() - lastPoll >= POLL_MS) {
         lastPoll = input.runningTime()
-        pollTag()
+        if (camMode == FUNC_TAG) pollTag()
+        else pollNum()
     }
     basic.pause(20)
 })
