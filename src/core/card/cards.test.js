@@ -15,9 +15,8 @@ describe('카드 색', () => {
 });
 
 describe('tagIdToColor', () => {
-  it('tags.json 의 ID 를 색으로 바꾼다', () => {
-    expect(tagIdToColor('RED')).toBe('red');
-    expect(tagIdToColor('GREEN')).toBe('green');
+  it('tags.json: 태그 0 빨강, 1 파랑, 2 노랑, 3 초록 (docs/cards.md 3-A)', () => {
+    expect(['0', '1', '2', '3'].map((id) => tagIdToColor(id))).toEqual(['red', 'blue', 'yellow', 'green']);
   });
   it('모르는 ID 면 null', () => {
     expect(tagIdToColor('7')).toBe(null);

@@ -201,4 +201,42 @@ describe('createSerialRobot', () => {
     f.robotSays('PONG\n');
     await expect(p).resolves.toBe(true);
   });
+
+  it('TAG 줄은 명령을 기다리는 중에도 onTag 로 넘긴다 (NONE 은 null)', async () => {
+    const f = fakePort();
+    const onTag = vi.fn();
+    const robot = createSerialRobot({ port: f.port, onTag });
+    const p = robot.rest();
+    await untilSent(f.sent, 1);
+    f.robotSays('TAG,2\nTAG,NONE\nDONE,REST\n');
+    await expect(p).resolves.toEqual({ type: 'DONE', command: 'REST' });
+    expect(onTag.mock.calls).toEqual([['2'], [null]]);
+  });
+
+  it('camMode 는 CAM,TAG 를 보내고 DONE,CAM 또는 ERR 로 끝난다', async () => {
+    const f = fakePort();
+    const robot = createSerialRobot({ port: f.port });
+    const a = robot.camMode('TAG');
+    await untilSent(f.sent, 1);
+    expect(f.sent[0]).toBe('CAM,TAG\n');
+    f.robotSays('DONE,CAM\n');
+    await expect(a).resolves.toEqual({ type: 'DONE', command: 'CAM' });
+
+    const b = robot.camMode('TAG');
+    await untilSent(f.sent, 2);
+    f.robotSays('ERR,NO_CAM\n');
+    await expect(b).resolves.toEqual({ type: 'ERR', message: 'NO_CAM' });
+  });
+
+  it('WonderCam 모드 전환은 최악 약 5.1초가 걸려도 시간 초과가 아니다', async () => {
+    const f = fakePort();
+    const robot = createSerialRobot({ port: f.port });
+    let result = null;
+    robot.camMode('TAG').then((r) => (result = r));
+    await untilSent(f.sent, 1);
+    await vi.advanceTimersByTimeAsync(5100);
+    f.robotSays('DONE,CAM\n');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(result).toEqual({ type: 'DONE', command: 'CAM' });
+  });
 });
