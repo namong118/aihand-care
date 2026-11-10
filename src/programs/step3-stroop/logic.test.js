@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeQuestion, judge, makeRound, gapMs, summarizeRound, QUESTIONS_PER_ROUND } from './logic.js';
+import { makeQuestion, judge, makeRound, gapMs, summarizeRound, QUESTIONS_PER_ROUND, isPerfect, NO_ANSWER_HINT_MS } from './logic.js';
 import colors from '../../data/colors.json';
 
 describe('makeQuestion', () => {
@@ -105,5 +105,23 @@ describe('colors.json', () => {
       expect(c.label).toBeTruthy();
       expect(c.hex).toMatch(/^#[0-9a-f]{6}$/i);
     }
+  });
+});
+
+describe('isPerfect', () => {
+  it('모두 맞히면 true', () => {
+    expect(isPerfect({ total: 5, done: 5 })).toBe(true);
+  });
+  it('하나라도 다시 해 볼 문제가 있으면 false', () => {
+    expect(isPerfect({ total: 5, done: 4 })).toBe(false);
+  });
+  it('문제가 없으면 false', () => {
+    expect(isPerfect({ total: 0, done: 0 })).toBe(false);
+  });
+});
+
+describe('NO_ANSWER_HINT_MS', () => {
+  it('문제 사이 쉬는 시간보다 길다 (바로 안내가 뜨지 않게)', () => {
+    expect(NO_ANSWER_HINT_MS).toBeGreaterThan(gapMs('SLOW'));
   });
 });

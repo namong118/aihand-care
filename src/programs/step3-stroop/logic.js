@@ -82,3 +82,11 @@ export function judge(question, color) {
     pickedWord: !question.congruent && color === question.wordColor,
   };
 }
+
+/** 답을 기다린 지 이만큼(ms) 지나면 "카드를 내렸다가 다시 보여 주세요" 안내를 보여 준다 (#14: 카드를 들고 있으면 다시 인식하지 않음) */
+export const NO_ANSWER_HINT_MS = 10000;
+
+/** 회차를 모두 맞혔는지 (로봇이 한 번 더 인사하는 조건). summary = summarizeRound 결과 */
+export function isPerfect(summary) {
+  return summary.total > 0 && summary.done === summary.total;
+}
