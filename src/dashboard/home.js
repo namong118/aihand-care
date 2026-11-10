@@ -25,7 +25,7 @@ function handSvg(code, { up, down, palm, width = 84, height = 72 }) {
 /** 카드 오른쪽 위 그림. 이모지 대신 SVG·HTML 도형 */
 function art(step) {
   if (step === 1) {
-    // 지금 STEP 1: 로봇이 손모양을 차례로 보여준다 → 손모양 타일 3개 (마지막이 지금 차례)
+    // STEP 1: 로봇이 손가락으로 숫자를 차례로 보여준다 → 손모양 타일 3개 (숫자 2·1·5, 마지막이 지금 차례)
     const tile = (code, last) =>
       h(
         'span',
