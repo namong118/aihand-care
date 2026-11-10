@@ -1,6 +1,7 @@
 // STEP 3 화면 그리기. 판정은 하지 않고 보여주기만 한다.
 
 import { h, button, message } from '../../ui/components.js';
+import { speak } from './voice.js';
 
 export function createScreen(container, colors) {
   container.innerHTML = '';
@@ -8,8 +9,11 @@ export function createScreen(container, colors) {
   container.append(area);
   const find = (color) => colors.find((c) => c.color === color);
 
+  let hintEl = null; // 답을 기다릴 때 붙는 안내 (한 번만)
+
   function set(...children) {
     area.innerHTML = '';
+    hintEl = null;
     area.append(...children.flat().filter(Boolean));
   }
 
@@ -62,14 +66,26 @@ export function createScreen(container, colors) {
           ),
         ),
       );
+      // 글자 뜻은 읽지 않는다
+      speak(`문제 ${index}번. 이 글자는 무슨 색깔인가요?`);
+    },
+
+    /** 답을 오래 기다릴 때 문제 아래에 안내를 붙인다 (문제 화면은 그대로) */
+    hint(text) {
+      if (hintEl) return;
+      hintEl = message(text, 'info');
+      area.append(hintEl);
+      speak(text);
     },
 
     feedback({ correct, inkColor }) {
       const ink = find(inkColor);
       if (correct) {
         set(message(`잘하셨어요! 글자 색은 ${ink.label}이었어요.`, 'good'));
+        speak(`잘하셨어요! 글자 색은 ${ink.label}이었어요.`);
       } else {
         set(message('다시 해 볼까요?', 'retry'), h('p', {}, `글자 색은 ${ink.label}이었어요.`));
+        speak(`다시 해 볼까요? 글자 색은 ${ink.label}이었어요.`);
       }
     },
 
@@ -81,6 +97,7 @@ export function createScreen(container, colors) {
         h('p', {}, '위의 "활동 기록 보기"에서 기록을 볼 수 있어요.'),
         h('div', { class: 'row' }, button('한 번 더 하기', onAgain)),
       );
+      speak(done === total ? `${total}문제를 모두 맞히셨어요! 정말 잘하셨어요!` : `${total}문제를 모두 마쳤어요. 수고하셨어요!`);
     },
   };
 }

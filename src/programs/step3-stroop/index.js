@@ -1,8 +1,9 @@
 // STEP 3 색깔손: logic 과 screen 을 연결한다. core 는 import 하지 않고 ctx 만 쓴다.
 
 import colors from '../../data/colors.json';
-import { makeRound, judge, gapMs, summarizeRound } from './logic.js';
+import { makeRound, judge, gapMs, summarizeRound, isPerfect, NO_ANSWER_HINT_MS } from './logic.js';
 import { createScreen } from './screen.js';
+import { stopSpeaking } from './voice.js';
 
 const ID = 'step3-stroop';
 
@@ -18,9 +19,15 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 function pickOne(ctx, screen, s, q, progress) {
   return new Promise((resolve) => {
     let finished = false;
+    // 오래 답이 없으면 안내: 카드를 들고 있으면 다시 인식하지 않으므로 내렸다가 다시 보여 달라고 한다 (#14)
+    const hintTimer = setTimeout(
+      () => screen.hint('카드를 내렸다가 다시 보여 주세요. 아래 버튼을 눌러도 돼요.'),
+      NO_ANSWER_HINT_MS,
+    );
     const finish = (picked) => {
       if (finished) return;
       finished = true;
+      clearTimeout(hintTimer);
       offCard();
       s.cancels.delete(cancel);
       resolve(picked);
@@ -40,6 +47,10 @@ async function playRound(ctx, screen, s) {
   const difficulty = ctx.settings.difficulty;
   const questions = makeRound(colors, difficulty);
   const answers = [];
+
+  // 로봇 역할: 회차 시작 신호로 인사한다
+  await ctx.robot.hello();
+  if (!s.alive) return;
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
@@ -84,6 +95,11 @@ async function playRound(ctx, screen, s) {
       questions: answers.map(({ correct, ...rest }) => rest),
     },
   });
+  // 로봇 역할: 모두 맞히면 한 번 더 인사한다
+  if (isPerfect(summary)) {
+    await ctx.robot.hello();
+    if (!s.alive) return;
+  }
   screen.end(summary, () => playRound(ctx, screen, s).catch((err) => console.error(err)));
 }
 
@@ -102,6 +118,7 @@ export default {
   unmount() {
     if (!session) return;
     session.alive = false;
+    stopSpeaking();
     session.cancels.forEach((cancel) => cancel());
     session = null;
   },
