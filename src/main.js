@@ -96,6 +96,9 @@ devices.robot.onChange(() => {
   updateRobotBox();
 });
 
+// WonderCam 상태(확인 중·연결됨·찾지 못함)와 지금 보이는 카드가 바뀌면 개발자 입력 영역의 상태 갱신
+devices.card.onChange(updateStatusbar);
+
 // ---- 화면 전환 ----
 let current = null; // 지금 실행 중인 프로그램 모듈
 
