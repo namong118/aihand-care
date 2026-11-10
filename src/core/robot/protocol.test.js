@@ -22,11 +22,22 @@ describe('명령 만들기', () => {
   });
 });
 
+describe('cam (WonderCam 모드, 펌웨어 F2)', () => {
+  it('CAM,TAG 를 만든다', () => {
+    expect(P.cam('TAG')).toBe('CAM,TAG\n');
+  });
+  it('숫자 모드는 아직 없다 (다음 PR)', () => {
+    expect(() => P.cam('NUM')).toThrow();
+    expect(() => P.cam('tag')).toThrow();
+  });
+});
+
 describe('parseLine', () => {
   it('로봇 응답을 객체로 바꾼다', () => {
     expect(P.parseLine('DONE,POSE')).toEqual({ type: 'DONE', command: 'POSE' });
     expect(P.parseLine('DONE,HELLO\r\n')).toEqual({ type: 'DONE', command: 'HELLO' });
-    expect(P.parseLine('TAG,RED')).toEqual({ type: 'TAG', id: 'RED' });
+    expect(P.parseLine('TAG,3')).toEqual({ type: 'TAG', id: '3' });
+    expect(P.parseLine('TAG,NONE')).toEqual({ type: 'TAG', id: null });
     expect(P.parseLine('PONG')).toEqual({ type: 'PONG' });
     expect(P.parseLine('ERR,UNKNOWN_POSE')).toEqual({ type: 'ERR', message: 'UNKNOWN_POSE' });
   });

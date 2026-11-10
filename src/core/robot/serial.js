@@ -1,4 +1,4 @@
-// Web Serial 로 micro:bit(AIHand, 펌웨어 F1) 와 통신하는 모듈.
+// Web Serial 로 micro:bit(AIHand, 펌웨어 F2) 와 통신하는 모듈.
 // Chrome 에서만 사용한다 (회의 결정). 프로토콜: docs/protocol.md
 //
 // 규칙
@@ -11,6 +11,7 @@
 //   동작 중에 보낸 PING 은 펌웨어가 확장보드로 통로를 돌린 사이 사라진다 (F1 실물 확인).
 //   재시도해도 PONG 이 없으면 연결이 끊긴 것으로 본다.
 // - 'TAG,…' 줄과 알 수 없는 줄(확장보드 잡음 등)은 기다리는 명령에 영향을 주지 않는다.
+//   'TAG,…' 줄은 onTag 로 넘긴다 (core/card 가 색으로 바꾼다). 명령을 기다리는 중에 와도 된다.
 
 import * as protocol from './protocol.js';
 
@@ -24,6 +25,7 @@ export const TIMEOUT_MS = Object.freeze({
   REST: 3000, // SLOW 약 1.25초
   REACT: 10000, // RETRY SLOW 약 6.7초
   HELLO: 10000, // SLOW 약 5.8초
+  CAM: 6000, // WonderCam 모드 전환: 최악 약 5.1초 (카메라 다시 찾기 1초 + 공식 ChangeFunc 최대 4.1초)
 });
 
 /** 시간 초과 뒤 순서를 다시 맞출 때 PING 을 보내 보는 횟수 */
@@ -52,9 +54,16 @@ function err(message) {
  * @param {SerialPort} options.port  열린 포트 (테스트에서는 readable·writable 이 있는 가짜 포트)
  * @param {(reason: string) => void} [options.onLost]  연결이 끊겼다고 판단했을 때 한 번 불린다
  * @param {(event: {ok: boolean, text?: string}) => void} [options.onResult]  명령 결과 알림 (상태 표시줄용)
+ * @param {(id: string | null) => void} [options.onTag]  'TAG,<번호>' 줄을 받으면 번호, 'TAG,NONE' 이면 null
  * @param {object} [options.timeouts]  TIMEOUT_MS 대신 쓸 값 (테스트용)
  */
-export function createSerialRobot({ port, onLost = () => {}, onResult = () => {}, timeouts = TIMEOUT_MS }) {
+export function createSerialRobot({
+  port,
+  onLost = () => {},
+  onResult = () => {},
+  onTag = () => {},
+  timeouts = TIMEOUT_MS,
+}) {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   const writer = port.writable.getWriter();
@@ -71,7 +80,7 @@ export function createSerialRobot({ port, onLost = () => {}, onResult = () => {}
   function handleLine(raw) {
     const msg = protocol.parseLine(raw);
     if (msg.type === 'TAG') {
-      // TODO: core/card 로 넘기기 (#16·#17, 카드 방식 A 확정 후)  [검증 필요]
+      onTag(msg.id); // 카드 인식 결과는 기다리는 명령과 상관없이 바로 넘긴다
       return;
     }
     if (msg.type === 'UNKNOWN') return; // 확장보드 잡음 등은 무시
@@ -183,6 +192,8 @@ export function createSerialRobot({ port, onLost = () => {}, onResult = () => {}
 
     // ---- 대시보드 전용 ----
     speed: (value) => send(protocol.speed(value)),
+    /** WonderCam 모드 전환 ('TAG'). DONE,CAM 또는 ERR,NO_CAM 등으로 resolve */
+    camMode: (mode) => send(protocol.cam(mode)),
     /** 연결 확인. 펌웨어가 막 켜졌을 수도 있으니 RESYNC_TRIES 번까지 PING 을 보낸다 */
     async check() {
       const p = queue.then(resync);

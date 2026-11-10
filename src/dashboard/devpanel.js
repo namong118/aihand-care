@@ -4,7 +4,13 @@
 
 import { h } from '../ui/components.js';
 
-const STATE_TEXT = { mock: '가상', connected: '연결됨', disconnected: '연결 안 됨' };
+const STATE_TEXT = {
+  mock: '가상',
+  checking: '확인 중',
+  connected: '연결됨',
+  missing: '찾지 못함',
+  disconnected: '연결 안 됨',
+};
 
 /**
  * @param devices  createContext 의 devices
