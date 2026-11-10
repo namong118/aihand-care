@@ -5,7 +5,7 @@
 - 한 줄 = 명령 하나, 끝은 `\n`
 - 글자는 영어 대문자·숫자·`_`·쉼표만 사용
 - 값이 있으면 `명령,값` 처럼 쉼표로 붙인다 (공백 없음)
-- 구현: 웹 `src/core/robot/protocol.js`·`serial.js`, 로봇 `firmware/main.ts` (펌웨어 F1)
+- 구현: 웹 `src/core/robot/protocol.js`·`serial.js`, 로봇 `firmware/main.ts` (펌웨어 F2. F1에 WonderCam 태그 인식을 더한 것)
 - **이 문서, `protocol.js`, `firmware/`는 항상 같이 고친다.**
 
 ## 웹 → 로봇
@@ -19,6 +19,10 @@
 | `REST` | 쉬는 자세: 손가락·손목 모두 90° | `DONE,REST` | 확인됨 (F1, 2026-11-09) |
 | `SPEED,SLOW` / `SPEED,NORMAL` | 모든 이동·대기 시간 ×2 / ×1 | `DONE,SPEED` | 확인됨 (F1, POSE·반응 동작 모두, 2026-11-09) |
 | `PING` | 연결 확인 | `PONG` | 확인됨 (F1, 2026-11-09) |
+| `CAM,TAG` | WonderCam을 태그(AprilTag) 인식 모드로 바꾼다. 웹은 AIHand에 연결할 때 한 번 보낸다 | `DONE,CAM` / 카메라 없음 `ERR,NO_CAM` / 모드가 안 바뀜 `ERR,CAM_MODE` | 미확인 (F2) |
+
+- `CAM,NUM`(숫자 인식 모드)은 아직 없다. 실물 확인 뒤 같은 방식(`CAM,NUM` → `DONE,CAM`, 결과 `NUM,<숫자>` / `NUM,NONE`)으로 추가할 예정 [검증 필요]. 지금 보내면 `ERR,BAD_ARG`
+- 펌웨어 F1에 `CAM,TAG`를 보내면 `ERR,UNKNOWN_CMD`. 웹은 "펌웨어 F2가 필요해요"로 안내한다
 
 동작 각도·시간은 `docs/hardware-check.md` 3번·부록 5, 명령별 동작 시간은 `firmware/README.md`.
 
@@ -27,11 +31,23 @@
 | 줄 | 뜻 |
 |---|---|
 | `DONE,<명령>` | 명령 동작을 마침. `<명령>`은 받은 명령의 이름 부분 (`POSE,ROCK` → `DONE,POSE`) |
-| `TAG,<ID>` | 색깔 카드의 태그 인식. 웹의 `core/card`가 `tags.json`으로 ID를 색(`red` 등)으로 바꿔 `ctx.card.onCard({ color })`로 넘긴다. **[검증 필요]** 카드 인식 방식 미정: AprilTag 방식이면 이 줄을 쓰고, WonderCam 색상 인식 방식이면 색을 바로 보내는 줄로 바꿀 수 있다 (그때 이 문서·`protocol.js`·`firmware/`를 함께 고친다) |
+| `TAG,<번호>` | WonderCam에 보이는 태그(AprilTag tag36h11) 번호. **바뀔 때만 한 번** 보낸다. 웹의 `core/card`가 `tags.json`으로 색(`0` 빨강, `1` 파랑, `2` 노랑, `3` 초록, `docs/cards.md` 3-A)으로 바꿔 `ctx.card.onCard({ color })`로 넘긴다. 미확인 (F2) |
+| `TAG,NONE` | 보이던 태그가 **0.5초 넘게** 안 보임 (카드를 치움). 웹은 `onCard`를 부르지 않고 "지금 보이는 카드"만 비운다. 미확인 (F2) |
 | `PONG` | `PING` 응답 |
 | `ERR,<내용>` | 오류. `ERR,UNKNOWN_CMD` (모르는 명령), `ERR,UNKNOWN_POSE` (모르는 손모양), `ERR,BAD_ARG` (값이 틀림). 오류가 나면 로봇은 움직이지 않는다 |
 
 ## 동작 규칙
+
+### 카드 인식 줄 (`TAG`, 펌웨어 F2)
+
+- 펌웨어는 켜질 때 모드를 바꾸지 않는다 (반복문에 늦게 들어가 `PING`에 못 답하지 않게). `TAG` 줄은 `CAM,TAG`가 성공한 뒤부터 나온다.
+- 명령을 처리하지 않을 때 약 0.1초마다 WonderCam 결과를 읽는다 (I2C). 명령 처리와 카메라 읽기는 펌웨어의 반복 하나에서 차례로 하므로, 서보가 움직이는 동안(시리얼 통로가 확장보드 쪽)에는 `TAG` 줄을 보내지 않는다.
+- 그래서 로봇 동작 중에 보여준 카드는 동작이 끝난 뒤에도 보이고 있으면 그때 알린다. 동작 중에 보여줬다 바로 치운 카드는 알리지 못한다.
+- 같은 카드를 계속 들고 있으면 다시 보내지 않는다. 다시 답하려면 카드를 내렸다가(0.5초 넘게) 다시 보여준다.
+- 태그가 여러 개 보이면 하나만 보낸다: 이미 알린 태그가 아직 보이면 그것, 아니면 가장 작은 번호.
+- 인식이 0.17~0.34초씩 끊기는 문제(`hardware-check.md` 4번) 때문에 사라짐은 0.5초 기다린다. 값은 종이 카드 테스트 후 조정 [검증 필요]
+- `CAM,TAG`로 모드를 바꾸면 보이던 카드는 없는 것으로 치고 처음부터 다시 알린다. 웹도 `DONE,CAM`을 받으면 같은 규칙.
+- `TAG` 줄은 명령 응답이 아니다. 명령의 `DONE`을 기다리는 중에 와도 된다 (웹 `serial.js`는 기다리는 명령과 상관없이 `core/card`로 넘긴다).
 
 - 웹은 명령을 **하나씩** 보낸다. 앞 명령의 `DONE`을 받은 뒤 다음 명령을 보낸다.
   (Mock도 같은 규칙으로 명령을 줄 세워 처리한다.)
@@ -50,18 +66,21 @@
 | `POSE`, `REST` | 3초 | 약 0.65초 / 1.25초 |
 | `REACT` | 10초 | OK 약 2.1초 / 4.1초, RETRY 약 3.5초 / 6.7초 |
 | `HELLO` | 10초 | 약 3.0초 / 5.8초 |
+| `CAM` | 6초 | 보통 0.1~0.2초. 최악 약 5.1초 = 카메라 다시 찾기 약 1초 + 모드 전환 약 4.1초 (공식 ChangeFunc: 0.1초 + 0.05초 × 80) |
 
 - 시간 초과나 `ERR`가 나도 `ctx.robot.*`는 reject 하지 않고 `{ type: 'ERR', message }`로 resolve 한다. 상태 표시줄에 알리고 활동은 계속한다. 잘못된 손모양 이름만 바로 에러를 낸다 (프로그램 코드 실수).
 - 시간 초과 뒤에는 다음 명령 전에 `PING`을 보내 `PONG`을 받을 때까지 기다린다 (최대 3번). 그 사이 늦게 온 `DONE`은 버린다. 3번 모두 `PONG`이 없으면 연결이 끊긴 것으로 본다.
 - 연결이 끊기면(USB 빠짐, 응답 없음) 로봇만 Mock(화면 속 로봇손)으로 돌아간다. 다시 연결하려면 상태 표시줄의 "AIHand 연결" 버튼을 누른다.
 - 웹 쪽에서 만드는 오류 `message`: `TIMEOUT`, `NO_RESPONSE`, `DISCONNECTED`, `NOT_CONNECTED` (로봇이 보내는 줄이 아님)
-- `TAG`·알 수 없는 줄(확장보드 잡음 등)은 기다리는 명령에 영향을 주지 않는다. `TAG`를 `core/card`로 넘기는 것은 아직 구현 전 (`TODO`)
+- `TAG`·알 수 없는 줄(확장보드 잡음 등)은 기다리는 명령에 영향을 주지 않는다. `TAG`는 `onTag`로 `core/card`에 넘긴다.
 
 ### 연결 순서
 
 1. 상태 표시줄 "AIHand 연결" 클릭 → Chrome 포트 고르기 창에서 micro:bit 선택
 2. 115200으로 열고 `PING` → `PONG` 확인 (최대 3번)
-3. 홈의 진행 속도로 `SPEED,SLOW|NORMAL` 전송. 홈에서 속도를 바꿀 때도 다시 보낸다
+3. `core/card`가 `CAM,TAG` 전송 → `DONE,CAM`이면 카드 입력이 실제 WonderCam으로 바뀐다. `ERR`면 카드만 Mock(키보드·버튼)으로 남고 로봇은 실제로 쓴다
+4. 홈의 진행 속도로 `SPEED,SLOW|NORMAL` 전송. 홈에서 속도를 바꿀 때도 다시 보낸다
+5. 연결이 끊기면 로봇·카드 모두 Mock으로 돌아간다. 다시 연결하면 2~4를 다시 한다
 
 ## 예시
 
@@ -72,8 +91,16 @@
 로봇 → 웹   DONE,POSE
 웹 → 로봇   REACT,OK
 로봇 → 웹   DONE,REACT
+웹 → 로봇   CAM,TAG
+로봇 → 웹   DONE,CAM
+(사용자가 빨강 카드를 보여줌)
+로봇 → 웹   TAG,0
+(카드를 치움, 0.5초 뒤)
+로봇 → 웹   TAG,NONE
 ```
 
 ## Mock 모드
 
 `src/core/robot/mock.js`는 실제로 보내지 않고, `protocol.js`로 같은 문자열을 만들어 화면에 "보낸 명령"으로 보여준 뒤 0.8초 뒤 `DONE`을 받은 것처럼 처리한다.
+
+색 카드 Mock: `src/core/card/mock.js`. 개발자 입력의 색 버튼이나 키보드 R/B/Y/G로 `onCard({ color })`를 낸다. 실제 WonderCam이 연결되어 있어도 이 입력은 계속 동작한다 (카드가 안 읽힐 때 대신 입력).

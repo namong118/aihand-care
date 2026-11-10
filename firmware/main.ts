@@ -1,6 +1,7 @@
-// AIHand 펌웨어 F1 (로봇 통신 프로토콜 v1)
+// AIHand 펌웨어 F2 (로봇 통신 프로토콜 v1 + WonderCam 태그 인식)
 // MakeCode(micro:bit) JavaScript 탭에 이 파일 전체를 붙여 넣는다.
-// Hiwonder 확장(StartbitV2 등)은 추가하지 않는다. "Initialize StartbitV2" 블록도 쓰지 않는다.
+// Hiwonder 확장(StartbitV2, WonderCam 모두)은 추가하지 않는다. "Initialize StartbitV2" 블록도 쓰지 않는다.
+// WonderCam 은 공식 확장(github.com/Hiwonder/WonderCam)과 같은 I2C 읽기·쓰기를 이 파일 안에 직접 넣었다.
 //
 // 프로토콜: docs/protocol.md. 이 파일, src/core/robot/protocol.js, docs/protocol.md 는 항상 같이 고친다.
 // 동작 설계: docs/hardware-check.md 부록 5 확정안. 타이밍·시리얼 처리: 테스트 코드 v8 그대로.
@@ -12,11 +13,17 @@
 //   REACT,OK|RETRY     → DONE,REACT
 //   REST               → DONE,REST
 //   SPEED,SLOW|NORMAL  → DONE,SPEED
+//   CAM,TAG            → DONE,CAM       (WonderCam 태그 모드. 카메라 없음 ERR,NO_CAM / 전환 안 됨 ERR,CAM_MODE)
+//                                        켜질 때는 모드를 바꾸지 않는다. TAG 줄은 CAM,TAG 뒤부터 나온다
 //   그 밖              → ERR,UNKNOWN_CMD / ERR,UNKNOWN_POSE / ERR,BAD_ARG
+//
+// 로봇 → 웹 (명령과 상관없이 보냄)
+//   TAG,<번호>         WonderCam 에 보이는 태그가 바뀌었을 때 한 번 (예: TAG,0)
+//   TAG,NONE           보이던 태그가 0.5초 넘게 안 보일 때 한 번
 //
 // DONE 은 정해진 시간이 지나면 보낸다. 서보가 실제로 도착했다는 뜻이 아니다 (부록 4).
 
-const FIRMWARE_VERSION = "F1" // 켜질 때 LED에 잠깐 보여준다 (프로토콜과 무관)
+const FIRMWARE_VERSION = "F2" // 켜질 때 LED에 잠깐 보여준다 (프로토콜과 무관)
 
 // ---------- 안전 범위 (상수: 실행 중 바꾸는 명령을 두지 않는다) ----------
 const FINGER_MIN = 50
@@ -31,6 +38,16 @@ const SETTLE_MS = 30
 // 속도 배수: NORMAL 1, SLOW 2 (모든 이동·대기 시간에 곱한다)
 let speedK = 1
 
+// ---------- USB 로 한 줄 보내기 ----------
+// 시리얼 통로가 확장보드 쪽으로 돌려져 있는 동안 보내면 글자가 확장보드로 가 버린다.
+// 그래서 모든 응답은 send() 로만 보내고, 확장보드 쪽이면 보내지 않는다.
+// (명령 처리와 카메라 확인은 맨 아래 forever 하나에서 차례로 하므로 원래 겹치지 않는다. 이건 안전장치)
+let onBoard = false
+function send(line: string) {
+    if (onBoard) return
+    serial.writeLine(line)
+}
+
 // ---------- 확장보드 서보 ----------
 // StartbitV2 setPwmServo 와 같은 형식 (180도 범위). 반드시 toBoard() 상태에서 부른다.
 function servo(index: number, angle: number, ms: number) {
@@ -44,11 +61,13 @@ function servo(index: number, angle: number, ms: number) {
 
 // micro:bit 시리얼 통로는 하나뿐이다. 서보 명령을 보낼 때만 확장보드(P12·P8)로 돌린다.
 function toBoard() {
+    onBoard = true
     serial.redirect(SerialPin.P12, SerialPin.P8, BaudRate.BaudRate115200)
 }
 function toUSB() {
     serial.redirectToUSB()
     serial.readString() // 확장보드 상태 메시지(A......$) 남은 것 버리기
+    onBoard = false
 }
 
 // 여러 서보를 한 번에 보내고 USB로 되돌린 뒤 wait ms 기다린다.
@@ -117,41 +136,140 @@ function doHello() {
     doRest()
 }
 
+// ---------- WonderCam (I2C 주소 0x32, hardware-check.md 4번·부록 6) ----------
+// I2C 는 USB 시리얼·확장보드 시리얼과 다른 핀이라 통로 전환과 상관없다.
+const CAM_ADDR = 0x32
+const FUNC_TAG = 7         // WonderCam 기능 번호: 7 = AprilTag (5 = 색상, 10 = 숫자 인식)
+const REG_FUNC = 0x0035    // 지금 기능 번호 (읽기) / 기능 바꾸기 (쓰기)
+const REG_TAG = 0x1E00     // AprilTag 결과: [1] = 태그 개수, [2..] = 태그 번호들
+const TAG_LEN = 512        // 공식 확장과 같은 길이로 읽는다 (CAM1 실물 확인한 방식 그대로)
+const POLL_MS = 100        // 명령이 없을 때 이 간격으로 카메라 결과를 읽는다
+const LOST_MS = 500        // 이 시간 넘게 안 보여야 카드가 사라진 것으로 친다 (인식이 0.17~0.34초씩 끊김)
+
+let camOk = false
+let tagOn = false          // CAM,TAG 가 성공한 뒤에만 true. 이때만 카메라를 읽고 TAG 줄을 보낸다
+let shownTag = -1          // 웹에 마지막으로 알린 태그 번호. -1 = 없음
+let lastSeenAt = 0         // shownTag 를 마지막으로 본 시각
+let lastPoll = 0
+
+function camRead(reg: number, len: number): Buffer {
+    let req = pins.createBuffer(2)
+    req[0] = reg & 0xff
+    req[1] = (reg >> 8) & 0xff
+    pins.i2cWriteBuffer(CAM_ADDR, req)
+    return pins.i2cReadBuffer(CAM_ADDR, len)
+}
+function camWrite(reg: number, value: number) {
+    let b = pins.createBuffer(3)
+    b[0] = reg & 0xff
+    b[1] = (reg >> 8) & 0xff
+    b[2] = value & 0xff
+    pins.i2cWriteBuffer(CAM_ADDR, b)
+}
+// 0번 레지스터가 'v'(118)이면 WonderCam. 공식 wondercam_init 은 못 찾으면 무한 대기라서 쓰지 않는다
+function camAlive(): boolean {
+    return camRead(0, 1)[0] == 118
+}
+// tries 번 찾아 본다. 사이에 0.5초씩 쉰다 (마지막 뒤에는 쉬지 않음). 3번이면 못 찾을 때 약 1초
+function camFind(tries: number): boolean {
+    for (let k = 0; k < tries; k++) {
+        if (camAlive()) return true
+        if (k < tries - 1) basic.pause(500)
+    }
+    return false
+}
+// 기능 바꾸기. 공식 ChangeFunc 와 같다: 0x0035 에 쓰고 0.1초 대기 → 확인, 아니면 0.05초 쉬고 다시 (쉬기 최대 80번)
+// 최악 약 4.1초 (0.1 + 80 × 0.05). 공식은 끝내 안 바뀌어도 그냥 끝나지만, 여기서는 false 를 돌려 ERR,CAM_MODE 를 보낸다
+function camSwitch(func: number): boolean {
+    let count = 0
+    camWrite(REG_FUNC, func)
+    basic.pause(100)
+    while (camRead(REG_FUNC, 1)[0] != func) {
+        if (count >= 80) return false
+        basic.pause(50)
+        count++
+    }
+    return true
+}
+
+// 보이는 태그 하나 고르기: 알린 태그가 아직 보이면 그대로, 아니면 가장 작은 번호. 없으면 -1
+function seeTag(): number {
+    if (camRead(REG_FUNC, 1)[0] != FUNC_TAG) return -1 // 카메라 메뉴에서 기능을 바꾼 경우
+    let r = camRead(REG_TAG, TAG_LEN)
+    let n = r.getNumber(NumberFormat.Int8LE, 1)
+    let pick = -1
+    for (let i = 2; i < 2 + n && i < r.length; i++) {
+        let id = r[i]
+        if (id == shownTag) return id
+        if (pick < 0 || id < pick) pick = id
+    }
+    return pick
+}
+
+// 바뀔 때만 보낸다. 사라짐은 LOST_MS 동안 계속 안 보일 때만
+function pollTag() {
+    let id = seeTag()
+    let now = input.runningTime()
+    if (id >= 0) {
+        lastSeenAt = now
+        if (id != shownTag) {
+            shownTag = id
+            send("TAG," + id)
+        }
+    } else if (shownTag >= 0 && now - lastSeenAt > LOST_MS) {
+        shownTag = -1
+        send("TAG,NONE")
+    }
+}
+
 // ---------- 명령 처리 ----------
 // 명령 하나 = 함수 하나. 새 명령은 cmdXxx 함수를 만들고 handle() 에 한 줄 추가한다.
 // (명령을 추가하면 docs/protocol.md 와 src/core/robot/protocol.js 도 함께 고친다)
 
 function cmdPing(arg: string) {
-    if (arg != "") { serial.writeLine("ERR,BAD_ARG"); return }
-    serial.writeLine("PONG")
+    if (arg != "") { send("ERR,BAD_ARG"); return }
+    send("PONG")
 }
 function cmdHello(arg: string) {
-    if (arg != "") { serial.writeLine("ERR,BAD_ARG"); return }
+    if (arg != "") { send("ERR,BAD_ARG"); return }
     doHello()
-    serial.writeLine("DONE,HELLO")
+    send("DONE,HELLO")
 }
 function cmdPose(arg: string) {
     let i = POSE_NAMES.indexOf(arg)
-    if (i < 0) { serial.writeLine("ERR,UNKNOWN_POSE"); return }
+    if (i < 0) { send("ERR,UNKNOWN_POSE"); return }
     doPose(i)
-    serial.writeLine("DONE,POSE")
+    send("DONE,POSE")
 }
 function cmdReact(arg: string) {
     if (arg == "OK") doReactOk()
     else if (arg == "RETRY") doReactRetry()
-    else { serial.writeLine("ERR,BAD_ARG"); return }
-    serial.writeLine("DONE,REACT")
+    else { send("ERR,BAD_ARG"); return }
+    send("DONE,REACT")
 }
 function cmdRest(arg: string) {
-    if (arg != "") { serial.writeLine("ERR,BAD_ARG"); return }
+    if (arg != "") { send("ERR,BAD_ARG"); return }
     doRest()
-    serial.writeLine("DONE,REST")
+    send("DONE,REST")
+}
+// CAM,TAG: WonderCam 을 태그 모드로. 켜질 때 못 찾았으면 여기서 다시 찾는다 (카메라가 늦게 켜진 경우)
+// 걸리는 시간: 카메라 없음 약 1초 / 있음 보통 0.1~0.2초, 최악 약 5.1초 (찾기 1초 + 전환 4.1초). 웹 시간 초과 6초
+// 모드를 바꾸면 보이던 카드는 없는 것으로 치고 처음부터 다시 알린다 (웹도 DONE,CAM 을 받으면 같은 규칙)
+// [검증 필요] 숫자 인식 모드(CAM,NUM)는 실물 확인 뒤 다음 PR
+function cmdCam(arg: string) {
+    if (arg != "TAG") { send("ERR,BAD_ARG"); return }
+    if (!camOk) camOk = camFind(3)
+    if (!camOk) { tagOn = false; send("ERR,NO_CAM"); return }
+    if (!camSwitch(FUNC_TAG)) { tagOn = false; send("ERR,CAM_MODE"); return }
+    shownTag = -1
+    tagOn = true
+    send("DONE,CAM")
 }
 function cmdSpeed(arg: string) {
     if (arg == "SLOW") speedK = 2
     else if (arg == "NORMAL") speedK = 1
-    else { serial.writeLine("ERR,BAD_ARG"); return }
-    serial.writeLine("DONE,SPEED")
+    else { send("ERR,BAD_ARG"); return }
+    send("DONE,SPEED")
 }
 
 // "POSE,ROCK" → 이름 "POSE", 값 "ROCK"
@@ -166,16 +284,25 @@ function handle(line: string) {
     else if (name == "REACT") cmdReact(arg)
     else if (name == "REST") cmdRest(arg)
     else if (name == "SPEED") cmdSpeed(arg)
-    else serial.writeLine("ERR,UNKNOWN_CMD")
+    else if (name == "CAM") cmdCam(arg)
+    else send("ERR,UNKNOWN_CMD")
 }
 
 // ---------- 시작 ----------
 toUSB()
-basic.showString(FIRMWARE_VERSION) // 펌웨어 버전 확인용. 켜질 때 서보는 움직이지 않는다
-basic.showIcon(IconNames.Yes)
+basic.showString(FIRMWARE_VERSION) // 펌웨어 버전 확인용. 켜질 때 서보는 움직이지 않는다 (글자가 지나가는 약 2.5초 동안 카메라도 켜진다)
+// 켜질 때는 카메라를 한 번만 확인하고 기다리지 않는다. 모드 전환(최악 4.1초)도 하지 않는다.
+// 여기서 오래 막히면 반복문에 늦게 들어가 웹의 PING(1.5초 × 3번)에 답하지 못하기 때문. 반복문까지 F1 과 같은 약 3초
+// 태그 모드 전환은 웹이 연결할 때 보내는 CAM,TAG 에서 한다 (Serial Terminal 에서는 직접 CAM,TAG 입력)
+camOk = camAlive()
+if (camOk) basic.showIcon(IconNames.Yes) // ✓ 로봇·WonderCam 준비
+else basic.showIcon(IconNames.No)        // ✖ 지금은 WonderCam 이 안 보임. CAM,TAG 때 다시 찾는다 (로봇 명령은 그대로)
 
 const MAX_LINE = 40 // 이보다 긴 줄은 잡음으로 보고 버린다
 let buf = ""
+// 명령 처리와 카메라 확인을 이 반복 하나에서 차례로 한다.
+// 명령을 처리하는 동안(서보 동작 중)에는 카메라를 읽지 않는다. 그래서 동작 중에는 카메라 줄이 끼어들 수 없고,
+// 동작 중에 보여준 카드는 동작이 끝난 뒤에도 보이고 있으면 그때 알린다 (보여줬다 바로 치우면 알리지 못한다).
 basic.forever(function () {
     let s = serial.readString()
     for (let i = 0; i < s.length; i++) {
@@ -187,6 +314,10 @@ basic.forever(function () {
         } else if (buf.length < MAX_LINE) {
             buf = buf + c
         }
+    }
+    if (tagOn && input.runningTime() - lastPoll >= POLL_MS) {
+        lastPoll = input.runningTime()
+        pollTag()
     }
     basic.pause(20)
 })
