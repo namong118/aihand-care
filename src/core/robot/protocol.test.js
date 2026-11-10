@@ -22,13 +22,14 @@ describe('명령 만들기', () => {
   });
 });
 
-describe('cam (WonderCam 모드, 펌웨어 F2)', () => {
-  it('CAM,TAG 를 만든다', () => {
+describe('cam (WonderCam 모드, 펌웨어 F2·F3)', () => {
+  it('CAM,TAG 와 CAM,NUM 을 만든다', () => {
     expect(P.cam('TAG')).toBe('CAM,TAG\n');
+    expect(P.cam('NUM')).toBe('CAM,NUM\n');
   });
-  it('숫자 모드는 아직 없다 (다음 PR)', () => {
-    expect(() => P.cam('NUM')).toThrow();
-    expect(() => P.cam('tag')).toThrow();
+  it('그 밖의 모드는 바로 에러', () => {
+    expect(() => P.cam('COLOR')).toThrow();
+    expect(() => P.cam('num')).toThrow();
   });
 });
 
@@ -38,6 +39,8 @@ describe('parseLine', () => {
     expect(P.parseLine('DONE,HELLO\r\n')).toEqual({ type: 'DONE', command: 'HELLO' });
     expect(P.parseLine('TAG,3')).toEqual({ type: 'TAG', id: '3' });
     expect(P.parseLine('TAG,NONE')).toEqual({ type: 'TAG', id: null });
+    expect(P.parseLine('NUM,3')).toEqual({ type: 'NUM', number: 3 });
+    expect(P.parseLine('NUM,NONE')).toEqual({ type: 'NUM', number: null });
     expect(P.parseLine('PONG')).toEqual({ type: 'PONG' });
     expect(P.parseLine('ERR,UNKNOWN_POSE')).toEqual({ type: 'ERR', message: 'UNKNOWN_POSE' });
   });
@@ -46,6 +49,14 @@ describe('parseLine', () => {
     expect(P.parseLine('HELLO')).toEqual({ type: 'UNKNOWN', raw: 'HELLO' });
     expect(P.parseLine('DONE')).toEqual({ type: 'UNKNOWN', raw: 'DONE' });
     expect(P.parseLine('')).toEqual({ type: 'UNKNOWN', raw: '' });
+  });
+
+  it('숫자 카드는 1~5 만. 그 밖과 RAW 측정 줄은 UNKNOWN (웹은 무시)', () => {
+    expect(P.parseLine('NUM,0').type).toBe('UNKNOWN');
+    expect(P.parseLine('NUM,6').type).toBe('UNKNOWN');
+    expect(P.parseLine('NUM,12').type).toBe('UNKNOWN');
+    expect(P.parseLine('NUM').type).toBe('UNKNOWN');
+    expect(P.parseLine('RAW,NUM,3,87')).toEqual({ type: 'UNKNOWN', raw: 'RAW,NUM,3,87' });
   });
 
   it('commandName 은 보낸 명령의 이름만 꺼낸다', () => {

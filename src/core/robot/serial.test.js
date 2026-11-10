@@ -239,4 +239,18 @@ describe('createSerialRobot', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(result).toEqual({ type: 'DONE', command: 'CAM' });
   });
+
+  it('NUM 줄은 onNumber 로 넘기고, RAW 측정 줄은 무시한다 (기다리는 명령에도 영향 없음)', async () => {
+    const f = fakePort();
+    const onNumber = vi.fn();
+    const onTag = vi.fn();
+    const robot = createSerialRobot({ port: f.port, onNumber, onTag });
+    const p = robot.camMode('NUM');
+    await untilSent(f.sent, 1);
+    expect(f.sent[0]).toBe('CAM,NUM\n');
+    f.robotSays('RAW,NUM,3,87\nNUM,3\nRAW,NUM,0,12\nNUM,NONE\nDONE,CAM\n');
+    await expect(p).resolves.toEqual({ type: 'DONE', command: 'CAM' });
+    expect(onNumber.mock.calls).toEqual([[3], [null]]);
+    expect(onTag).not.toHaveBeenCalled();
+  });
 });
