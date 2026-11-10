@@ -40,7 +40,11 @@ export function createContext(settings) {
       hello: () => robot.hello(),
       rest: () => robot.rest(),
     },
-    card: { onCard: (cb) => card.onCard(cb) }, // cb({ color: 'red' | 'blue' | 'yellow' | 'green' })
+    card: {
+      onCard: (cb) => card.onCard(cb), // 색 카드: cb({ color: 'red' | 'blue' | 'yellow' | 'green' })
+      onNumber: (cb) => card.onNumber(cb), // 숫자 카드: cb({ number: 1~5 })
+      ready: () => card.ready(), // WonderCam 모드 바꾸기가 끝날 때까지 기다림 (실제 카메라 준비면 true)
+    },
     log: { record: (rec) => log.record(rec) },
     settings,
   };

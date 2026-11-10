@@ -8,7 +8,7 @@ import { createSerialRobot, openSerialPort, isSerialSupported } from './serial.j
 /**
  * @returns 로봇 전환기. ctx.robot 함수(hello, showPose, react, rest)는 지금 쓰는 장치로 보낸다.
  *          대시보드용: connect, setSpeed, status, onChange, mountControls
- *          core/card 용: onTag(WonderCam 이 읽은 태그 번호), camMode(WonderCam 모드 전환)
+ *          core/card 용: onTag(태그 번호), onNumber(숫자 카드), camMode(WonderCam 모드 전환)
  */
 export function createRobot({ poses, openPort = openSerialPort, supported = isSerialSupported }) {
   const mock = createMockRobot({ poses });
@@ -18,6 +18,7 @@ export function createRobot({ poses, openPort = openSerialPort, supported = isSe
   let note = '화면 속 로봇손';
   const listeners = new Set();
   const tagListeners = new Set();
+  const numberListeners = new Set();
 
   const active = () => serial ?? mock;
   function changed() {
@@ -81,12 +82,15 @@ export function createRobot({ poses, openPort = openSerialPort, supported = isSe
         onTag: (id) => {
           if (serial === robot) tagListeners.forEach((cb) => cb(id));
         },
+        onNumber: (n) => {
+          if (serial === robot) numberListeners.forEach((cb) => cb(n));
+        },
       });
       const ok = await robot.check();
       connecting = false;
       if (!ok) {
         await robot.close();
-        setNote('AIHand 가 응답하지 않아요. 펌웨어 F2 와 전원을 확인해 주세요');
+        setNote('AIHand 가 응답하지 않아요. 펌웨어와 전원을 확인해 주세요');
         return false;
       }
       serial = robot;
@@ -102,7 +106,7 @@ export function createRobot({ poses, openPort = openSerialPort, supported = isSe
       return serial ? serial.speed(value) : Promise.resolve(null);
     },
 
-    /** WonderCam 모드 전환 ('TAG'). 실제 AIHand 에 연결되어 있지 않으면 null */
+    /** WonderCam 모드 전환 ('TAG' | 'NUM'). 실제 AIHand 에 연결되어 있지 않으면 null */
     camMode(mode) {
       return serial ? serial.camMode(mode) : Promise.resolve(null);
     },
@@ -111,6 +115,12 @@ export function createRobot({ poses, openPort = openSerialPort, supported = isSe
     onTag(cb) {
       tagListeners.add(cb);
       return () => tagListeners.delete(cb);
+    },
+
+    /** WonderCam 숫자 줄 구독. cb(n): 1~5, 숫자 카드가 사라지면 null */
+    onNumber(cb) {
+      numberListeners.add(cb);
+      return () => numberListeners.delete(cb);
     },
 
     /** 상태 표시줄용 */

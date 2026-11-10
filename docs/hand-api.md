@@ -93,7 +93,9 @@ AIHand가 이 손모양을 모두 만들 수 있는지는 아직 확인하지 �
 | `ctx.robot.react('ok' \| 'retry')` | Promise | 칭찬 / "다시 해 볼까요" 반응 |
 | `ctx.robot.hello()` | Promise | 인사 |
 | `ctx.robot.rest()` | Promise | 손 내리기 |
-| `ctx.card.onCard(cb)` | 구독 해제 함수 반환 | `cb({ color })`, color는 `'red'`·`'blue'`·`'yellow'`·`'green'`. 카드 ID는 넘어오지 않는다. Mock: 키보드 R/B/Y/G 또는 "카드 대신 입력" 버튼 |
+| `ctx.card.onCard(cb)` | 구독 해제 함수 반환 | `cb({ color })`, color는 `'red'`·`'blue'`·`'yellow'`·`'green'`. 카드 ID는 넘어오지 않는다. Mock: 키보드 R/B/Y/G 또는 "카드 대신 입력" 버튼. 구독하면 WonderCam이 태그 모드로 바뀐다 |
+| `ctx.card.onNumber(cb)` | 구독 해제 함수 반환 | 숫자 카드. `cb({ number })`, number는 1~5. Mock: 키보드 1~5 또는 숫자 버튼. 구독하면 WonderCam이 숫자 모드로 바뀐다 (펌웨어 F3) |
+| `ctx.card.ready()` | Promise&lt;boolean&gt; | 구독 뒤 WonderCam 모드 바꾸기(최대 약 5초)가 끝날 때까지 기다린다. 실제 카메라가 준비됐으면 `true`, Mock 입력만 되면 `false`. 카메라는 한 번에 한 모드라서 색 카드와 숫자 카드를 동시에 받을 수 없다 (가장 최근 구독 기준) |
 | `ctx.log.record(rec)` | 저장된 기록 | 회차가 끝날 때 공통 필드로 기록 (아래) |
 | `ctx.settings` | 객체 | `{ mock, difficulty: 'easy'\|'normal'\|'hard', speed: 'SLOW'\|'NORMAL' }` |
 

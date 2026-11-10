@@ -82,6 +82,9 @@ export default {
 - `ctx.card.onCard(cb)` → `cb({ color })`, 구독 해제 함수 반환
   - `color`: `'red' | 'blue' | 'yellow' | 'green'`. 사용자가 색깔 카드를 WonderCam에 보여주면 발생
   - 프로그램은 카드 ID를 모른다. ID→색 변환은 `core/card` 안에서만 한다 (카드 인식 방식은 [검증 필요])
+- `ctx.card.onNumber(cb)` → `cb({ number })`, 구독 해제 함수 반환. `number`: 1~5 (숫자 카드, WonderCam 숫자 인식)
+- `ctx.card.ready()` → WonderCam 모드 바꾸기가 끝나면 resolve (`true` = 실제 카메라 준비, `false` = Mock만)
+  - 카메라는 한 번에 한 모드. `onCard` 구독 → 태그 모드, `onNumber` 구독 → 숫자 모드로 core가 알아서 바꾼다
 - `ctx.log.record({ program, ...결과 })`
 - `ctx.settings` (Mock 여부, 진행 속도 등)
 
@@ -120,8 +123,8 @@ ctx.log.record({
 
 텍스트 한 줄 = 명령 하나, `\n`으로 끝난다. 자세한 내용은 `docs/protocol.md`.
 
-- 웹 → 로봇: `HELLO`, `POSE,<이름>`, `REACT,OK`, `REACT,RETRY`, `REST`, `SPEED,SLOW|NORMAL`, `PING`
-- 로봇 → 웹: `DONE,<명령>`, `TAG,<ID>`, `PONG`, `ERR,<내용>`
+- 웹 → 로봇: `HELLO`, `POSE,<이름>`, `REACT,OK`, `REACT,RETRY`, `REST`, `SPEED,SLOW|NORMAL`, `PING`, `CAM,TAG|NUM`
+- 로봇 → 웹: `DONE,<명령>`, `TAG,<번호>|NONE`, `NUM,<1~5>|NONE`, `PONG`, `ERR,<내용>`
 
 프로토콜을 바꾸는 변경은 `core/robot/protocol.js`, `firmware/`, `docs/protocol.md`를 함께 고친다.
 

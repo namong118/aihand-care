@@ -171,7 +171,7 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
 
 1. <https://makecode.microbit.org> 에서 **새 프로젝트**를 만듭니다. 확장은 추가하지 않습니다.
 2. JavaScript 탭에 [firmware/main.ts](firmware/main.ts) 전체를 붙여 넣고 다운로드합니다.
-3. micro:bit LED에 버전(F2)이 지나간 뒤 ✓가 나오면 준비 완료입니다. ✖가 나오면 WonderCam을 찾지 못한 것이고, 로봇 동작은 그대로 됩니다.
+3. micro:bit LED에 버전(F3)이 지나간 뒤 ✓가 나오면 준비 완료입니다. ✖가 나오면 WonderCam을 찾지 못한 것이고, 로봇 동작은 그대로 됩니다.
 4. 웹에서 연결하기 전에 **MakeCode 탭을 닫습니다.** 시리얼 포트는 한 프로그램만 쓸 수 있습니다.
 
 자세한 확인 절차는 [firmware/README.md](firmware/README.md)를 봐 주세요.
@@ -188,8 +188,8 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
 | `REACT,OK` / `REACT,RETRY` | 칭찬 / 다시 해 볼까요 반응 | `DONE,REACT` |
 | `REST` | 쉬는 자세 | `DONE,REST` |
 | `SPEED,SLOW` / `SPEED,NORMAL` | 동작 속도 | `DONE,SPEED` |
-| `CAM,TAG` | WonderCam 태그 인식 모드 | `DONE,CAM` |
-| (명령 없이) | 카드가 바뀌면 태그 번호, 치우면 NONE | `TAG,<번호>` / `TAG,NONE` |
+| `CAM,TAG` / `CAM,NUM` | WonderCam 태그(색 카드) / 숫자 인식 모드 | `DONE,CAM` |
+| (명령 없이) | 카드가 바뀌면 태그 번호·숫자, 치우면 NONE | `TAG,<번호>` / `NUM,<1~5>` / `…,NONE` |
 
 잘못된 명령에는 `ERR,UNKNOWN_CMD`, `ERR,UNKNOWN_POSE`, `ERR,BAD_ARG`로 답합니다.
 프로토콜을 바꿀 때는 `src/core/robot/protocol.js`, `firmware/`, `docs/protocol.md`를 **같은 PR에서 함께** 고칩니다. 전체 규약은 [docs/protocol.md](docs/protocol.md)에 있습니다.
