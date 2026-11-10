@@ -1,12 +1,13 @@
 // 개발자 입력 (Mock): 페이지 맨 아래 점선 영역. 기본은 접힘.
-// 손 인식·색 카드 대신 버튼으로 입력하는 패널과 웹캠·WonderCam 상태를 담는다.
-// 접혀 있어도 패널은 붙어 있으므로 키보드 R/B/Y/G 입력은 계속 동작한다.
+// 손 인식·색 카드·숫자 카드 대신 버튼으로 입력하는 패널과 웹캠·WonderCam 상태를 담는다.
+// 접혀 있어도 패널은 붙어 있으므로 키보드 R/B/Y/G·1~5 입력은 계속 동작한다.
 
 import { h } from '../ui/components.js';
 
 const STATE_TEXT = {
   mock: '가상',
   checking: '확인 중',
+  switching: '모드 바꾸는 중', // 화면에는 "WonderCam: 모드 바꾸는 중 (숫자 모드로)"
   connected: '연결됨',
   missing: '찾지 못함',
   disconnected: '연결 안 됨',
