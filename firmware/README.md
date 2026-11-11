@@ -7,7 +7,7 @@ WonderCam에 보인 색깔 카드의 태그 번호(STEP 3)와 숫자 카드의 �
 - 버전: **F3** (켜질 때 LED에 `F3`가 지나간 뒤 ✓ 또는 ✖ 아이콘)
   - F1: 로봇 명령 (2026-11-09 실물 확인)
   - F2: F1 + WonderCam 태그 인식 (`CAM,TAG`, `TAG,<번호>`, `TAG,NONE`). 아직 실물 미확인
-  - F3: F2 + WonderCam 숫자 인식 (`CAM,NUM`, `NUM,<1~5>`, `NUM,NONE`, 측정용 `DEBUG_NUM`). 2026-11-11 Serial Terminal 실물 확인 (10번 제외)
+  - F3: F2 + WonderCam 숫자 인식 (`CAM,NUM`, `NUM,<1~5>`, `NUM,NONE`, 측정용 `DEBUG_NUM`). 2026-11-11 Serial Terminal 실물 확인
 - 동작 설계: `docs/hardware-check.md` 부록 5 확정안, 타이밍·시리얼 처리: 테스트 코드 v8
 - **이 폴더, `src/core/robot/protocol.js`, `docs/protocol.md`는 항상 같이 고친다.**
 
