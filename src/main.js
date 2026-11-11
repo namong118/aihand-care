@@ -34,7 +34,13 @@ function updateStatusbar() {
   const list = devices.status();
   renderStatusbar(statusEl, {
     devices: list,
-    actions: { connectRobot, showResults: () => showResults(), toggleSettings },
+    actions: {
+      connectRobot,
+      startCamera: () => devices.hand.startCamera(),
+      stopCamera: () => devices.hand.stopCamera(),
+      showResults: () => showResults(),
+      toggleSettings,
+    },
     settingsOpen,
   });
   devPanel.renderStatus(list);
@@ -64,6 +70,23 @@ function toggleSettings(open = !settingsOpen) {
 function connectRobot() {
   devices.robot.connect({ speed: settings.speed });
 }
+
+// ---- 웹캠 미리 보기: 웹캠 손 인식이 켜져 있을 때만 화면 오른쪽 아래에 작게 보인다 ----
+const camEl = h('aside', { class: 'cam-preview', 'aria-label': '웹캠 화면', hidden: true });
+document.body.append(camEl);
+
+function updateCamView() {
+  const view = devices.hand.cameraView;
+  camEl.hidden = !view;
+  if (view && view.parentNode !== camEl) camEl.replaceChildren(view);
+  if (!view) camEl.replaceChildren();
+}
+
+// 손 인식 상태가 바뀌면 (켜는 중·켜짐·꺼짐·끊김) 상태 표시줄과 미리 보기를 갱신
+devices.hand.onChange(() => {
+  updateStatusbar();
+  updateCamView();
+});
 
 // ---- 개발자 입력 (Mock): 손모양·색 카드 입력 패널, 웹캠·WonderCam 상태. 맨 아래, 기본 접힘 ----
 const devPanel = createDevPanel(devices);

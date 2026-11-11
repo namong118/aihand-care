@@ -1,4 +1,4 @@
-// 상단 바: 앱 이름, 장치 상태 알약 2개(AIHand, 손 인식), "활동 기록"·"설정" 버튼.
+// 상단 바: 앱 이름, 장치 상태 알약 2개(AIHand, 손 인식)와 연결 버튼, "활동 기록"·"설정" 버튼.
 // 웹캠·WonderCam 상태는 맨 아래 개발자 입력 영역에 보여준다 (devpanel.js).
 // 상태는 색만이 아니라 글자로도 보여준다.
 
@@ -60,10 +60,31 @@ function robotPill(d, actions) {
   ];
 }
 
+function handPill(d, actions) {
+  if (d.state === 'connected') {
+    return [
+      h(
+        'span',
+        { class: 'pill pill-ok' },
+        h('span', { class: 'pill-dot', 'aria-hidden': 'true' }),
+        '손 인식 · 웹캠',
+      ),
+      actions.stopCamera ? outlineButton('웹캠 끄기', actions.stopCamera) : null,
+    ];
+  }
+  // 웹캠 꺼짐: 회색 알약(화면 버튼 또는 안내 문구) + "웹캠 켜기" 버튼
+  return [
+    h('span', { class: 'pill' }, `손 인식 · ${d.note ?? '화면 버튼'}`),
+    actions.startCamera
+      ? outlineButton(d.starting ? '켜는 중…' : '웹캠 켜기', actions.startCamera, { disabled: d.starting })
+      : null,
+  ];
+}
+
 /**
  * @param el        상단 바 자리 (#statusbar)
  * @param devices   devices.status() 결과
- * @param actions   { connectRobot(), showResults(), toggleSettings(), goHome() }
+ * @param actions   { connectRobot(), startCamera(), stopCamera(), showResults(), toggleSettings(), goHome() }
  * @param settingsOpen  설정 영역이 열려 있는지
  */
 export function renderStatusbar(el, { devices, actions = {}, settingsOpen = false }) {
@@ -80,7 +101,7 @@ export function renderStatusbar(el, { devices, actions = {}, settingsOpen = fals
         'div',
         { class: 'topbar-status', role: 'status', 'aria-label': '장치 상태' },
         robot ? robotPill(robot, actions) : null,
-        hand ? h('span', { class: 'pill' }, `${hand.label} · ${hand.note ?? ''}`) : null,
+        hand ? handPill(hand, actions) : null,
       ),
       h(
         'div',
