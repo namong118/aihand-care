@@ -77,9 +77,23 @@ AIHand가 이 손모양을 모두 만들 수 있는지는 아직 확인하지 �
 - 다른 손모양을 누르면 바뀌고 `stableMs`는 0부터 다시 센다. 같은 버튼을 다시 누르면 그대로 유지된다.
 - **손 내리기**를 누르면 `{ code: null, name: null, handedness: null, stableMs: 0 }`을 한 번 보내고 멈춘다.
 
-### 실제 손 인식 (구현 전)
+### 실제 손 인식 (웹캠 + MediaPipe)
 
-`src/core/hand/mediapipe.js`에서 웹캠 + MediaPipe Hand Landmarker로 구현 예정. 같은 `onPose` 형태를 지킨다.
+- 상단 바의 **"웹캠 켜기"** 버튼을 누르면 웹캠 손 인식으로 바뀐다. 처음 한 번 브라우저가 웹캠 사용 허락을 묻는다.
+- 켜져 있는 동안 화면 오른쪽 아래에 웹캠 미리 보기(손 관절 점·선, "인식: 브이(가위)" 같은 결과)가 보인다.
+- **"웹캠 끄기"**를 누르거나 웹캠이 끊기면 자동으로 Mock(화면 버튼)으로 돌아간다. 이때 `code: null`을 한 번 보낸다.
+- 웹캠이 켜져 있는 동안 개발자 입력의 손모양 버튼은 프로그램에 전달되지 않는다.
+- Mock과 **같은 `onPose` 형태**(0.1초마다, `{ code, name, handedness, stableMs }`)라서 프로그램 코드는 바꿀 필요가 없다.
+
+| 파일 | 하는 일 |
+|---|---|
+| `src/core/hand/fingers.js` | 손 관절 점 21개 → 5비트 code. 손끝이 가운데 마디보다 손목에서 멀면 "펴짐". 엄지는 새끼 뿌리·검지 뿌리와의 거리로 판단. 3프레임 연속으로 같아야 code가 바뀜(안정화) |
+| `src/core/hand/mediapipe.js` | 웹캠 열기, MediaPipe Hand Landmarker 실행, 미리 보기 그리기 |
+| `src/core/hand/index.js` | Mock ↔ 웹캠 전환 (`startCamera`, `stopCamera`, `status`) |
+
+인터넷이 없어도 동작하도록 모델(`public/models/hand_landmarker.task`)과 wasm(npm 패키지 `@mediapipe/tasks-vision`)을 앱 안에서 불러온다.
+
+[검증 필요] 판단 기준값(`FINGER_RATIO`, `THUMB_SPREAD`)은 실물 웹캠으로 7개 손모양을 확인하며 조정한다. 결과는 `docs/hardware-check.md` 5번에 기록한다.
 
 ---
 
