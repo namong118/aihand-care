@@ -19,7 +19,7 @@ export function createScreen(container) {
     intro(count, onStart) {
       set(
         message(
-          `로봇이 손가락으로 숫자 ${count}개를 차례로 보여줘요. 잘 보고 기억했다가, 같은 순서로 숫자 카드를 하나씩 보여 주세요.`,
+          `로봇이 손가락으로 숫자 ${count}개를 차례로 보여줘요. 잘 보고 기억했다가, 같은 순서로 숫자 카드를 하나씩 카메라 가까이(약 10~15cm) 보여 주세요.`,
           'info',
         ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
@@ -41,10 +41,11 @@ export function createScreen(container) {
      * 정답은 보여주지 않는다.
      */
     recall({ count, given }, onPick, onRestart) {
+      // 숫자 카드는 카메라에서 10~15cm일 때만 읽힌다 (docs/hardware-check.md 부록 8)
       set(
         h('p', { class: 'big-prompt' }, `기억한 숫자 카드를 순서대로 보여 주세요 (${given.length + 1} / ${count})`),
         given.length > 0 ? h('p', {}, `지금까지: ${join(given)}`) : null,
-        message('카드를 하나 보여 준 뒤에는 내려 주세요. 카드 대신 아래 숫자 버튼을 눌러도 돼요.', 'info'),
+        message('카드는 카메라 가까이(약 10~15cm) 보여 주세요. 하나 보여 준 뒤에는 내려 주세요. 카드 대신 아래 숫자 버튼을 눌러도 돼요.', 'info'),
         h(
           'div',
           { class: 'row', role: 'group', 'aria-label': '숫자 고르기' },
