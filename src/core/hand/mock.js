@@ -70,6 +70,10 @@ export function createMockHand({ poses, now = () => Date.now() }) {
     },
 
     // ---- Mock 패널 전용 (프로그램은 쓰지 않는다) ----
+    /** 버튼으로 손모양을 들고 있는 중이면 true. 웹캠이 켜져 있어도 이때는 버튼 입력이 우선이다 (hand/index.js) */
+    get holding() {
+      return currentCode !== null;
+    },
     select,
     lower,
     onView(cb) {
