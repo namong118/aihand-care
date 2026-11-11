@@ -125,7 +125,9 @@ function createWebcamBox(hand) {
     const i = cam.info();
     const size = i.width ? `${i.width}×${i.height}` : '해상도 확인 중';
     const pose = i.code === null ? '손 없음' : `${i.code}${i.name ? ` (${i.name})` : ' (목록에 없는 모양)'}`;
-    info.textContent = `FPS ${i.fps.toFixed(1)} · ${i.delegate ?? '?'} · ${size} · 인식: ${pose}`;
+    // 엄지 판정 값: 기준값(fingers.js THRESHOLDS)을 실물로 맞출 때 쓴다
+    const thumb = i.thumb === null || i.thumb === undefined ? '' : ` · 엄지 바깥 ${i.thumb.toFixed(2)}`;
+    info.textContent = `FPS ${i.fps.toFixed(1)} · ${i.delegate ?? '?'} · ${size} · 인식: ${pose}${thumb}`;
   }
   setInterval(showInfo, 500);
 

@@ -19,19 +19,17 @@ const FINGERS = [
 ];
 const THUMB_TIP = 4;
 const THUMB_IP = 3;
-const INDEX_MCP = 5;
-const MIDDLE_MCP = 9;
 const PINKY_MCP = 17;
 
-// 판정 기준값. [검증 필요] 실물(라즈베리파이 + C270)로 손모양 7종을 해 보고 조정한다
+// 판정 기준값. 라즈베리파이 + C270 으로 다시 확인한다 [검증 필요]
 export const THRESHOLDS = {
   // 검지~새끼: (손목~손가락 끝) ÷ (손목~둘째 마디) 가 이보다 크면 펴짐.
   // 펴면 약 1.3, 접으면 1보다 작다
   finger: 1.1,
-  // 엄지: (엄지 끝~검지 뿌리) ÷ (손바닥 길이: 손목~중지 뿌리) 가 이보다 크고
-  thumbFar: 0.6,
-  // 엄지 끝이 엄지 셋째 마디보다 새끼 뿌리에서 더 멀면(이 배수 이상) 펴짐
-  thumbOut: 1.0,
+  // 엄지: (엄지 끝~새끼 뿌리) ÷ (엄지 셋째 마디~새끼 뿌리) 가 이보다 크면 펴짐 (엄지 끝이 바깥을 향함).
+  // 2026-11-11 개발 PC 웹캠 측정: 펴짐 손바닥 1.15·엄지 척 1.29, 접힘 손가락 넷 0.99·주먹 0.95 → 가운데 1.07.
+  // (엄지 끝~검지 뿌리 거리는 손바닥 0.45 < 손가락 넷 0.6 으로 거꾸로 나와 쓰지 않는다)
+  thumbOut: 1.07,
 };
 
 function dist(a, b) {
@@ -42,6 +40,14 @@ function dist(a, b) {
 }
 
 /**
+ * 엄지 판정 값 (기준값을 실물로 맞출 때 개발자 입력 측정 줄에 "엄지 바깥"으로 보여준다).
+ * (엄지 끝~새끼 뿌리) ÷ (엄지 셋째 마디~새끼 뿌리). THRESHOLDS.thumbOut 보다 크면 펴짐
+ */
+export function thumbOut(lm) {
+  return dist(lm[THUMB_TIP], lm[PINKY_MCP]) / (dist(lm[THUMB_IP], lm[PINKY_MCP]) || 1);
+}
+
+/**
  * 손가락별 펴짐 여부.
  * @param {{x:number,y:number,z?:number}[]} lm  랜드마크 21개
  * @returns {boolean[]} [엄지, 검지, 중지, 약지, 새끼], true = 펴짐
@@ -49,11 +55,7 @@ function dist(a, b) {
 export function fingersUp(lm, t = THRESHOLDS) {
   if (!Array.isArray(lm) || lm.length < 21) throw new Error('랜드마크 21개가 필요합니다');
   const wrist = lm[WRIST];
-  const palm = dist(wrist, lm[MIDDLE_MCP]) || 1;
-
-  const thumb =
-    dist(lm[THUMB_TIP], lm[INDEX_MCP]) / palm > t.thumbFar &&
-    dist(lm[THUMB_TIP], lm[PINKY_MCP]) > dist(lm[THUMB_IP], lm[PINKY_MCP]) * t.thumbOut;
+  const thumb = thumbOut(lm) > t.thumbOut;
 
   const others = FINGERS.map(([tip, pip]) => dist(wrist, lm[tip]) > dist(wrist, lm[pip]) * t.finger);
   return [thumb, ...others];

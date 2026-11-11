@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fingersUp, landmarksToCode, createCodeSmoother, flipHandedness } from './fingers.js';
+import { fingersUp, landmarksToCode, createCodeSmoother, flipHandedness, thumbOut, THRESHOLDS } from './fingers.js';
 import poses from '../../data/poses.json';
 
 // 시험용 손 만들기: 손바닥이 카메라를 보고 손가락이 위(+y)를 향한 오른손.
@@ -56,6 +56,20 @@ describe('landmarksToCode', () => {
 
   it('랜드마크가 모자라면 오류', () => {
     expect(() => fingersUp([P(0, 0)])).toThrow();
+  });
+});
+
+describe('thumbOut', () => {
+  it('펴진 엄지는 기준보다 크고, 접은 엄지는 작다', () => {
+    expect(thumbOut(makeHand('11111'))).toBeGreaterThan(THRESHOLDS.thumbOut);
+    expect(thumbOut(makeHand('10000'))).toBeGreaterThan(THRESHOLDS.thumbOut);
+    expect(thumbOut(makeHand('01111'))).toBeLessThan(THRESHOLDS.thumbOut);
+    expect(thumbOut(makeHand('00000'))).toBeLessThan(THRESHOLDS.thumbOut);
+  });
+
+  it('실물 측정값으로 본 기준: 펴짐 1.15·1.29, 접힘 0.99·0.95 를 가른다', () => {
+    for (const v of [1.15, 1.29]) expect(v).toBeGreaterThan(THRESHOLDS.thumbOut);
+    for (const v of [0.99, 0.95]) expect(v).toBeLessThan(THRESHOLDS.thumbOut);
   });
 });
 
