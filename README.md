@@ -154,25 +154,35 @@ npm run preview # dist/ 를 배포 주소와 같은 경로(/aihand-care/)로 미
 
 `npm run dev`·`npm run build` 앞에는 MediaPipe 실행 파일(WASM)을 `node_modules`에서 `public/mediapipe/wasm/`으로 복사하는 단계가 자동으로 돌아갑니다(`scripts/copy-mediapipe-wasm.js`). 손 인식 모델은 `public/models/hand_landmarker.task`에 들어 있습니다. 둘 다 같은 주소에서 불러오므로 인터넷(CDN)이 필요 없습니다.
 
-### 인터넷이 없는 시연장 (라즈베리파이에서 직접 띄우기)
-
-배포 주소(GitHub Pages)는 인터넷이 있어야 열립니다. 인터넷이 없을 때를 대비해, **인터넷이 될 때 미리** 라즈베리파이에서 한 번 빌드해 둡니다.
-
-```
-# 미리 (인터넷 필요): 코드 받기와 빌드
-git clone https://github.com/namong118/aihand-care.git
-cd aihand-care
-npm install
-npm run build
-
-# 시연장 (인터넷 없어도 됨)
-npm run preview
-```
-
-Chromium에서 `http://localhost:4173/aihand-care/`를 엽니다. `localhost` 주소에서는 https가 아니어도 웹캠과 Web Serial을 쓸 수 있습니다.
-인터넷이 없으면 글꼴(Google Fonts)만 기본 글꼴로 바뀌고, 손 인식·로봇 연결은 그대로 동작합니다.
-
 PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요. PR을 올리면 GitHub Actions에서도 자동으로 실행됩니다.
+
+### 라즈베리파이 준비 (시연 스테이션)
+
+시연은 라즈베리파이 5의 **Chromium**에서 합니다. 아래는 **인터넷이 될 때 미리** 한 번 해 둡니다.
+
+1. **Node.js**: `node -v`가 `v22.12.0` 이상이어야 합니다. Raspberry Pi OS의 기본 `apt` 버전은 이보다 낮을 수 있으니 <https://nodejs.org> 안내에 따라 LTS를 설치합니다.
+2. **한글 글꼴**: 화면 글꼴(Google Fonts)은 인터넷에서 받아 오므로, 인터넷이 없으면 기본 글꼴을 씁니다. 한글 글꼴이 없으면 한글이 깨질 수 있습니다.
+   ```
+   sudo apt install fonts-noto-cjk
+   ```
+3. **시리얼 권한** (AIHand 연결): 사용자가 `dialout` 그룹에 있어야 Chromium에서 micro:bit 포트를 열 수 있습니다.
+   ```
+   groups                          # 목록에 dialout 이 있으면 끝
+   sudo usermod -aG dialout $USER  # 없으면 추가한 뒤 로그아웃 → 다시 로그인
+   ```
+4. **코드 받기와 빌드**
+   ```
+   git clone https://github.com/namong118/aihand-care.git
+   cd aihand-care
+   npm install
+   npm run build
+   ```
+
+시연할 때:
+
+- 인터넷이 되면: Chromium에서 배포 주소 <https://namong118.github.io/aihand-care/>
+- **인터넷이 없으면**: `aihand-care` 폴더에서 `npm run preview`를 실행하고 Chromium에서 `http://localhost:4173/aihand-care/`를 엽니다.
+  손 인식 모델·WASM은 빌드 결과에 들어 있어서 인터넷 없이 동작합니다. `localhost` 주소에서는 https가 아니어도 웹캠과 Web Serial을 쓸 수 있습니다.
 
 ## 6. 하드웨어 구성
 
@@ -184,7 +194,7 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
 | WonderCam | 카드 인식 (태그, 숫자 등 카메라 내장 인식) |
 | 라즈베리파이 5 | 시연 스테이션 본체. Chromium으로 웹 앱 실행, AIHand(micro:bit)와 USB 연결 |
 | 로지텍 C270 웹캠 | 손 인식 (MediaPipe Hand Landmarker, 기본 640×480, 손 1개) |
-| 디스플레이 | 터치 7인치 또는 HDMI 모니터 |
+| 디스플레이 | 터치 7인치 또는 HDMI 모니터 (라즈베리파이 시험 후 확정) |
 | USB 스피커 | 안내 소리 |
 
 - 확장보드에는 어댑터 전원이 필요합니다. 전원을 끈 상태에서 micro:bit를 꽂고 켭니다.

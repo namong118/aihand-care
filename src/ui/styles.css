@@ -53,7 +53,7 @@
   --r-btn: 12px;
   --r-start: 16px;
   --gap-cards: 24px;
-  --font-main: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-main: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans CJK KR', sans-serif; /* Noto: 라즈베리파이 오프라인 (fonts-noto-cjk) */
 
   /* ---- 프로그램 화면에서 쓰는 기존 변수 (각 STEP 화면이 그대로 쓴다) ---- */
   --bg: #ffffff;

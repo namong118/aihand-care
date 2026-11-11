@@ -109,8 +109,8 @@ STEP 3에서는 사용자가 **색깔 카드**(빨강·파랑·노랑·초록)�
 | 7개 손모양을 5비트 code로 구분하는 정확도 | 미확인 | | | 특히 `THUMB`, `THREE`, `FOUR`. 판정 기준값은 `src/core/hand/fingers.js`의 `THRESHOLDS` [검증 필요] |
 | 왼손·오른손 이름(handedness)이 맞는지 | 미확인 | | | MediaPipe는 거울 영상 기준이라 뒤집어 씀 (`flipHandedness`) [검증 필요] |
 | 고령자 손(굽은 손가락 등)에서 인식 | 미확인 | | | |
-| 인터넷 없이 라즈베리파이에서 동작 (`npm run preview`) | 미확인 | | | README "인터넷이 없는 시연장". 모델(`public/models/`, sha256 `fbc2a300…07cde1`)과 WASM(빌드 때 복사)은 레포·빌드에 포함 |
-| 라즈베리파이 Chromium에서 Web Serial로 AIHand 연결 | 미확인 | | | Linux에서는 사용자에게 시리얼 포트 권한(`dialout` 그룹)이 필요할 수 있음 [검증 필요] |
+| 인터넷 없이 라즈베리파이에서 동작 (`npm run preview`) | 미확인 | | | README "라즈베리파이 준비". 모델(`public/models/`, sha256 `fbc2a300…07cde1`)과 WASM(빌드 때 복사)은 레포·빌드에 포함 |
+| 라즈베리파이 Chromium에서 Web Serial로 AIHand 연결 | 미확인 | | | Linux에서는 사용자에게 시리얼 포트 권한(`dialout` 그룹)이 필요할 수 있음 (README "라즈베리파이 준비" 3번) [검증 필요] |
 
 ## 부록 1: 연결 테스트 방법
 
