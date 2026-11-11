@@ -134,9 +134,10 @@ function createWebcamBox(hand) {
     const list = await hand.listCameras();
     if (list.length === 0) return;
     camerasLoaded = true;
+    // replaceChildren 은 배열을 펼치지 않으므로 ... 로 펼쳐서 넘긴다
     cameraSelect.replaceChildren(
       h('option', { value: '' }, '기본 카메라'),
-      list.map((c) => h('option', { value: c.deviceId }, c.label)),
+      ...list.map((c) => h('option', { value: c.deviceId }, c.label)),
     );
     cameraSelect.value = deviceId;
   }
