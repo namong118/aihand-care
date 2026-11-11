@@ -93,7 +93,7 @@ AIHand가 이 손모양을 모두 만들 수 있는지는 아직 확인하지 �
 
 인터넷이 없어도 동작하도록 모델(`public/models/hand_landmarker.task`)과 wasm(npm 패키지 `@mediapipe/tasks-vision`)을 앱 안에서 불러온다.
 
-[검증 필요] 판단 기준값(`FINGER_RATIO`, `THUMB_SPREAD`)은 실물 웹캠으로 7개 손모양을 확인하며 조정한다. 결과는 `docs/hardware-check.md` 5번에 기록한다.
+판단 기준값(`FINGER_RATIO` 1.1, `THUMB_SPREAD` 0.5)으로 7개 손모양 인식을 실물 웹캠으로 확인했다 (2026-11-11). 고령자 손·조명·거리는 아직 확인 전이다 [검증 필요]. 결과는 `docs/hardware-check.md` 5번에 기록한다.
 
 ---
 
