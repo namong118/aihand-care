@@ -86,7 +86,7 @@ export function createMockHand({ poses, now = () => Date.now() }) {
     mountControls(container) {
       container.innerHTML = '';
       const title = document.createElement('h2');
-      title.textContent = '손모양 입력 (손 인식 대신)';
+      title.textContent = '사용자 손모양 입력 (웹캠 손 인식 대신 · 로봇은 안 움직여요)';
       const status = document.createElement('p');
       status.className = 'mock-status';
       status.textContent = '지금: 손 내림';
