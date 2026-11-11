@@ -1,0 +1,94 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>코드 색 카드 (방식 C 제안)</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin: 0; font-family: "Malgun Gothic", sans-serif; color: #111; }
+.page { width: 210mm; height: 297mm; position: relative; page-break-after: always; overflow: hidden; }
+.page:last-child { page-break-after: auto; }
+.sheet { position: absolute; left: 12mm; top: 11mm; display: grid; grid-template-columns: 90mm 90mm; grid-template-rows: 133mm 133mm; column-gap: 6mm; row-gap: 8mm; }
+.card { width: 90mm; height: 133mm; outline: .25mm dashed #b9bec7; }
+.swatch { width: 90mm; height: 90mm; }
+.memo { height: 43mm; display: flex; align-items: center; gap: 3mm; padding: 0 3mm; }
+.qrbox { background: #fff; display: flex; align-items: center; justify-content: center; }
+.txt .name { font-size: 15mm; font-weight: 900; letter-spacing: 1mm; line-height: 1; }
+.txt .sub { font-size: 3mm; color: #555; margin-top: 2mm; line-height: 1.4; }
+.gsheet { position: absolute; left: 12mm; top: 10mm; display: grid; grid-template-columns: 90mm 90mm; grid-template-rows: repeat(3, 88mm); column-gap: 6mm; row-gap: 5mm; }
+.gcard { width: 90mm; height: 88mm; border: 3mm solid; border-radius: 4mm; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2mm; outline: .25mm dashed #b9bec7; outline-offset: 1mm; }
+.gname { font-size: 13mm; font-weight: 900; line-height: 1; }
+.gsub { font-size: 3.2mm; color: #555; }
+.foot { position: absolute; left: 12mm; right: 12mm; bottom: 4mm; font-size: 3mm; color: #777; }
+.guide { padding: 18mm 20mm; font-size: 4.3mm; line-height: 1.65; }
+.guide h1 { font-size: 8mm; margin: 0 0 6mm; } .guide h2 { font-size: 5.4mm; margin: 7mm 0 2mm; border-bottom: .4mm solid #ddd; }
+</style></head><body>
+<section class="page"><div class="sheet">
+<div class="card">
+  <div class="swatch" style="background:#e3121b"></div>
+  <div class="memo">
+    <div class="qrbox"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="34.0mm" height="34.0mm" viewBox="0 0 34.0 34.0" class="segno"><path transform="scale(1.36)" class="qrline" stroke="#000" d="M2 2.5h7m2 0h1m1 0h1m2 0h7m-21 1h1m5 0h1m1 0h1m1 0h1m1 0h1m1 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m3 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m1 0h3m3 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-10 1h2m-11 1h1m2 0h5m1 0h1m1 0h1m1 0h5m-20 1h2m2 0h1m2 0h2m1 0h1m2 0h1m1 0h1m3 0h1m-18 1h1m2 0h2m1 0h1m3 0h1m1 0h3m-17 1h1m1 0h4m2 0h1m1 0h4m1 0h1m1 0h1m-17 1h4m1 0h2m2 0h1m4 0h4m-11 1h3m-11 1h7m1 0h1m2 0h4m2 0h2m-19 1h1m5 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m2 0h1m-20 1h1m1 0h3m1 0h1m2 0h4m1 0h1m2 0h4m-21 1h1m1 0h3m1 0h1m2 0h2m2 0h3m1 0h2m-19 1h1m1 0h3m1 0h1m1 0h1m3 0h6m1 0h2m-21 1h1m5 0h1m2 0h4m2 0h1m1 0h2m1 0h1m-21 1h7m3 0h2m1 0h1m1 0h6"/></svg></div>
+    <div class="txt"><div class="name">빨강</div><div class="sub">흰 상자 = 메모 상자<br>QR: RED · 색 번호 1</div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="swatch" style="background:#0b4fd8"></div>
+  <div class="memo">
+    <div class="qrbox"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="34.0mm" height="34.0mm" viewBox="0 0 34.0 34.0" class="segno"><path transform="scale(1.36)" class="qrline" stroke="#000" d="M2 2.5h7m1 0h1m3 0h1m1 0h7m-21 1h1m5 0h1m1 0h5m1 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m2 0h3m2 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h5m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m5 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m1 0h3m3 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-10 1h2m-10 1h1m2 0h1m3 0h1m4 0h3m1 0h2m-21 1h1m2 0h3m2 0h1m2 0h2m1 0h1m2 0h3m-19 1h3m2 0h1m1 0h2m3 0h1m6 0h1m-18 1h1m1 0h1m1 0h1m2 0h1m1 0h2m4 0h3m-21 1h1m1 0h2m2 0h2m1 0h1m1 0h2m1 0h1m1 0h1m3 0h1m-13 1h4m1 0h6m1 0h1m-21 1h7m2 0h2m1 0h2m1 0h1m1 0h2m-19 1h1m5 0h1m2 0h1m2 0h1m2 0h3m1 0h2m-21 1h1m1 0h3m1 0h1m3 0h1m1 0h1m1 0h3m1 0h3m-21 1h1m1 0h3m1 0h1m1 0h2m4 0h1m2 0h4m-21 1h1m1 0h3m1 0h1m6 0h1m2 0h1m3 0h1m-21 1h1m5 0h1m3 0h1m5 0h1m1 0h1m1 0h1m-21 1h7m2 0h2m1 0h2m2 0h3"/></svg></div>
+    <div class="txt"><div class="name">파랑</div><div class="sub">흰 상자 = 메모 상자<br>QR: BLUE · 색 번호 2</div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="swatch" style="background:#ffd200"></div>
+  <div class="memo">
+    <div class="qrbox"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="34.0mm" height="34.0mm" viewBox="0 0 34.0 34.0" class="segno"><path transform="scale(1.36)" class="qrline" stroke="#000" d="M2 2.5h7m1 0h1m5 0h7m-21 1h1m5 0h1m3 0h1m1 0h1m1 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m2 0h3m2 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m5 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m2 0h3m2 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m2 0h2m3 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-11 1h3m-11 1h1m1 0h3m1 0h1m1 0h1m2 0h1m3 0h1m2 0h1m-20 1h5m2 0h2m1 0h1m1 0h1m5 0h1m-20 1h4m1 0h2m1 0h2m4 0h1m1 0h2m-18 1h1m2 0h3m1 0h2m3 0h3m2 0h3m-18 1h3m1 0h2m1 0h3m4 0h1m1 0h1m1 0h1m-13 1h2m1 0h1m3 0h1m2 0h3m-21 1h7m2 0h1m1 0h1m1 0h1m1 0h1m1 0h4m-21 1h1m5 0h1m1 0h3m1 0h1m2 0h3m2 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m1 0h4m1 0h1m1 0h2m1 0h1m-21 1h1m1 0h3m1 0h1m2 0h1m1 0h1m1 0h1m1 0h1m3 0h1m-20 1h1m1 0h3m1 0h1m1 0h1m1 0h1m3 0h1m1 0h1m3 0h1m-21 1h1m5 0h1m3 0h6m1 0h1m1 0h2m-21 1h7m3 0h2m1 0h2m1 0h1m1 0h1m1 0h1"/></svg></div>
+    <div class="txt"><div class="name">노랑</div><div class="sub">흰 상자 = 메모 상자<br>QR: YELLOW · 색 번호 3</div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="swatch" style="background:#1fa83a"></div>
+  <div class="memo">
+    <div class="qrbox"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="34.0mm" height="34.0mm" viewBox="0 0 34.0 34.0" class="segno"><path transform="scale(1.36)" class="qrline" stroke="#000" d="M2 2.5h7m2 0h2m3 0h7m-21 1h1m5 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m1 0h2m4 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m1 0h1m5 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-11 1h1m1 0h1m-11 1h1m2 0h6m2 0h1m1 0h5m-20 1h2m3 0h1m2 0h1m1 0h2m1 0h2m2 0h1m1 0h2m-21 1h1m1 0h5m4 0h1m1 0h2m3 0h2m-20 1h1m1 0h1m1 0h1m2 0h4m1 0h2m2 0h1m3 0h1m-21 1h4m2 0h2m1 0h4m1 0h1m2 0h2m-11 1h2m1 0h5m2 0h1m1 0h1m-21 1h7m1 0h5m1 0h6m-20 1h1m5 0h1m1 0h1m1 0h3m1 0h2m2 0h1m1 0h1m-21 1h1m1 0h3m1 0h1m2 0h4m2 0h2m2 0h2m-21 1h1m1 0h3m1 0h1m2 0h3m1 0h1m4 0h1m-19 1h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h1m2 0h4m-21 1h1m5 0h1m2 0h1m2 0h3m1 0h1m3 0h1m-21 1h7m3 0h1m1 0h1m4 0h4"/></svg></div>
+    <div class="txt"><div class="name">초록</div><div class="sub">흰 상자 = 메모 상자<br>QR: GREEN · 색 번호 4</div></div>
+  </div>
+</div></div><div class="foot">코드+색 카드 (1/1): 위 색 정사각형은 색 모드, 아래 메모 상자의 QR은 코드 인식(방식 C 제안) · 점선대로 자르기</div></section>
+<section class="page"><div class="gsheet">
+<div class="gcard" style="border-color:#ff8a00">
+  <div class="gname" style="color:#ff8a00">안녕하세요</div>
+  <div class="qrbox big"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="44.0mm" height="44.0mm" viewBox="0 0 44.0 44.0" class="segno"><path transform="scale(1.76)" class="qrline" stroke="#000" d="M2 2.5h7m1 0h2m2 0h1m1 0h7m-21 1h1m5 0h1m1 0h5m1 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m1 0h3m3 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m7 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m1 0h1m2 0h2m1 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-13 1h1m2 0h1m-10 1h3m1 0h1m1 0h2m1 0h1m1 0h3m2 0h3m-20 1h2m1 0h2m2 0h2m1 0h3m1 0h1m1 0h4m-21 1h1m3 0h3m1 0h3m3 0h1m1 0h2m2 0h1m-19 1h2m1 0h1m1 0h1m2 0h1m2 0h4m-17 1h1m2 0h8m1 0h2m2 0h1m1 0h1m-11 1h1m1 0h3m1 0h1m2 0h1m1 0h2m-21 1h7m2 0h2m2 0h1m1 0h1m2 0h1m1 0h1m-21 1h1m5 0h1m2 0h1m1 0h3m3 0h1m2 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m2 0h1m1 0h1m1 0h1m2 0h1m-19 1h1m1 0h3m1 0h1m1 0h3m3 0h2m2 0h1m-19 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m-19 1h1m5 0h1m3 0h7m1 0h1m1 0h1m-21 1h7m2 0h2m1 0h1m3 0h1m1 0h1"/></svg></div>
+  <div class="gsub">반가워서 손을 흔들어요 · QR: HELLO</div>
+</div>
+<div class="gcard" style="border-color:#f2b600">
+  <div class="gname" style="color:#f2b600">고마워요</div>
+  <div class="qrbox big"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="44.0mm" height="44.0mm" viewBox="0 0 44.0 44.0" class="segno"><path transform="scale(1.76)" class="qrline" stroke="#000" d="M2 2.5h7m1 0h2m4 0h7m-21 1h1m5 0h1m1 0h4m2 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m2 0h1m4 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h3m3 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m1 0h2m1 0h2m1 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-11 1h1m1 0h1m-10 1h1m2 0h1m2 0h1m5 0h3m1 0h2m-20 1h3m1 0h1m1 0h6m1 0h1m2 0h1m1 0h2m-21 1h1m2 0h5m2 0h1m2 0h2m2 0h1m1 0h1m-20 1h1m1 0h4m4 0h1m1 0h2m4 0h2m-17 1h2m1 0h1m3 0h2m1 0h1m2 0h2m2 0h1m-13 1h1m1 0h2m2 0h4m1 0h1m-20 1h7m2 0h2m1 0h1m2 0h1m1 0h1m1 0h1m-20 1h1m5 0h1m3 0h2m3 0h2m1 0h1m1 0h1m-21 1h1m1 0h3m1 0h1m2 0h1m2 0h1m2 0h2m2 0h2m-21 1h1m1 0h3m1 0h1m1 0h1m2 0h1m1 0h3m2 0h3m-21 1h1m1 0h3m1 0h1m2 0h6m1 0h1m1 0h1m1 0h1m-21 1h1m5 0h1m4 0h7m2 0h1m-21 1h7m2 0h2m1 0h2m2 0h3"/></svg></div>
+  <div class="gsub">기뻐서 통통 쥐었다 펴요 · QR: THANKS</div>
+</div>
+<div class="gcard" style="border-color:#ff3d8b">
+  <div class="gname" style="color:#ff3d8b">사랑해요</div>
+  <div class="qrbox big"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="44.0mm" height="44.0mm" viewBox="0 0 44.0 44.0" class="segno"><path transform="scale(1.76)" class="qrline" stroke="#000" d="M2 2.5h7m1 0h1m2 0h2m1 0h7m-21 1h1m5 0h1m2 0h1m2 0h1m1 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m3 0h1m3 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m2 0h2m1 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m2 0h1m1 0h2m1 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-13 1h1m-4 1h2m3 0h3m1 0h1m1 0h1m1 0h1m1 0h1m-21 1h3m1 0h2m1 0h2m2 0h2m1 0h3m2 0h2m-21 1h2m1 0h2m1 0h1m1 0h2m2 0h1m2 0h1m1 0h1m2 0h1m-21 1h1m1 0h2m4 0h1m2 0h2m2 0h1m2 0h1m-19 1h2m3 0h2m2 0h3m1 0h6m-11 1h2m1 0h1m2 0h1m3 0h3m-21 1h7m5 0h2m2 0h1m-17 1h1m5 0h1m1 0h1m1 0h3m5 0h1m-19 1h1m1 0h3m1 0h1m4 0h1m1 0h2m1 0h1m1 0h1m-19 1h1m1 0h3m1 0h1m2 0h1m3 0h3m1 0h1m-18 1h1m1 0h3m1 0h1m2 0h3m3 0h3m1 0h2m-21 1h1m5 0h1m2 0h1m4 0h2m1 0h1m2 0h1m-21 1h7m2 0h1m4 0h2m2 0h1"/></svg></div>
+  <div class="gsub">사랑해 손모양을 해요 · QR: LOVE</div>
+</div>
+<div class="gcard" style="border-color:#1fa83a">
+  <div class="gname" style="color:#1fa83a">힘내세요</div>
+  <div class="qrbox big"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="44.0mm" height="44.0mm" viewBox="0 0 44.0 44.0" class="segno"><path transform="scale(1.76)" class="qrline" stroke="#000" d="M2 2.5h7m5 0h1m1 0h7m-21 1h1m5 0h1m1 0h1m2 0h1m2 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m3 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m1 0h1m3 0h1m1 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-12 1h2m-9 1h1m2 0h5m1 0h1m1 0h1m1 0h5m-19 1h4m2 0h1m2 0h3m4 0h1m1 0h1m-19 1h1m1 0h1m1 0h3m1 0h1m2 0h1m1 0h1m3 0h1m-19 1h1m10 0h1m2 0h1m1 0h1m3 0h1m-19 1h1m1 0h1m1 0h5m3 0h1m2 0h4m-13 1h3m2 0h3m2 0h1m1 0h1m-21 1h7m1 0h1m6 0h5m-20 1h1m5 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h2m1 0h1m-21 1h1m1 0h3m1 0h1m3 0h1m1 0h1m2 0h2m1 0h3m-21 1h1m1 0h3m1 0h1m2 0h3m1 0h2m3 0h1m-19 1h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h1m2 0h4m-21 1h1m5 0h1m2 0h1m1 0h4m1 0h1m3 0h1m-21 1h7m3 0h2m1 0h2m2 0h4"/></svg></div>
+  <div class="gsub">엄지 척으로 응원해요 · QR: CHEER</div>
+</div>
+<div class="gcard" style="border-color:#7b3dff">
+  <div class="gname" style="color:#7b3dff">축하해요</div>
+  <div class="qrbox big"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="44.0mm" height="44.0mm" viewBox="0 0 44.0 44.0" class="segno"><path transform="scale(1.76)" class="qrline" stroke="#000" d="M2 2.5h7m5 0h1m1 0h7m-21 1h1m5 0h1m2 0h1m4 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m2 0h4m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m4 0h1m2 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m4 0h2m1 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-13 1h1m2 0h2m-11 1h2m2 0h4m2 0h3m1 0h1m-17 1h2m1 0h1m3 0h5m3 0h1m-16 1h5m1 0h2m3 0h7m1 0h2m-21 1h1m2 0h1m1 0h1m2 0h1m1 0h1m1 0h1m7 0h1m-19 1h2m1 0h3m2 0h4m2 0h2m-10 1h3m1 0h1m-13 1h7m1 0h1m1 0h1m1 0h2m2 0h4m-20 1h1m5 0h1m2 0h3m1 0h1m1 0h1m2 0h1m-19 1h1m1 0h3m1 0h1m2 0h4m1 0h1m1 0h1m1 0h3m-21 1h1m1 0h3m1 0h1m1 0h1m1 0h2m7 0h1m-20 1h1m1 0h3m1 0h1m1 0h1m2 0h1m1 0h1m1 0h2m-17 1h1m5 0h1m3 0h2m2 0h2m-16 1h7m2 0h6m3 0h2"/></svg></div>
+  <div class="gsub">크게 돌며 축하해요 · QR: CONGRATS</div>
+</div>
+<div class="gcard" style="border-color:#0b84d8">
+  <div class="gname" style="color:#0b84d8">잘 가요</div>
+  <div class="qrbox big"><svg shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" width="44.0mm" height="44.0mm" viewBox="0 0 44.0 44.0" class="segno"><path transform="scale(1.76)" class="qrline" stroke="#000" d="M2 2.5h7m2 0h2m3 0h7m-21 1h1m5 0h1m1 0h1m2 0h2m1 0h1m5 0h1m-21 1h1m1 0h3m1 0h1m2 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m5 0h1m1 0h1m1 0h3m1 0h1m-21 1h1m1 0h3m1 0h1m3 0h2m2 0h1m1 0h3m1 0h1m-21 1h1m5 0h1m1 0h1m3 0h1m1 0h1m5 0h1m-21 1h7m1 0h1m1 0h1m1 0h1m1 0h7m-13 1h1m3 0h1m-9 1h4m2 0h1m3 0h2m3 0h1m-19 1h1m1 0h3m3 0h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m-18 1h5m1 0h1m1 0h2m2 0h2m1 0h1m-19 1h2m1 0h2m2 0h2m1 0h1m1 0h2m2 0h4m-20 1h1m1 0h1m2 0h2m1 0h3m1 0h1m1 0h1m3 0h3m-13 1h1m1 0h1m1 0h2m4 0h2m-20 1h7m1 0h1m1 0h1m2 0h2m2 0h1m2 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m4 0h1m1 0h1m1 0h1m-20 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h3m-21 1h1m1 0h3m1 0h1m2 0h2m1 0h4m1 0h1m1 0h2m-21 1h1m1 0h3m1 0h1m2 0h1m3 0h1m1 0h4m-19 1h1m5 0h1m3 0h2m2 0h1m1 0h1m1 0h1m1 0h1m-21 1h7m4 0h1m2 0h1m3 0h3"/></svg></div>
+  <div class="gsub">천천히 손을 흔들어요 · QR: BYE</div>
+</div></div><div class="foot">안부 인사 카드 (제안): QR을 읽으면 인사에 맞게 로봇이 반응하는 아이디어용 · 점선대로 자르기</div></section>
+<section class="page guide">
+<h1>코드 색 카드 (방식 C 제안) 쓰는 법</h1>
+<p style="color:#b00;font-size:3.8mm">이 카드는 제안입니다. 팀 펌웨어(F1)와 웹 앱에는 아직 QR 인식이 없습니다. 카드 방식(#5)이 정해지기 전 시험용입니다 [검증 필요].</p>
+<h2>1. 인쇄</h2><p>컬러, A4, 배율 100%, 배경 그래픽 켜기. QR이 흐리면 인식이 안 되니 잉크가 충분한 프린터로 인쇄하고, 코팅은 무광으로 합니다.</p>
+<h2>2. 카드 구성</h2>
+<p><b>색 카드 (1쪽)</b>: 위쪽 색 정사각형 90 × 90 mm는 색 인식(방식 B)용, 아래 흰 메모 상자의 QR(RED·BLUE·YELLOW·GREEN)은 코드 인식용입니다. 한 장으로 두 방식을 모두 시험할 수 있습니다.</p>
+<p><b>안부 인사 카드 (2쪽)</b>: QR에 HELLO·THANKS·LOVE·CHEER·CONGRATS·BYE가 들어 있습니다. 로봇이 인사에 맞게 반응하는 아이디어용입니다.</p>
+<h2>3. 왜 QR인가</h2>
+<p>QR은 종이에 인쇄한 코드만 읽으므로 옷·화면·벽의 색에 반응하지 않습니다. WonderCam 공식 확장에 QR 읽기(StringFromQrCodeData)가 있습니다. 개인 테스트 펌웨어로 시험한 내용은 docs/cards.md 3-C에 정리했습니다.</p>
+<h2>4. 보여 주는 방법</h2><p>QR이 카메라 정면 15~25cm에 오도록, 기울이지 말고 1~2초 들고 있습니다. 한 번에 한 장만 보여 주고, 다음 카드는 내렸다가 보여 줍니다. QR 인식 거리와 크기는 공식 문서에 없어 실물로 맞춰야 합니다 [검증 필요].</p>
+</section>
+</body></html>
