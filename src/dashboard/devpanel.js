@@ -152,8 +152,9 @@ function createWebcamBox(hand) {
     // 미리보기 video 는 웹캠 장치가 처음 만들어질 때 한 번 붙인다
     if (hand.webcam && !preview.firstChild) preview.append(hand.webcam.video);
     preview.hidden = !on;
-    // 카메라 이름은 웹캠을 한 번 허용한 뒤에야 나오므로, 처음 켜졌을 때 목록을 다시 읽는다
-    if (on && !camerasLoaded) loadCameras();
+    // 카메라 이름은 웹캠을 한 번 허용한 뒤에야 나오므로, 켜기를 한 번 시도한 뒤 목록을 다시 읽는다.
+    // 기본 카메라가 실패해도(다른 프로그램이 사용 중 등) 다른 카메라를 고를 수 있게, 실패했을 때도 읽는다
+    if (!camerasLoaded && !starting) loadCameras();
     showInfo();
   }
 
