@@ -231,7 +231,7 @@ export function createMediaPipeHand({ poses, onStop = () => {} }) {
       return running;
     },
 
-    /** 측정용 정보: FPS, GPU/CPU, 실제 해상도, 카메라, 지금 code */
+    /** 측정용 정보: FPS, GPU/CPU, 실제 해상도, 카메라, 지금 code·왼손/오른손·엄지 값 */
     info() {
       const s = stream?.getVideoTracks()[0]?.getSettings?.() ?? {};
       return {
@@ -242,6 +242,7 @@ export function createMediaPipeHand({ poses, onStop = () => {} }) {
         deviceId: s.deviceId ?? null,
         code,
         name: codeToName(code, poses),
+        handedness, // 'Left' | 'Right' | null (flipHandedness 를 거친 값)
         thumb,
       };
     },
