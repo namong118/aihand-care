@@ -89,11 +89,9 @@ async function playRound(ctx, screen, s, routine) {
       routine: routine.id,
       // 완료 방식별 개수 { detected, manual, skipped } — 결과 화면에 표시된다
       methods: summary.methods,
-      // 동작마다 { pose, holdMs, method, reactionMs }
-      // reactionMs 에는 유지 시간이 들어 있어서, holdMs 가 바뀐 기록끼리 비교할 때 구분하려고 함께 남긴다
+      // 동작마다 { pose, method, reactionMs }
       steps: steps.map((st, i) => ({
         pose: st.pose,
-        holdMs: holdMsOf(st),
         method: results[i].method,
         reactionMs: results[i].reactionMs,
       })),
