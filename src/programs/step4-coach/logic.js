@@ -18,7 +18,7 @@ export const METHODS = ['detected', 'manual', 'skipped'];
 export const DEFAULT_HOLD_MS = 1000;
 
 /** 동작 사이 쉬는 시간 (ms, 보통 속도). 느리게(SLOW)면 2배 */
-export const REST_MS = 1000;
+export const REST_MS = 2000;
 
 /** 숫자 세기에 쓰는 말. 1초에 하나씩 센다 */
 export const COUNT_WORDS = ['하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
