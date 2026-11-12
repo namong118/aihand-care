@@ -15,6 +15,8 @@ AIHand·WonderCam 기능 중 공식 문서와 실물로 **확인된 것만** 코
 | 시리얼 통신 속도(baud rate) 값 | 확인됨 | 2026-11-06 | A | **115200**. 실물 테스트. MakeCode `serial.setBaudRate(BaudRate.BaudRate115200)` + 터미널 115200에서 정상 송수신 |
 | 웹 → micro:bit 한 줄 명령 수신 (`PING` → `PONG`) | 확인됨 | 2026-11-06 | A | 실물 테스트. 아래 "부록 1: 연결 테스트 방법"의 테스트 코드 사용 (`firmware/` 아님). 터미널에서 손으로 칠 때는 영문 대문자로, 지우지 말고 입력 (백스페이스·한글도 그대로 전송되어 줄이 깨짐). 웹 코드는 한 줄을 한 번에 보내므로 앱에는 해당 없음 |
 | micro:bit → 웹 한 줄 응답 수신 | 확인됨 | 2026-11-06 | A | 실물 테스트. 2초마다 보낸 `TICK,<번호>` 65회 이상 빠짐없이 수신 |
+| **MakeCode가 micro:bit에 연결된 채로 열려 있으면 응답 글자가 빠짐** | 확인됨 | 2026-11-12 | D | 실물 테스트, 부록 9. MakeCode "장치 연결"(WebUSB)이 남아 있어도 COM 포트는 열리지만, 응답 일부를 MakeCode가 가져가서 `PONG`이 `PNG`·`ONG`로 옴 (`PING` 80번 중 12번). **MakeCode 탭을 닫으니 160번 모두 정상.** 웹 앱에서는 `DONE`을 못 알아봐 시간 초과가 날 수 있으므로 **펌웨어를 올린 뒤 MakeCode 탭을 반드시 닫는다** |
+| 응답 줄 뒤에 붙는 공백 | 확인됨 (정상) | 2026-11-12 | D | MakeCode `serial.writeLine`이 줄을 32바이트로 맞추려고 공백을 넣는다 (`PONG` + 공백 26개 + `\r\n`). 웹 `protocol.js`가 `trim()` 하므로 문제없음 |
 | USB 전원만으로 서보 5개 동시 동작 가능 (외부 전원 필요 여부) | 확인됨 | 2026-11-06 | A | **외부 어댑터 필요, 시연도 어댑터 사용.** 공식 구성품이 7.4V 3A 어댑터([AiHand 1장](https://docs.hiwonder.com/projects/AiHand/en/latest/docs/1.Getting_Ready.html)), 실물 어댑터 라벨은 DC 7.5V 3A. 어댑터 연결 상태에서 `OPEN`·`FIST`로 서보 5개 동시 동작 확인(실물 테스트). USB 전원만으로는 시험하지 않음 (전원 부족 시 micro:bit 재시작 위험) |
 | 웹 USB 시리얼과 확장보드 서보 시리얼 함께 쓰기 | 확인됨 | 2026-11-06 | A | 확장보드는 micro:bit **P12·P8 시리얼**로 서보 명령을 받는다([StartbitV2 확장](https://github.com/Hiwonder/StartbitV2) `startbit_Init()`). micro:bit 시리얼 통로는 하나뿐이라, 명령을 받았을 때만 `serial.redirect(P12, P8)`로 돌려 서보 명령을 보내고 `serial.redirectToUSB()`로 되돌리는 방식으로 실물 테스트. 서보 명령 뒤에도 다음 명령을 계속 정상 수신하고, `DONE,OPEN`·`DONE,FIST`·`DONE,S` 응답도 웹에서 수신. **공식 확장의 `Initialize StartbitV2` 블록은 쓰지 않는다** (통로를 확장보드로 고정하고 시리얼 입력을 계속 읽어 감). `firmware/`(#6)에 이 방식 반영 필요 |
 
@@ -97,6 +99,8 @@ STEP 3에서는 사용자가 **색깔 카드**(빨강·파랑·노랑·초록)�
 | 펌웨어 F3 숫자 인식 (`CAM,NUM`, `NUM,<1~5>`, `NUM,NONE`) | 확인됨 | 2026-11-11 | A | Serial Terminal 실물 테스트, 부록 8. `firmware/README.md` "Serial Terminal 확인 절차 (F3 숫자 카드)". 기능 번호 10, 결과 0x0D00 128바이트, 숫자 1번 바이트, 확신도 2번부터 UInt16LE ÷10000 (공식 확장과 같음) |
 | 숫자 인식 확신도 기준값 `MIN_CONF` | 확인됨: 80 | 2026-11-11 | A | `DEBUG_NUM = true`로 측정, 부록 8. 카드 없음 = 숫자 `0`, 맞게 읽은 확신도 89~99. 인식 거리 10~15cm (20cm부터 `0`) |
 | 웹 카메라 모드 자동 전환 (STEP 3 태그 ↔ STEP 1 숫자) | 미확인 | | | `firmware/README.md` 웹 확인 절차 12~15 |
+| 카메라 모드 중 AIHand 전원이 꺼지면 | 확인됨: 응답 크게 지연 | 2026-11-12 | D | 실물 테스트, 부록 9. 태그 모드에서 AIHand 전원을 끄자 `PING` 응답이 **8초 넘게** 늦게 몰려 옴. 0.1초마다 없는 카메라를 읽으며 오래 기다리는 것으로 보임 (원인은 코드로 확인하지 않음). 웹에서는 로봇 연결이 끊긴 것처럼 보인다. micro:bit 리셋으로 풀림 |
+| AIHand 전원을 다시 켠 뒤 카메라 모드 전환 | 부분 가능 | 2026-11-12 | D | 실물 테스트, 부록 9. 전원을 다시 켜고 **micro:bit를 리셋하지 않은 채** `CAM,TAG`는 한 번 성공, 그 뒤 `CAM,NUM`·`CAM,TAG` 모두 `ERR,CAM_MODE`(약 4.4초)가 5번 연속. 이때 카메라 화면은 숫자 인식 화면(`Num:? P:1.00`)으로 바뀌어 있었음 = 카메라는 바뀌었는데 micro:bit가 확인할 때 다르게 읽음. 원인 미확인 [검증 필요]. **AIHand 전원 켜기 → 카메라 화면이 뜰 때까지 기다리기 → micro:bit 리셋** 순서로 다시 켜자 `CAM,NUM`·`CAM,TAG` 모두 `DONE,CAM`(약 0.5초) |
 
 ## 5. 웹캠 손 인식 (MediaPipe)
 
@@ -631,3 +635,37 @@ Chrome + `npm run dev`, 펌웨어 F1, 손 인식·카드 입력은 Mock 버튼. 
 | 9 | 카드를 든 채 `CAM,TAG` | `DONE,CAM` 뒤 `NUM` 줄 없음, 정상 |
 | 10 | 숫자 모드에서 카드를 든 채 `HELLO` | 동작 중에는 줄 없음, `DONE,HELLO` 뒤 `NUM,3` 정상 |
 | 11 | `POSE,ROCK` → `REACT,OK` → `REST` | `DONE,POSE`·`DONE,REACT`·`DONE,REST`, 앞에 붙는 글자 없음 |
+
+## 부록 9: 펌웨어 F3 연결 점검 (2026-11-12, D)
+
+micro:bit에 F1이 올라가 있어 F3로 바꾼 뒤 연결을 점검했다.
+도구: Chrome이 아니라 **PowerShell `System.IO.Ports.SerialPort`**로 COM8에 115200으로 연결해 명령을 보내고 받은 바이트를 그대로 확인 (Chrome과 같게 DTR 켬·끔 모두 시험, 결과 같음).
+micro:bit 포트 이름: 이 노트북에서는 Windows 장치 관리자 **"USB 직렬 장치(COM8)"**.
+
+### 점검 순서와 결과
+
+| 순서 | 상황 | 결과 |
+|---|---|---|
+| 1 | F1 상태 (AIHand 전원 꺼짐을 모르고 시험) | `PING`·`HELLO`·`POSE,V`·`REST` 모두 `DONE`, `CAM,TAG` → `ERR,UNKNOWN_CMD` (F1이라 카메라 명령 없음). **전원이 꺼져 있었는데도 `DONE`이 옴** = `DONE`은 시간 기준이라 실제로 움직였는지 알 수 없음 (부록 4) |
+| 2 | F3를 MakeCode "장치 연결"로 올림 (MakeCode 탭 열린 채) | LED `F3` → ✖, `CAM,TAG`·`CAM,NUM` → `ERR,NO_CAM`. AIHand 전원이 꺼져 있었음 |
+| 3 | AIHand 전원 켬 | `CAM,TAG`·`CAM,NUM` → `DONE,CAM`, 로봇 명령 모두 `DONE`. 단 **응답 글자 빠짐** (`DONE,CA`, `ONE,HELLO`, `DONE,POE`) |
+| 4 | 글자 빠짐 측정 (`PING` 40번씩) | 카메라 모드 없음 33/40 정상, 태그 모드 21/40 정상 |
+| 5 | AIHand 전원 끔 (태그 모드 그대로) | 응답이 **8초 넘게** 늦게 몰려 옴 |
+| 6 | 전원 끈 채 micro:bit 리셋 (LED `F3` → ✖, 카메라 모드 없음) | `PING` 80번 중 68번 정상, 12번 빠짐 → **AIHand 전원·전기 잡음 문제가 아님** |
+| 7 | **MakeCode 탭 닫음** | `PING` 80번 **모두 정상** → 원인 확정 |
+| 8 | AIHand 전원 켬 (리셋 안 함) | `CAM,TAG` → `DONE,CAM`, 태그 모드 `PING` 40/40, `CAM,NUM` → `ERR,CAM_MODE`, 숫자 모드 `PING` 40/40, 로봇 명령 모두 `DONE` |
+| 9 | `CAM,NUM`·`CAM,TAG` 번갈아 5번 | 모두 `ERR,CAM_MODE` (약 4.4초). 카메라 화면은 숫자 인식(`Num:? P:1.00`) |
+| 10 | AIHand 전원 껐다 켜기 → 카메라 화면 뜬 뒤 micro:bit 리셋 | `PING` → `PONG`, `CAM,FOO` → `ERR,BAD_ARG`, `CAM,NUM` → `DONE,CAM`(0.45초), `CAM,TAG` → `DONE,CAM`(0.48초) |
+
+### 배운 점
+
+- **펌웨어를 올린 뒤 MakeCode 탭을 반드시 닫는다.** 닫지 않아도 웹이 연결될 수 있어서 놓치기 쉽다. 연결은 되는데 글자가 빠지면 이것부터 의심한다.
+- **켜는 순서: AIHand 전원 → 카메라 화면이 뜰 때까지 기다리기 → micro:bit 리셋(또는 USB 연결) → LED `F3` 다음 ✓ 확인 → 웹 앱 연결.** ✖가 나오면 AIHand 전원이 꺼져 있지 않은지 먼저 본다.
+- 응답 뒤 공백 26개 정도는 MakeCode `writeLine`의 정상 동작이다 (1번 표).
+- LED의 `F3`는 옆으로 흘러 지나가서 `F2`로 잘못 보일 수 있다. 버전이 의심되면 `CAM,NUM`을 보내 본다 (F3 = `DONE,CAM` 또는 `ERR,…CAM…`, F2 = `ERR,BAD_ARG`, F1 = `ERR,UNKNOWN_CMD`).
+
+### 아직 확인하지 않은 것
+
+- 이번 점검에서 로봇이 `HELLO`·`POSE,V`·`REACT,OK`·`REST`대로 **실제로 움직였는지 눈으로 확인한 기록은 없음** (응답만 확인)
+- 순서 8~9에서 카메라는 바뀌었는데 `ERR,CAM_MODE`가 난 원인 [검증 필요]
+- 카메라 모드 중 카메라 전원이 꺼졌을 때 펌웨어가 오래 막히지 않게 할지 (펌웨어 담당 A와 상의)
