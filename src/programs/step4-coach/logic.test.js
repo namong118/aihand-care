@@ -25,6 +25,12 @@ describe('expandRoutine', () => {
   it('repeat 가 없으면 1번', () => {
     expect(expandRoutine({ steps: [{ pose: 'ROCK' }] })).toHaveLength(1);
   });
+  // 팀 결정 (2026-11-12): repeat 이 0 이하이거나 비어 있어도 멈추지 않고 1번 한다
+  it.each([0, -1, null])('repeat 가 %s 이면 1번', (repeat) => {
+    const list = expandRoutine({ repeat, steps: [{ pose: 'ROCK' }, { pose: 'PAPER' }] });
+    expect(list.map((s) => s.pose)).toEqual(['ROCK', 'PAPER']);
+    expect(list.map((s) => s.round)).toEqual([1, 1]);
+  });
 });
 
 describe('holdProgress', () => {
