@@ -2,7 +2,7 @@
 
 import poses from '../../data/poses.json';
 import routines from '../../data/routines.json';
-import { expandRoutine, holdProgress, summarizeSteps } from './logic.js';
+import { expandRoutine, holdMsOf, holdProgress, restMs, summarizeSteps } from './logic.js';
 import { createScreen } from './screen.js';
 
 const ID = 'step4-coach';
@@ -17,7 +17,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
  */
 async function runStep(ctx, screen, s, info) {
   const { step } = info;
-  const holdMs = step.holdMs ?? 1000;
+  const holdMs = holdMsOf(step);
   const since = Date.now();
   const stop = new AbortController();
   s.waits.add(stop);
@@ -62,11 +62,11 @@ async function playRound(ctx, screen, s, routine) {
     const result = await runStep(ctx, screen, s, { index: i + 1, count: steps.length, step });
     if (!result) return;
     results.push(result);
-    if (result.method !== 'skipped') {
-      screen.stepDone(result.method);
-      await wait(ctx.settings.speed === 'SLOW' ? 1000 : 500);
-      if (!s.alive) return;
-    }
+    if (result.method === 'skipped') screen.waiting('건너뛰었어요. 잠깐 쉬었다가 다음 동작을 해요.');
+    else screen.stepDone(result.method);
+    // 동작 사이 쉬는 시간: 건너뛴 뒤에도 쉬고 나서 다음 시범으로 넘어간다
+    await wait(restMs(ctx.settings.speed));
+    if (!s.alive) return;
   }
 
   const summary = summarizeSteps(results);
@@ -89,9 +89,11 @@ async function playRound(ctx, screen, s, routine) {
       routine: routine.id,
       // 완료 방식별 개수 { detected, manual, skipped } — 결과 화면에 표시된다
       methods: summary.methods,
-      // 동작마다 { pose, method, reactionMs }
+      // 동작마다 { pose, holdMs, method, reactionMs }
+      // reactionMs 에는 유지 시간이 들어 있어서, holdMs 가 바뀐 기록끼리 비교할 때 구분하려고 함께 남긴다
       steps: steps.map((st, i) => ({
         pose: st.pose,
+        holdMs: holdMsOf(st),
         method: results[i].method,
         reactionMs: results[i].reactionMs,
       })),
