@@ -78,7 +78,6 @@ async function playRound(ctx, screen, s, routine) {
 
   ctx.log.record({
     program: ID,
-    user: ctx.settings.user,
     startedAt,
     endedAt: new Date().toISOString(),
     total: summary.total,
