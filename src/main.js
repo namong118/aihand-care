@@ -7,7 +7,11 @@ import { renderHome } from './dashboard/home.js';
 import { renderSettings } from './dashboard/settings.js';
 import { createDevPanel } from './dashboard/devpanel.js';
 import { renderResults } from './dashboard/results.js';
-import { findProgramInfo } from './dashboard/catalog.js';
+import { CATALOG, findProgramInfo } from './dashboard/catalog.js';
+import { loadCourse, newCourseId, tagRecord, stepInfo, courseOf, summarizeCourse } from './dashboard/course-logic.js';
+import { createCourseStore } from './dashboard/course-store.js';
+import { renderCourseIntro, renderStepIntro, createCourseBar, renderCourseSummary } from './dashboard/course.js';
+import courseJson from './data/course.json';
 import { loadSavedSettings, saveSettings, removeOldUsers } from './dashboard/prefs.js';
 import { h, button, message } from './ui/components.js';
 import { PROGRAMS } from './programs/index.js';
@@ -27,7 +31,7 @@ const settings = { ...DEFAULT_SETTINGS, ...loadSavedSettings() };
 
 const { ctx, devices } = createContext(settings);
 
-let screen = 'home'; // 'home' | 'program' | 'results'
+let screen = 'home'; // 'home' | 'program' | 'results' | 'course'
 let settingsOpen = false;
 
 function updateStatusbar() {
@@ -124,31 +128,42 @@ function leaveProgram() {
 
 function showHome() {
   leaveProgram();
+  course = null; // 코스 중에 홈으로 오면 코스는 끝 (그만하기·마치기에서 이미 저장)
   setScreen('home');
   renderHome(appEl, {
     settings,
     openSettings: () => toggleSettings(true),
-    startProgram: showProgram,
+    startProgram: (id) => showProgram(id),
+    startCourse: showCourseIntro,
   });
 }
 
-function showProgram(id) {
+/**
+ * 프로그램 화면.
+ * @param id     프로그램 id
+ * @param step   코스 중이면 stepInfo() 결과. 위쪽 막대를 코스 막대로 바꾸고, 기록에 detail.course 를 붙인다
+ */
+function showProgram(id, step = null) {
   leaveProgram();
   setScreen('program');
   const info = findProgramInfo(id);
   const program = PROGRAMS[id];
   const body = h('div', { class: 'program-body' });
-  appEl.innerHTML = '';
-  appEl.append(
-    h(
+  let bar;
+  if (step) {
+    course.bar = createCourseBar({ info: step, onNext: nextCourseStep, onSkip: skipCourseStep, onStop: stopCourse });
+    bar = course.bar.el;
+  } else {
+    bar = h(
       'div',
       { class: 'program-bar' },
       h('h1', {}, info ? `STEP ${info.step} ${info.title}` : id),
       button('← 홈으로', showHome, { variant: 'secondary' }),
       button('활동 기록 보기', () => showResults({ program: id }), { variant: 'secondary' }),
-    ),
-    body,
-  );
+    );
+  }
+  appEl.innerHTML = '';
+  appEl.append(bar, body);
 
   if (!program) {
     body.append(message('이 프로그램은 아직 준비 중이에요.', 'info'));
@@ -156,11 +171,106 @@ function showProgram(id) {
   }
   current = program;
   try {
-    program.mount(body, ctx);
+    program.mount(body, step ? courseCtx(step) : ctx);
   } catch (err) {
     console.error(err);
     body.append(message('화면을 여는 중에 문제가 생겼어요. 홈으로 돌아가 다시 해 볼까요?', 'retry'));
   }
+}
+
+// ---- 시연 코스 (docs/decisions.md 3번, #59) ----
+// 순서는 src/data/course.json. 프로그램 코드는 바꾸지 않는다:
+//   - 활동이 끝났는지는 기록 알림(log.onRecord)으로 안다
+//   - 코스 동안 프로그램에 넘기는 ctx.log 만 감싸서 기록에 detail.course 를 붙인다
+const coursePlan = loadCourse(courseJson, CATALOG);
+const courseStore = createCourseStore();
+let course = null; // 진행 중인 코스 { id, index, bar }
+
+/** 코스 동안 프로그램에 넘기는 ctx: 기록에 detail.course 만 붙인다 (나머지는 ctx 그대로) */
+function courseCtx(step) {
+  const id = course.id;
+  return {
+    ...ctx,
+    log: { ...ctx.log, record: (r) => ctx.log.record(tagRecord(r, { id, order: step.order, of: step.of })) },
+  };
+}
+
+// 지금 활동의 기록이 저장되면 막대에 "다음 활동으로" 버튼을 보여준다
+devices.log.onRecord((rec) => {
+  if (!course || screen !== 'program') return;
+  const c = courseOf(rec);
+  if (c?.id === course.id && c.order === course.index + 1) course.bar?.setFinished();
+});
+
+/** 코스 시작 화면의 장치 안내 한 줄 */
+function deviceNote() {
+  const list = devices.status();
+  const off = list.filter((d) => ['webcam', 'robot', 'wondercam'].includes(d.key) && d.mock).map((d) => d.label);
+  return off.length > 0 ? `${off.join('·')} 연결 전이에요. 화면 버튼으로도 할 수 있어요.` : '';
+}
+
+function showCourseIntro() {
+  leaveProgram();
+  course = null;
+  setScreen('course');
+  renderCourseIntro(appEl, {
+    plan: coursePlan,
+    deviceNote: deviceNote(),
+    onStart: startCourse,
+    onHome: showHome,
+  });
+}
+
+function startCourse() {
+  const id = newCourseId();
+  courseStore.start({ id, plan: coursePlan.map((s) => s.program) });
+  course = { id, index: 0, bar: null };
+  ctx.robot.hello().catch((err) => console.error('코스 시작 인사 오류', err));
+  showStepIntro();
+}
+
+function showStepIntro() {
+  leaveProgram();
+  setScreen('course');
+  const step = stepInfo(coursePlan, course.index);
+  renderStepIntro(appEl, { info: step, onStart: () => showProgram(step.program, step), onStop: stopCourse });
+}
+
+function nextCourseStep() {
+  if (!course) return;
+  if (course.index >= coursePlan.length - 1) {
+    finishCourse();
+    return;
+  }
+  course.index += 1;
+  showStepIntro();
+}
+
+/** "이 활동 건너뛰기": 기록 없이 다음 활동으로 (요약에서 "건너뜀") */
+function skipCourseStep() {
+  if (!course) return;
+  courseStore.skip(course.id, course.index + 1);
+  nextCourseStep();
+}
+
+/** "코스 그만하기": 지금까지 저장된 기록은 남는다 (요약에서 나머지는 "하지 않음") */
+function stopCourse() {
+  if (course) courseStore.end(course.id, { finished: false, endedAt: new Date().toISOString() });
+  showHome();
+}
+
+function finishCourse() {
+  const id = course.id;
+  courseStore.end(id, { finished: true, endedAt: new Date().toISOString() });
+  leaveProgram();
+  course = null;
+  setScreen('course');
+  const summary = summarizeCourse(courseStore.get(id), devices.log.list());
+  renderCourseSummary(appEl, { summary, onHome: showHome, onResults: () => showResults() });
+  ctx.robot
+    .hello()
+    .then(() => ctx.robot.rest())
+    .catch((err) => console.error('코스 마침 인사 오류', err));
 }
 
 function showResults(filter = {}) {

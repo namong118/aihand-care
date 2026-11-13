@@ -82,7 +82,7 @@ function card(p, onStart) {
 
 /**
  * @param container  그릴 자리
- * @param app        { settings, openSettings(), startProgram(id) }
+ * @param app        { settings, openSettings(), startProgram(id), startCourse() }
  */
 export function renderHome(container, app) {
   const { settings } = app;
@@ -102,6 +102,18 @@ export function renderHome(container, app) {
           h('span', { class: 'pill pill-outline' }, `속도 · ${labelOf(SPEEDS, settings.speed)}`),
           h('button', { type: 'button', class: 'link-button', onClick: app.openSettings }, '바꾸기'),
         ),
+      ),
+      // 시연 코스: 네 활동을 순서대로 이어서 (#59). 아래 카드는 하나씩 따로 할 때
+      h(
+        'section',
+        { class: 'course-start' },
+        h(
+          'div',
+          { class: 'course-start-text' },
+          h('h2', {}, '활동 4가지 이어서 하기'),
+          h('p', {}, '손운동부터 색깔손까지 차례대로 해요.'),
+        ),
+        h('button', { type: 'button', class: 'home-start course-start-btn', onClick: app.startCourse }, '코스 시작하기'),
       ),
       h('div', { class: 'home-grid' }, CATALOG.map((p) => card(p, app.startProgram))),
     ),
