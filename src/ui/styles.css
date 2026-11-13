@@ -376,6 +376,7 @@ p  { margin: 0 0 12px; }
   font-size: 15px;
   font-weight: 500;
 }
+.dev-box .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .dev-box .btn[aria-pressed='true'] { background: var(--c-accent); border-color: var(--c-accent); color: #FFFFFF; }
 .dev-box .btn-secondary { background: var(--c-chip); }
 .dev-box .color-btn { border-left: 10px solid var(--card-color); }
