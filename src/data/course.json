@@ -1,0 +1,6 @@
+[
+  { "program": "step4-coach", "input": "hand" },
+  { "program": "step2-rps", "input": "hand" },
+  { "program": "step1-memory", "input": "card" },
+  { "program": "step3-stroop", "input": "card" }
+]
