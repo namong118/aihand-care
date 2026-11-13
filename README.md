@@ -213,6 +213,7 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
   sudo nmcli dev wifi connect "핫스팟이름" password "비밀번호"
   ```
   다음부터는 핫스팟을 켜면 자동으로 연결되고 1분 안에 시간이 맞춰집니다. 맞춰진 뒤에는 핫스팟을 꺼도 됩니다.
+  아이폰은 설정 → 개인용 핫스팟 화면을 **연 채로** 두어야 라즈베리파이에 보입니다 ("다른 사람의 연결 허용", 아이폰 12 이후는 "호환성 최대화"도 켜기). 안 보이면 `sudo nmcli dev wifi rescan` 뒤 `nmcli dev wifi list`로 이름을 확인합니다.
 - **확인**: `timedatectl`에서 `System clock synchronized: yes`이고 `Time zone: Asia/Seoul`이면 됩니다. 키오스크 기록 파일(`~/.cache/aihand-kiosk.log`)에도 켤 때마다 시계 상태가 남습니다 (`시계: 맞춰지지 않음`이면 기록 날짜가 틀릴 수 있음).
 
 #### 코드 업데이트 (인터넷 될 때)
