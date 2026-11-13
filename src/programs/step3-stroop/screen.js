@@ -22,6 +22,7 @@ export function createScreen(container, colors) {
       set(
         message('글자를 읽지 말고, 글자의 "색깔"을 봐 주세요.', 'info'),
         h('p', {}, '글자 색과 같은 색깔 카드를 로봇 카메라(WonderCam)에 보여 주세요. 아래 버튼을 눌러도 돼요.'),
+        h('p', {}, '색깔이 잘 구분되지 않으시면 이 활동은 건너뛰셔도 괜찮아요.'),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
     },
@@ -94,7 +95,7 @@ export function createScreen(container, colors) {
       set(
         message(`${total}문제를 모두 마쳤어요. 수고하셨어요!`, 'good'),
         h('p', {}, `글자 색과 같은 카드를 고른 문제: ${done}개`),
-        h('p', {}, '위의 "활동 기록 보기"에서 기록을 볼 수 있어요.'),
+        h('p', {}, '이번 회차가 끝났어요. 한 번 더 해도 좋아요.'),
         h('div', { class: 'row' }, button('한 번 더 하기', onAgain)),
       );
       speak(done === total ? `${total}문제를 모두 맞히셨어요! 정말 잘하셨어요!` : `${total}문제를 모두 마쳤어요. 수고하셨어요!`);
