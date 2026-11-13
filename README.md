@@ -160,7 +160,12 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
 
 시연은 라즈베리파이 5의 **Chromium**에서 합니다. 아래는 **인터넷이 될 때 미리** 한 번 해 둡니다.
 
-1. **Node.js**: `node -v`가 `v22.12.0` 이상이어야 합니다. Raspberry Pi OS의 기본 `apt` 버전은 이보다 낮을 수 있으니 <https://nodejs.org> 안내에 따라 LTS를 설치합니다.
+1. **Node.js**: Raspberry Pi OS(Debian 13)의 기본 `apt` 버전(v20.19)으로 충분합니다. 빌드(Vite)는 `v20.19.0` 이상이면 되고, 라즈베리파이에서는 테스트(`npm test`, `v22.12.0` 이상 필요)를 돌리지 않기 때문입니다. (2026-11-13 확인)
+   ```
+   sudo apt install -y nodejs npm git
+   node -v                         # v20.19 이상이면 OK
+   ```
+   `npm install` 중 Vitest 버전 경고(`EBADENGINE`)가 나와도 괜찮습니다.
 2. **한글 글꼴**: 화면 글꼴(Google Fonts)은 인터넷에서 받아 오므로, 인터넷이 없으면 기본 글꼴을 씁니다. 한글 글꼴이 없으면 한글이 깨질 수 있습니다.
    ```
    sudo apt install fonts-noto-cjk
