@@ -1,10 +1,12 @@
 // 개발자 입력 (Mock): 페이지 맨 아래 점선 영역. 기본은 접힘.
 // 손 인식·색 카드·숫자 카드 대신 버튼으로 입력하는 패널과 웹캠·WonderCam 상태를 담는다.
 // 웹캠 손 인식 측정(카메라·해상도 고르기, 미리보기, FPS)도 여기에 둔다. 라즈베리파이에서 FPS 를 잴 때 쓴다.
+// 로봇 손모양 시험(AIHand 를 버튼으로 바로 움직이기)도 여기에 둔다. 시연 전 손가락 점검용.
 // 접혀 있어도 패널은 붙어 있으므로 키보드 R/B/Y/G·1~5 입력은 계속 동작한다.
 
 import { h } from '../ui/components.js';
 import { outlineButton } from './statusbar.js';
+import poses from '../data/poses.json';
 
 const STATE_TEXT = {
   mock: '가상',
@@ -40,6 +42,10 @@ export function createDevPanel(devices) {
     label.textContent = open ? '접기' : '펼치기';
   });
 
+  // 로봇 손모양 시험 (AIHand 연결 때만 누를 수 있음)
+  const robotTest = createRobotTest(devices.robot);
+  body.append(robotTest.el);
+
   // 웹캠 손 인식 (측정용)
   const webcam = createWebcamBox(devices.hand);
   body.append(webcam.el);
@@ -65,10 +71,66 @@ export function createDevPanel(devices) {
       .filter((d) => d.key === 'webcam' || d.key === 'wondercam')
       .map((d) => `${d.label}: ${STATE_TEXT[d.state] ?? d.state}${d.note ? ` (${d.note})` : ''} · ${d.mock ? 'Mock' : '실제'}`)
       .join('   |   ');
+    robotTest.update(list.find((d) => d.key === 'robot')?.state === 'connected');
     webcam.refresh();
   }
 
   return { el, renderStatus, webcamOptions: webcam.options };
+}
+
+/**
+ * 로봇 손모양 시험: 버튼을 누르면 연결된 AIHand 가 바로 그 손모양·동작을 한다 (시연 전 로봇 점검용).
+ * 손가락 하나만 안 움직이면 그 손가락 서보 케이블부터 본다 (docs/hardware-check.md 부록 9).
+ * AIHand 에 연결되어 있을 때만 누를 수 있다. (#42 에서 D 가 만든 것을 옮김)
+ * @param robot  devices.robot
+ * @returns { el, update(connected) }
+ */
+function createRobotTest(robot) {
+  const hint = h('p', { class: 'mock-status' });
+  const last = h('p', { class: 'mock-status', 'aria-live': 'polite' }, '마지막 명령: 없음');
+  const buttons = [];
+
+  function testButton(label, command) {
+    const btn = h('button', { type: 'button', class: 'btn btn-small' }, label);
+    btn.addEventListener('click', async () => {
+      last.textContent = `보내는 중: ${label}`;
+      // 로봇 응답: { type: 'DONE', ... } 또는 { type: 'ERR', message } (core/robot/serial.js, reject 하지 않음)
+      const result = await command();
+      last.textContent =
+        result?.type === 'ERR' ? `${label}: 로봇이 하지 못했어요 (${result.message})` : `완료: ${label}`;
+    });
+    buttons.push(btn);
+    return btn;
+  }
+
+  const el = h(
+    'div',
+    { class: 'dev-box' },
+    h('h2', {}, '로봇 손모양 시험 (AIHand 직접 움직이기)'),
+    hint,
+    h('div', { class: 'mock-grid' }, ...poses.map((p) => testButton(p.label, () => robot.showPose(p.name)))),
+    h(
+      'div',
+      { class: 'mock-grid' },
+      testButton('쉬는 자세', () => robot.rest()),
+      testButton('인사', () => robot.hello()),
+      testButton('칭찬 반응', () => robot.react('ok')),
+      testButton('다시 반응', () => robot.react('retry')),
+    ),
+    last,
+  );
+
+  function update(connected) {
+    hint.textContent = connected
+      ? '누르면 연결된 AIHand가 바로 그 동작을 해요. 다섯 손가락이 모두 움직이는지 보세요. 활동 진행 중에는 누르지 마세요.'
+      : '상단 "AIHand 연결"을 누른 뒤 쓸 수 있어요.';
+    buttons.forEach((b) => {
+      b.disabled = !connected;
+    });
+  }
+  update(false);
+
+  return { el, update };
 }
 
 /**
