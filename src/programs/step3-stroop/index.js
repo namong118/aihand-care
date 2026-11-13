@@ -48,6 +48,14 @@ async function playRound(ctx, screen, s) {
   const questions = makeRound(colors, difficulty);
   const answers = [];
 
+  // 카메라를 태그 모드로 맞춘 다음 시작한다. STEP 1 다음이면 숫자 모드라 바꾸는 데 최대 약 5초 걸리고,
+  // 그동안 보여 준 카드는 읽히지 않는다. 구독하면 core 가 태그 모드로 바꾸고, 해제해도 모드는 그대로다
+  screen.waiting('카메라를 준비하고 있어요. 잠시만 기다려 주세요.');
+  const offWarmup = ctx.card.onCard(() => {});
+  await ctx.card.ready();
+  offWarmup();
+  if (!s.alive) return;
+
   // 로봇 역할: 회차 시작 신호로 인사한다
   await ctx.robot.hello();
   if (!s.alive) return;
