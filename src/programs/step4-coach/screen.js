@@ -182,7 +182,11 @@ export function createScreen(container, poses) {
       );
     },
 
-    /** 회차 끝. onChoose 가 있으면 "다른 손운동 고르기" 버튼도 보여 준다 (루틴이 여러 개일 때) */
+    /**
+     * 회차 끝. onChoose 가 있으면 "다른 손운동 고르기" 버튼도 보여 준다 (루틴이 여러 개일 때).
+     * 문구는 바로 아래 버튼만 말한다. 위쪽 막대의 버튼은 시연 코스 안팎에서 달라서
+     * ("활동 기록 보기" / "다음 활동으로") 이름을 적지 않는다. STEP 4는 코스인지 모른다 (#59)
+     */
     end(onAgain, onChoose) {
       // 두 버튼 중 먼저 누른 것 하나만 동작한다 (회차가 두 개 시작되지 않게)
       let chosen = false;
@@ -192,7 +196,13 @@ export function createScreen(container, poses) {
         fn();
       };
       area.append(
-        h('p', {}, '이번 회차가 끝났어요. 위의 "활동 기록 보기"에서 기록을 볼 수 있어요.'),
+        h(
+          'p',
+          {},
+          onChoose
+            ? '이번 회차가 끝났어요. 한 번 더 하거나 다른 손운동을 골라도 좋아요.'
+            : '이번 회차가 끝났어요. 한 번 더 해도 좋아요.',
+        ),
         h(
           'div',
           { class: 'row' },
