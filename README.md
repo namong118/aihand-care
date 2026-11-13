@@ -182,12 +182,33 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
    npm install
    npm run build
    ```
+5. **키오스크 자동 실행 등록** (한 번만): 전원을 켜면 앱이 전체 화면으로 뜨게 합니다.
+   ```
+   ./scripts/install-kiosk.sh
+   ```
+   자동 실행을 끄려면 `./scripts/install-kiosk.sh --remove`
 
-시연할 때:
+#### 키오스크 (전원 ON → 앱 전체 화면)
 
-- 인터넷이 되면: Chromium에서 배포 주소 <https://namong118.github.io/aihand-care/>
-- **인터넷이 없으면**: `aihand-care` 폴더에서 `npm run preview`를 실행하고 Chromium에서 `http://localhost:4173/aihand-care/`를 엽니다.
-  손 인식 모델·WASM은 빌드 결과에 들어 있어서 인터넷 없이 동작합니다. `localhost` 주소에서는 https가 아니어도 웹캠과 Web Serial을 쓸 수 있습니다.
+전원을 켜면 `scripts/kiosk.sh`가 앱 서버(`npm run preview`)를 켜고, Chromium을 **키오스크 모드**(주소창·탭 없는 전체 화면)로 `http://localhost:4173/aihand-care/`에 엽니다. 인터넷이 없어도 됩니다. 손 인식 모델·WASM은 빌드 결과에 들어 있고, `localhost` 주소에서는 https가 아니어도 웹캠과 Web Serial을 쓸 수 있습니다.
+
+- **활동 기록 유지**: 키오스크 전용 Chromium 프로필(`~/.config/aihand-kiosk`)을 써서 활동 기록·카메라 허용·AIHand 포트 허용이 남습니다. 시크릿 모드는 쓰지 않습니다 (끄면 기록이 지워짐). 주소(포트 4173)를 바꾸면 이전 기록이 안 보이니 바꾸지 않습니다.
+- **처음 한 번**: 웹캠을 켤 때 카메라 허용 창이 뜨면 "허용"을 누릅니다. 다음부터는 묻지 않습니다.
+- **전원을 그냥 뽑아도 됩니다**: 다음에 켤 때 "제대로 종료되지 않았습니다" 창이 뜨지 않게 해 두었습니다.
+- **키오스크 닫기**: 키보드를 연결하고 `Alt+F4`. 또는 다른 PC에서 ssh로 접속해 `pkill -f aihand-kiosk`
+- **다시 열기**: 메뉴 → 기타 → **AIHand 시연**, 또는 다시 부팅. ssh에서는 `nohup setsid ~/aihand-care/scripts/kiosk.sh &`
+- **안 뜰 때**: 기록 파일 `~/.cache/aihand-kiosk.log`를 봅니다. `dist/ 가 없습니다`가 보이면 아래 "코드 업데이트"를 합니다.
+
+#### 코드 업데이트 (인터넷 될 때)
+
+```
+cd ~/aihand-care
+./scripts/update-station.sh
+```
+
+`main`의 최신 코드를 받아 다시 빌드합니다. 끝나면 키오스크를 다시 열거나 다시 부팅합니다.
+
+인터넷이 되는 다른 PC에서는 배포 주소 <https://namong118.github.io/aihand-care/>로도 볼 수 있습니다 (개발·공유용).
 
 ## 6. 하드웨어 구성
 
