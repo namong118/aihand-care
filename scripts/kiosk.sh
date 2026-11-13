@@ -50,6 +50,9 @@ fi
 #     (Linux에서는 --lang 옵션이 무시되어 설정 파일로 정한다)
 PREFS="$PROFILE_DIR/Default/Preferences"
 mkdir -p "$(dirname "$PREFS")"
+# 인터넷이 될 때 Chromium이 동영상 DRM 부품(WidevineCdm)을 자동으로 받는데, 라즈베리파이에서는
+# 다음 실행부터 이 부품 때문에 Chromium이 바로 꺼진다 (2026-11-13 확인). 앱에 필요 없으니 지운다.
+rm -rf "$PROFILE_DIR/WidevineCdm"
 node -e '
   const fs = require("fs");
   const file = process.argv[1];
@@ -71,6 +74,7 @@ export LANGUAGE=ko
 #   --lang=ko (+ 위 LANGUAGE=ko) 카메라 허용 같은 브라우저 안내를 한국어로
 #   --disable-features=Translate 번역 기능 끄기 (위 설정 파일과 함께 한 번 더)
 #   --check-for-update-interval  업데이트 알림 끄기 (인터넷 없이 쓰므로)
+#   --disable-component-update   부품 자동 내려받기 끄기 (위 WidevineCdm이 다시 받아지지 않게)
 #   --ozone-platform=wayland     라즈베리파이 데스크톱(labwc)은 Wayland. ssh에서 실행해도 화면을 찾게 명시
 # ssh에서 실행할 때를 위해 데스크톱 화면 정보를 채운다 (부팅 때 자동 실행에서는 이미 있다)
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
@@ -89,6 +93,7 @@ chromium \
   --lang=ko \
   --disable-features=Translate \
   --check-for-update-interval=31536000 \
+  --disable-component-update \
   "$URL"
 
 echo "==== $(date '+%F %T') Chromium 종료 (앱 서버는 켜 둔 채로 둠)"
