@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fingersUp, landmarksToCode, createCodeSmoother, flipHandedness, thumbOut, THRESHOLDS } from './fingers.js';
+import { fingersUp, landmarksToCode, createCodeSmoother, toHandedness, thumbOut, THRESHOLDS } from './fingers.js';
 import poses from '../../data/poses.json';
 
 // 시험용 손 만들기: 손바닥이 카메라를 보고 손가락이 위(+y)를 향한 오른손.
@@ -99,10 +99,11 @@ describe('createCodeSmoother', () => {
   });
 });
 
-describe('flipHandedness', () => {
-  it('왼손·오른손을 바꾼다', () => {
-    expect(flipHandedness('Left')).toBe('Right');
-    expect(flipHandedness('Right')).toBe('Left');
-    expect(flipHandedness(undefined)).toBe(null);
+describe('toHandedness', () => {
+  it('MediaPipe 이름을 뒤집지 않고 그대로 쓴다 (실물 확인)', () => {
+    expect(toHandedness('Left')).toBe('Left');
+    expect(toHandedness('Right')).toBe('Right');
+    expect(toHandedness(undefined)).toBe(null);
+    expect(toHandedness('Unknown')).toBe(null);
   });
 });

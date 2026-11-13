@@ -93,11 +93,11 @@ export function createCodeSmoother(frames = 2) {
 }
 
 /**
- * MediaPipe 의 왼손/오른손 이름은 거울처럼 뒤집힌 화면(셀카)을 기준으로 한다.
- * 웹캠 영상은 뒤집지 않고 넣으므로 반대로 바꿔 준다. [검증 필요] 실물에서 왼손·오른손으로 확인
+ * MediaPipe 의 왼손/오른손 이름('Left' | 'Right')을 그대로 쓴다. 그 밖의 값은 null.
+ * 2026-11-13 라즈베리파이 + C270 실물 확인: 뒤집지 않은 웹캠 영상을 넣으면 MediaPipe 이름이 실제 손과 같다.
+ * (처음에는 MediaPipe 문서의 "거울 영상 기준" 설명대로 뒤집었는데, 그러면 오른손이 왼손으로 나왔다)
  */
-export function flipHandedness(name) {
-  if (name === 'Left') return 'Right';
-  if (name === 'Right') return 'Left';
+export function toHandedness(name) {
+  if (name === 'Left' || name === 'Right') return name;
   return null;
 }

@@ -11,7 +11,7 @@
 
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import { codeToName } from './codes.js';
-import { landmarksToCode, createCodeSmoother, flipHandedness, thumbOut } from './fingers.js';
+import { landmarksToCode, createCodeSmoother, toHandedness, thumbOut } from './fingers.js';
 
 // GitHub Pages 주소(/aihand-care/)에서도 맞게 BASE_URL 을 붙인다 (vite.config.js 참고)
 const BASE = import.meta.env.BASE_URL;
@@ -114,7 +114,7 @@ export function createMediaPipeHand({ poses, onStop = () => {} }) {
       return;
     }
     const lm = result.worldLandmarks?.[0] ?? null;
-    const hand = flipHandedness(result.handedness?.[0]?.[0]?.categoryName);
+    const hand = toHandedness(result.handedness?.[0]?.[0]?.categoryName);
     thumb = lm ? thumbOut(lm) : null;
     setCode(smooth(landmarksToCode(lm)), hand);
 
@@ -242,7 +242,7 @@ export function createMediaPipeHand({ poses, onStop = () => {} }) {
         deviceId: s.deviceId ?? null,
         code,
         name: codeToName(code, poses),
-        handedness, // 'Left' | 'Right' | null (flipHandedness 를 거친 값)
+        handedness, // 'Left' | 'Right' | null (fingers.js toHandedness)
         thumb,
       };
     },

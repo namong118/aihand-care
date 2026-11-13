@@ -125,7 +125,7 @@ function createWebcamBox(hand) {
     const i = cam.info();
     const size = i.width ? `${i.width}×${i.height}` : '해상도 확인 중';
     const pose = i.code === null ? '손 없음' : `${i.code}${i.name ? ` (${i.name})` : ' (목록에 없는 모양)'}`;
-    // 왼손·오른손 판정 (flipHandedness 가 맞는지 실물로 확인할 때 쓴다)
+    // 왼손·오른손 판정 (실물 확인용)
     const side = i.handedness === 'Right' ? ' · 오른손' : i.handedness === 'Left' ? ' · 왼손' : '';
     // 엄지 판정 값: 기준값(fingers.js THRESHOLDS)을 실물로 맞출 때 쓴다
     const thumb = i.thumb === null || i.thumb === undefined ? '' : ` · 엄지 바깥 ${i.thumb.toFixed(2)}`;
