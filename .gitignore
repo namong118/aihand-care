@@ -4,6 +4,9 @@ node_modules/
 # 빌드 결과
 dist/
 
+# MediaPipe WASM: npm run dev·build 때 node_modules 에서 복사 (scripts/copy-mediapipe-wasm.js)
+public/mediapipe/
+
 # 로그
 npm-debug.log*
 *.log
