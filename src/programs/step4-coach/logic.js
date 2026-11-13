@@ -74,6 +74,39 @@ export function countWord(n) {
 }
 
 /**
+ * 동작 화면에서 지금 손 상태. 판단은 waitForPose 확정 규칙과 같다
+ * (동작이 시작된 since 뒤에 새로 만든, 시범과 같은 손모양만 인정).
+ *   pose: ctx.hand.onPose 로 받은 값, now: 지금 시각, since: 동작 시작 시각
+ * 반환:
+ *   'none'    손이 안 보임
+ *   'other'   시범과 다른 손모양
+ *   'old'     시범과 같지만, 동작이 시작되기 전부터 들고 있던 손 (새로 만들어야 함)
+ *   'holding' 시범과 같은 손모양을 유지하는 중 (게이지가 찬다)
+ */
+export function holdState(pose, step, { now, since }) {
+  if (!pose || pose.code === null || pose.code === undefined) return 'none';
+  if (pose.name !== step.pose) return 'other';
+  if (now - pose.stableMs < since) return 'old';
+  return 'holding';
+}
+
+/**
+ * 'old' 안내("손을 잠깐 내렸다가 다시 해 주세요")를 띄우기 전에 기다리는 시간.
+ * 손을 바꾸는 중에 잠깐 지나가는 상태일 수 있어 1초 계속될 때만 띄운다 (STEP 2와 같은 기준).
+ */
+export const OLD_HAND_NOTICE_MS = 1000;
+
+/** 'old' 상태가 stateMs 동안 계속됐으면 안내를 띄운다. 다른 상태에서는 띄우지 않는다 */
+export function shouldShowOldNotice(state, stateMs) {
+  return state === 'old' && stateMs >= OLD_HAND_NOTICE_MS;
+}
+
+/** 펼친 동작 목록이 몇 번 반복인지 (expandRoutine 결과의 가장 큰 round). 빈 목록이면 0 */
+export function roundCount(steps) {
+  return steps.reduce((max, s) => Math.max(max, s.round ?? 1), 0);
+}
+
+/**
  * 동작별 결과를 회차 기록용으로 모은다.
  * results: [{ method: 'detected' | 'manual' | 'skipped', reactionMs }]
  * 반환: { total, done, skipped, avgReactionMs, methods: { detected, manual, skipped } }

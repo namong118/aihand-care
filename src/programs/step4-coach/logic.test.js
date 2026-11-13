@@ -7,8 +7,12 @@ import {
   countWord,
   restMs,
   summarizeSteps,
+  holdState,
+  shouldShowOldNotice,
+  roundCount,
   DEFAULT_HOLD_MS,
   REST_MS,
+  OLD_HAND_NOTICE_MS,
 } from './logic.js';
 import routines from '../../data/routines.json';
 import poses from '../../data/poses.json';
@@ -104,6 +108,51 @@ describe('holdCount (유지하는 동안 1초에 하나씩)', () => {
     expect(holdCount({ name: 'PAPER', stableMs: 2000 }, step3s)).toBe(0);
     expect(holdCount({ name: null, stableMs: 0 }, step3s)).toBe(0);
     expect(holdCount(null, step3s)).toBe(0);
+  });
+});
+
+describe('holdState (지금 손 상태)', () => {
+  const step = { pose: 'ROCK', holdMs: 1000 };
+  const since = 10_000; // 동작 시작 시각
+  const now = 12_000; // 시작하고 2초 뒤
+  it('손이 없으면 none', () => {
+    expect(holdState(null, step, { now, since })).toBe('none');
+    expect(holdState({ code: null, name: null, stableMs: 0 }, step, { now, since })).toBe('none');
+  });
+  it('시범과 다른 손모양이면 other (이름 없는 손모양 포함)', () => {
+    expect(holdState({ code: '11111', name: 'PAPER', stableMs: 500 }, step, { now, since })).toBe('other');
+    expect(holdState({ code: '11000', name: null, stableMs: 500 }, step, { now, since })).toBe('other');
+  });
+  it('시작 전부터 들고 있던 같은 손모양이면 old', () => {
+    // 3초째 유지 중 → 시작(2초 전)보다 1초 먼저 만든 손
+    expect(holdState({ code: '00000', name: 'ROCK', stableMs: 3000 }, step, { now, since })).toBe('old');
+  });
+  it('시작 뒤에 만든 같은 손모양이면 holding (시작 시각에 딱 만든 손 포함)', () => {
+    expect(holdState({ code: '00000', name: 'ROCK', stableMs: 500 }, step, { now, since })).toBe('holding');
+    expect(holdState({ code: '00000', name: 'ROCK', stableMs: 2000 }, step, { now, since })).toBe('holding');
+  });
+});
+
+describe('shouldShowOldNotice', () => {
+  it('old 가 1초 계속되면 안내', () => {
+    expect(shouldShowOldNotice('old', OLD_HAND_NOTICE_MS - 1)).toBe(false);
+    expect(shouldShowOldNotice('old', OLD_HAND_NOTICE_MS)).toBe(true);
+  });
+  it('다른 상태는 오래 계속돼도 안내하지 않음', () => {
+    for (const state of ['none', 'other', 'holding']) {
+      expect(shouldShowOldNotice(state, 60_000)).toBe(false);
+    }
+  });
+});
+
+describe('roundCount', () => {
+  it('펼친 목록의 반복 횟수', () => {
+    const steps = [{ pose: 'ROCK' }, { pose: 'PAPER' }];
+    expect(roundCount(expandRoutine({ repeat: 2, steps }))).toBe(2);
+    expect(roundCount(expandRoutine({ steps }))).toBe(1);
+  });
+  it('빈 목록이면 0', () => {
+    expect(roundCount([])).toBe(0);
   });
 });
 

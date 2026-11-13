@@ -8,18 +8,40 @@ const METHOD_TEXT = {
   skipped: '건너뜀',
 };
 
+/** 동작이 시작되기 전부터 같은 손모양을 들고 있을 때 안내 (logic.js 의 'old' 상태) */
+const OLD_HAND_TEXT = '손을 잠깐 내렸다가 다시 해 주세요. 새로 만든 손모양부터 세어요.';
+
+/** 한 번만 눌리는 버튼. 누르면 바로 잠가서 두 번 눌러도 회차가 두 개 시작되지 않게 한다 */
+function onceButton(label, onClick, opts) {
+  const btn = button(
+    label,
+    () => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      onClick();
+    },
+    opts,
+  );
+  return btn;
+}
+
 export function createScreen(container, poses) {
   container.innerHTML = '';
   const area = h('div', { class: 'program-body' });
   container.append(area);
   const labelOf = (name) => poses.find((p) => p.name === name)?.label ?? name;
+  const sayOf = (step) => step.say ?? labelOf(step.pose);
   let gaugeBar = null;
   let gaugeText = null;
+  let countText = null;
+  let oldNotice = null;
 
   function set(...children) {
     area.innerHTML = '';
     gaugeBar = null;
     gaugeText = null;
+    countText = null;
+    oldNotice = null;
     area.append(...children.flat().filter(Boolean));
   }
 
@@ -29,7 +51,7 @@ export function createScreen(container, poses) {
         h('h2', {}, routine.title),
         message(routine.description, 'info'),
         h('p', {}, '로봇을 보면서 같은 손모양을 함께 만들어 주세요. 힘들면 건너뛰어도 괜찮아요.'),
-        h('div', { class: 'row' }, button('시작하기', onStart)),
+        h('div', { class: 'row' }, onceButton('시작하기', onStart)),
       );
     },
 
@@ -37,9 +59,16 @@ export function createScreen(container, poses) {
       set(message(text, 'info'));
     },
 
-    /** 동작 하나: 안내 문구, 유지 게이지, 대체 입력 버튼("따라 했어요"), 건너뛰기 */
-    step({ index, count, step }, { onDone, onSkip }) {
-      const holdSec = ((step.holdMs ?? 1000) / 1000).toFixed(1);
+    /**
+     * 동작 하나: 진행 위치, 안내 문구, 숫자 세기, 유지 게이지, 대체 입력 버튼("따라 했어요"), 건너뛰기
+     * info: { index, count, step, rounds, holdMs }
+     */
+    step({ index, count, step, rounds, holdMs }, { onDone, onSkip }) {
+      const holdSec = (holdMs / 1000).toFixed(1);
+      const where = rounds > 1 ? `동작 ${index} / ${count} · 반복 ${step.round} / ${rounds}` : `동작 ${index} / ${count}`;
+      countText = h('p', { class: 'big-prompt', 'aria-live': 'polite' }, '');
+      oldNotice = message(OLD_HAND_TEXT, 'info');
+      oldNotice.hidden = true;
       gaugeBar = h('div', { class: 'gauge-fill' });
       gaugeText = h('span', {}, `유지: 0.0 / ${holdSec}초`);
       const gauge = h(
@@ -49,11 +78,13 @@ export function createScreen(container, poses) {
       );
       area.innerHTML = '';
       area.append(
-        h('p', { class: 'mock-status' }, `동작 ${index} / ${count}`),
-        h('p', { class: 'big-prompt' }, step.say ?? labelOf(step.pose)),
+        h('p', { class: 'mock-status' }, where),
+        h('p', { class: 'big-prompt' }, sayOf(step)),
         h('p', {}, `손모양: ${labelOf(step.pose)} — 로봇처럼 ${holdSec}초 동안 해 주세요.`),
+        countText,
         gauge,
         gaugeText,
+        oldNotice,
         h(
           'div',
           { class: 'row' },
@@ -63,18 +94,31 @@ export function createScreen(container, poses) {
       );
     },
 
-    /** 유지 게이지 갱신. ratio 0~1 */
-    gauge(ratio, stableMs, holdMs) {
+    /**
+     * 유지 상태 갱신 (0.1초마다).
+     *   ratio 0~1 게이지, count 숫자 세기 말('하나' 등, 없으면 ''), showOld 미리 든 손 안내 표시 여부
+     */
+    hold({ ratio, stableMs, holdMs, count, showOld }) {
       if (!gaugeBar) return;
       const pct = Math.round(ratio * 100);
       gaugeBar.style.width = `${pct}%`;
       gaugeBar.parentElement.setAttribute('aria-valuenow', String(pct));
       const shown = ratio > 0 ? Math.min(stableMs, holdMs) : 0;
       gaugeText.textContent = `유지: ${(shown / 1000).toFixed(1)} / ${(holdMs / 1000).toFixed(1)}초`;
+      if (countText.textContent !== count) countText.textContent = count;
+      oldNotice.hidden = !showOld;
     },
 
-    stepDone(method) {
-      set(message(`좋아요! (${METHOD_TEXT[method]})`, 'good'));
+    /** 동작 사이 쉬는 시간: 어떻게 마쳤는지 + 다음 동작 안내. next 가 없으면 마지막 동작 */
+    rest(method, next) {
+      set(
+        method === 'skipped'
+          ? message('건너뛰었어요. 괜찮아요.', 'info')
+          : message(`좋아요! (${METHOD_TEXT[method]})`, 'good'),
+        next
+          ? h('p', {}, `잠깐 쉬어요. 다음 동작: ${sayOf(next)}`)
+          : h('p', {}, '마지막 동작이었어요.'),
+      );
     },
 
     finish({ total, done, skipped, methods }) {
@@ -88,7 +132,7 @@ export function createScreen(container, poses) {
     end(onAgain) {
       area.append(
         h('p', {}, '이번 회차가 끝났어요. 위의 "활동 기록 보기"에서 기록을 볼 수 있어요.'),
-        h('div', { class: 'row' }, button('한 번 더 하기', onAgain)),
+        h('div', { class: 'row' }, onceButton('한 번 더 하기', onAgain)),
       );
     },
   };
