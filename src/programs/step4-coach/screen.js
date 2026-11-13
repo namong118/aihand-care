@@ -46,12 +46,57 @@ export function createScreen(container, poses) {
   }
 
   return {
-    intro(routine, onStart) {
+    /**
+     * 루틴 고르기: 루틴 카드를 나란히 보여 준다 (넓은 화면에서 2열 → 루틴 4개면 2×2).
+     * 홈 화면 활동 카드와 같은 클래스(home-grid, home-card step4)를 써서 모양을 맞춘다.
+     *   items: [{ routine, stepCount }], onPick(routine)
+     */
+    chooser(items, onPick) {
+      let picked = false;
+      const card = ({ routine, stepCount }) =>
+        h(
+          'article',
+          { class: 'home-card step4' },
+          h(
+            'div',
+            { class: 'home-card-title' },
+            h('span', { class: 'step-pill' }, `동작 ${stepCount}개`),
+            h('h2', {}, routine.title),
+          ),
+          h('p', { class: 'home-card-desc' }, routine.description),
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'home-start',
+              onClick: () => {
+                if (picked) return; // 두 번 눌러도 한 번만
+                picked = true;
+                onPick(routine);
+              },
+            },
+            '이 손운동 하기',
+          ),
+        );
+      set(
+        h('h2', {}, '어떤 손운동을 해 볼까요?'),
+        h('p', {}, '하고 싶은 손운동을 하나 골라 주세요.'),
+        h('div', { class: 'home-grid' }, items.map(card)),
+      );
+    },
+
+    /** 루틴 소개. onBack 이 있으면 "다른 손운동 고르기" 버튼도 보여 준다 (루틴이 여러 개일 때) */
+    intro(routine, onStart, onBack) {
       set(
         h('h2', {}, routine.title),
         message(routine.description, 'info'),
         h('p', {}, '로봇을 보면서 같은 손모양을 함께 만들어 주세요. 힘들면 건너뛰어도 괜찮아요.'),
-        h('div', { class: 'row' }, onceButton('시작하기', onStart)),
+        h(
+          'div',
+          { class: 'row' },
+          onceButton('시작하기', onStart),
+          onBack ? onceButton('다른 손운동 고르기', onBack, { variant: 'secondary' }) : null,
+        ),
       );
     },
 
@@ -129,10 +174,23 @@ export function createScreen(container, poses) {
       );
     },
 
-    end(onAgain) {
+    /** 회차 끝. onChoose 가 있으면 "다른 손운동 고르기" 버튼도 보여 준다 (루틴이 여러 개일 때) */
+    end(onAgain, onChoose) {
+      // 두 버튼 중 먼저 누른 것 하나만 동작한다 (회차가 두 개 시작되지 않게)
+      let chosen = false;
+      const first = (fn) => () => {
+        if (chosen) return;
+        chosen = true;
+        fn();
+      };
       area.append(
         h('p', {}, '이번 회차가 끝났어요. 위의 "활동 기록 보기"에서 기록을 볼 수 있어요.'),
-        h('div', { class: 'row' }, onceButton('한 번 더 하기', onAgain)),
+        h(
+          'div',
+          { class: 'row' },
+          onceButton('한 번 더 하기', first(onAgain)),
+          onChoose ? onceButton('다른 손운동 고르기', first(onChoose), { variant: 'secondary' }) : null,
+        ),
       );
     },
   };

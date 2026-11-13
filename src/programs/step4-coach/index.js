@@ -13,12 +13,31 @@ import {
   roundCount,
   restMs,
   summarizeSteps,
+  stepCountOf,
+  needsChooser,
 } from './logic.js';
 import { createScreen } from './screen.js';
 
 const ID = 'step4-coach';
 
 let session = null;
+
+/** 비동기 흐름을 시작하고, 에러는 콘솔에 남긴다 */
+const run = (promise) => promise.catch((err) => console.error(err));
+
+/** 루틴 고르기 화면 (루틴이 2개 이상일 때). 카드 하나를 고르면 그 루틴 소개로 */
+function showChooser(ctx, screen, s) {
+  if (!s.alive) return;
+  const items = routines.map((routine) => ({ routine, stepCount: stepCountOf(routine) }));
+  screen.chooser(items, (routine) => showIntro(ctx, screen, s, routine));
+}
+
+/** 루틴 소개 → "시작하기"로 회차 시작. 루틴이 여러 개면 "다른 손운동 고르기"로 돌아갈 수 있다 */
+function showIntro(ctx, screen, s, routine) {
+  if (!s.alive) return;
+  const back = needsChooser(routines) ? () => showChooser(ctx, screen, s) : null;
+  screen.intro(routine, () => run(playRound(ctx, screen, s, routine)), back);
+}
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -123,7 +142,10 @@ async function playRound(ctx, screen, s, routine) {
       })),
     },
   });
-  screen.end(() => playRound(ctx, screen, s, routine).catch((err) => console.error(err)));
+  screen.end(
+    () => run(playRound(ctx, screen, s, routine)),
+    needsChooser(routines) ? () => showChooser(ctx, screen, s) : null,
+  );
 }
 
 export default {
@@ -134,9 +156,10 @@ export default {
     // waits: 기다리는 중인 손 입력들. unmount 할 때 모두 멈춘다
     session = { alive: true, waits: new Set() };
     const s = session;
-    const routine = routines[0]; // TODO: 루틴이 여러 개가 되면 고르는 화면 추가
     const screen = createScreen(container, poses);
-    screen.intro(routine, () => playRound(ctx, screen, s, routine).catch((err) => console.error(err)));
+    // 루틴이 여러 개면 고르는 화면부터, 1개면 바로 그 루틴 소개
+    if (needsChooser(routines)) showChooser(ctx, screen, s);
+    else showIntro(ctx, screen, s, routines[0]);
   },
 
   unmount() {
