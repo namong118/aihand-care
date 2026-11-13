@@ -147,6 +147,10 @@ ctx.log.record({
 
 ## 작업 방식
 
+- **작업을 시작하기 전에** 아래를 먼저 확인하고, 내게 온 할 일·댓글이 있으면 사용자에게 알린다. 팀원 사이 전달 사항은 담당자를 지정한 이슈와 PR 댓글로 남긴다.
+  - `git switch main && git pull` (새 작업은 최신 main에서 새 브랜치로 시작한다)
+  - `gh issue list --assignee @me` (내게 온 이슈)
+  - `gh pr list --author @me --state all --limit 5` 후 `gh pr view <번호> --comments` (내 PR에 달린 새 댓글)
 - 팀원 절반은 프로그래밍 초보다. 변경 후에는 무엇을 왜 바꿨는지 한국어로 짧게 설명한다.
 - 작은 단위로 커밋한다. 커밋 메시지는 한국어, `[step2] 판정 함수 추가` 형식.
 - `main`에 직접 push 하지 않는다. 브랜치 이름은 `step2/판정로직` 같은 형식, PR로 합친다.
