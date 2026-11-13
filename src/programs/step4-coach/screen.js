@@ -11,6 +11,14 @@ const METHOD_TEXT = {
 /** 동작이 시작되기 전부터 같은 손모양을 들고 있을 때 안내 (logic.js 의 'old' 상태) */
 const OLD_HAND_TEXT = '손을 잠깐 내렸다가 다시 해 주세요. 새로 만든 손모양부터 세어요.';
 
+/**
+ * 루틴 카드 배치: 항상 2열 (루틴 4개면 2×2). 300px 보다 좁아지는 화면에서만 1열.
+ * 홈 카드(home-grid)는 카드 최소 폭이 460px 라서, 로봇이 Mock 일 때 오른쪽에 가상 로봇손 칸이 붙으면
+ * 활동 화면 폭이 좁아져 1열(1×4)이 된다. 카드 최소 폭을 "폭의 절반"으로 잡아 그때도 2열이 되게 한다.
+ */
+const CHOOSER_COLUMNS =
+  'repeat(auto-fit, minmax(min(100%, max(300px, calc((100% - var(--gap-cards)) / 2))), 1fr))';
+
 /** 한 번만 눌리는 버튼. 누르면 바로 잠가서 두 번 눌러도 회차가 두 개 시작되지 않게 한다 */
 function onceButton(label, onClick, opts) {
   const btn = button(
@@ -81,7 +89,7 @@ export function createScreen(container, poses) {
       set(
         h('h2', {}, '어떤 손운동을 해 볼까요?'),
         h('p', {}, '하고 싶은 손운동을 하나 골라 주세요.'),
-        h('div', { class: 'home-grid' }, items.map(card)),
+        h('div', { class: 'home-grid', style: { 'grid-template-columns': CHOOSER_COLUMNS } }, items.map(card)),
       );
     },
 
