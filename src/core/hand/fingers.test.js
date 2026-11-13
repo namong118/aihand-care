@@ -67,9 +67,11 @@ describe('thumbOut', () => {
     expect(thumbOut(makeHand('00000'))).toBeLessThan(THRESHOLDS.thumbOut);
   });
 
-  it('실물 측정값으로 본 기준: 펴짐 1.15·1.29, 접힘 0.99·0.95 를 가른다', () => {
-    for (const v of [1.15, 1.29]) expect(v).toBeGreaterThan(THRESHOLDS.thumbOut);
-    for (const v of [0.99, 0.95]) expect(v).toBeLessThan(THRESHOLDS.thumbOut);
+  it('실물 측정값을 가른다 (개발 PC + 라즈베리파이)', () => {
+    const up = [1.15, 1.29, 1.1, 1.22, 1.14, 1.11]; // 손바닥·엄지 척
+    const down = [0.99, 0.95, 0.73, 0.86, 0.93, 0.88, 0.97]; // 넷·주먹·가위·검지·셋
+    for (const v of up) expect(v).toBeGreaterThan(THRESHOLDS.thumbOut);
+    for (const v of down) expect(v).toBeLessThan(THRESHOLDS.thumbOut);
   });
 });
 
