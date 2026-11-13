@@ -94,7 +94,7 @@ aihand-care/
 │  │  ├─ card/             카드 인식: WonderCam
 │  │  └─ log.js            활동 기록
 │  ├─ programs/            프로그램 4종 (각자 자기 폴더만 수정)
-│  │  ├─ step1-memory/     STEP 1 기억손
+│  │  ├─ step1-memory/     STEP 1 숫자 기억
 │  │  ├─ step2-rps/        STEP 2 사고력 가위바위보
 │  │  ├─ step3-stroop/     STEP 3 색깔손
 │  │  └─ step4-coach/      STEP 4 손운동 코칭

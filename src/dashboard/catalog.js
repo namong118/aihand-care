@@ -7,7 +7,7 @@ export const CATALOG = [
     id: 'step1-memory',
     step: 1,
     tag: '기억',
-    title: '기억손',
+    title: '숫자 기억',
     desc: '로봇이 손가락으로 보여준 숫자를 기억했다가, 같은 순서로 숫자 카드를 보여 주세요.',
   },
   {
