@@ -1,99 +1,106 @@
-// 손 랜드마크 21개 → 5비트 손모양 code. mediapipe.js 가 쓰는 순수 함수 (DOM·웹캠 없음, 테스트 가능).
+// 손 랜드마크 21개 → 손가락별 펴짐 여부 → 5비트 code. mediapipe.js 가 쓴다.
+// DOM·웹캠을 쓰지 않는 순수 함수라서 fingers.test.js 로 테스트한다.
 //
-// MediaPipe 랜드마크 번호 (손목 0, 손가락마다 뿌리 → 끝 순서)
-//   엄지 1·2·3·4, 검지 5·6·7·8, 중지 9·10·11·12, 약지 13·14·15·16, 새끼 17·18·19·20
+// 랜드마크 번호 (MediaPipe Hand Landmarker)
+//   0 손목
+//   엄지 1~4, 검지 5~8, 중지 9~12, 약지 13~16, 새끼 17~20
+//   (손가락마다 순서대로 뿌리(MCP) → 둘째 마디(PIP) → 셋째 마디(DIP) → 끝(TIP). 엄지는 CMC·MCP·IP·TIP)
 //
-// 3D 좌표(worldLandmarks, 단위 m)로 거리를 재므로 손이 기울거나 돌아가도 같은 기준이 적용된다.
-// 아래 기준값으로 7개 손모양 인식을 실물 웹캠으로 확인함 (2026-11-11, D, docs/hardware-check.md 5번).
-// [검증 필요] 고령자 손(굽은 손가락)·다른 조명에서는 아직 확인 전. 잘 안 되면 이 두 값을 조정한다.
+// 좌표는 worldLandmarks(손 중심 기준 3D, 미터)를 넣는다. 화면 좌표(landmarks)보다
+// 손 크기·카메라 거리·손 기울기의 영향을 덜 받는다.
 
-/** 검지~새끼: [가운데 마디(PIP), 손끝(TIP)] 번호 */
+const WRIST = 0;
+// [끝, 둘째 마디] 번호. 검지·중지·약지·새끼
 const FINGERS = [
-  [6, 8], // 검지
-  [10, 12], // 중지
-  [14, 16], // 약지
-  [18, 20], // 새끼
+  [8, 6],
+  [12, 10],
+  [16, 14],
+  [20, 18],
 ];
+const THUMB_TIP = 4;
+const THUMB_IP = 3;
+const PINKY_MCP = 17;
 
-/** 손끝이 가운데 마디보다 손목에서 이만큼(배) 더 멀어야 "펴짐" */
-export const FINGER_RATIO = 1.1;
-/** 엄지 끝이 검지 뿌리에서 손바닥 길이의 이만큼(배) 이상 떨어져야 "펴짐" */
-export const THUMB_SPREAD = 0.5;
+// 판정 기준값. 2026-11-13 라즈베리파이 + C270 으로 7종 확인함
+export const THRESHOLDS = {
+  // 검지~새끼: (손목~손가락 끝) ÷ (손목~둘째 마디) 가 이보다 크면 펴짐.
+  // 펴면 약 1.3, 접으면 1보다 작다
+  finger: 1.1,
+  // 엄지: (엄지 끝~새끼 뿌리) ÷ (엄지 셋째 마디~새끼 뿌리) 가 이보다 크면 펴짐 (엄지 끝이 바깥을 향함).
+  // 실물 측정 (개발 PC + DroidCam, 라즈베리파이 + C270, 오른손·왼손, 손바닥·손등):
+  //   펴짐 1.10~1.29 (가장 작은 값: 라즈베리파이 오른손 손바닥 1.10)
+  //   접힘 0.73~0.99 (가장 큰 값: 개발 PC 손가락 넷 0.99)
+  //   → 가운데 1.05. 양쪽 여유 약 0.05
+  // (엄지 끝~검지 뿌리 거리는 손바닥 0.45 < 손가락 넷 0.6 으로 거꾸로 나와 쓰지 않는다)
+  thumbOut: 1.05,
+};
 
 function dist(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
   const dz = (a.z ?? 0) - (b.z ?? 0);
-  return Math.hypot(a.x - b.x, a.y - b.y, dz);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
 /**
- * 엄지 펴짐 여부.
- * 접은 엄지는 손바닥을 가로질러 새끼 쪽으로 가므로, 엄지 끝(4)이 엄지 마디(3)보다 새끼 뿌리(17)에 가까워진다.
- * 주먹 옆에 엄지를 붙인 경우를 거르기 위해 엄지 끝이 검지 뿌리(5)에서 충분히 떨어져 있는지도 본다.
+ * 엄지 판정 값 (기준값을 실물로 맞출 때 개발자 입력 측정 줄에 "엄지 바깥"으로 보여준다).
+ * (엄지 끝~새끼 뿌리) ÷ (엄지 셋째 마디~새끼 뿌리). THRESHOLDS.thumbOut 보다 크면 펴짐
  */
-function isThumbOpen(lm) {
-  const palm = dist(lm[0], lm[9]); // 손목 ~ 중지 뿌리 = 손바닥 길이 (손 크기 기준)
-  const awayFromPinky = dist(lm[4], lm[17]) > dist(lm[3], lm[17]);
-  const awayFromIndex = dist(lm[4], lm[5]) > palm * THUMB_SPREAD;
-  return awayFromPinky && awayFromIndex;
-}
-
-/** 검지~새끼 펴짐 여부: 손끝이 가운데 마디보다 손목에서 충분히 멀면 펴진 것 */
-function isFingerOpen(lm, pip, tip) {
-  return dist(lm[0], lm[tip]) > dist(lm[0], lm[pip]) * FINGER_RATIO;
+export function thumbOut(lm) {
+  return dist(lm[THUMB_TIP], lm[PINKY_MCP]) / (dist(lm[THUMB_IP], lm[PINKY_MCP]) || 1);
 }
 
 /**
- * 랜드마크 21개를 5비트 code 로 바꾼다.
- * @param {{x:number, y:number, z?:number}[]} lm  랜드마크 21개 (worldLandmarks 권장)
- * @returns {string|null}  '01100' 같은 [엄지,검지,중지,약지,새끼] 문자열. 랜드마크가 모자라면 null
+ * 손가락별 펴짐 여부.
+ * @param {{x:number,y:number,z?:number}[]} lm  랜드마크 21개
+ * @returns {boolean[]} [엄지, 검지, 중지, 약지, 새끼], true = 펴짐
  */
-export function landmarksToCode(lm) {
-  if (!Array.isArray(lm) || lm.length < 21) return null;
-  const bits = [isThumbOpen(lm), ...FINGERS.map(([pip, tip]) => isFingerOpen(lm, pip, tip))];
-  return bits.map((open) => (open ? '1' : '0')).join('');
+export function fingersUp(lm, t = THRESHOLDS) {
+  if (!Array.isArray(lm) || lm.length < 21) throw new Error('랜드마크 21개가 필요합니다');
+  const wrist = lm[WRIST];
+  const thumb = thumbOut(lm) > t.thumbOut;
+
+  const others = FINGERS.map(([tip, pip]) => dist(wrist, lm[tip]) > dist(wrist, lm[pip]) * t.finger);
+  return [thumb, ...others];
+}
+
+/** 랜드마크 21개 → 5비트 code ('01100' 등). 랜드마크가 없으면 null */
+export function landmarksToCode(lm, t = THRESHOLDS) {
+  if (!lm) return null;
+  return fingersUp(lm, t)
+    .map((up) => (up ? '1' : '0'))
+    .join('');
 }
 
 /**
- * 인식 결과가 한두 프레임 흔들려도 code 가 바로 바뀌지 않게 하는 안정화 장치.
- * 새 code 가 frames 번 연속으로 나와야 바꾼다. 손이 잠깐 안 보이는 것(null)도 같은 규칙을 따른다.
+ * 한두 프레임만 튀는 code 를 무시한다.
+ * 같은 code 가 frames 번 연속으로 나와야 바뀐 것으로 친다.
+ * (손가락이 경계에 있으면 프레임마다 0/1 이 바뀌어 stableMs 가 계속 0 이 되는 것을 막는다)
  *
- * update(rawCode, now) → { code, since }
- *   code:  안정화된 code (손이 없으면 null)
- *   since: 그 code 가 처음 나온 시각. stableMs = now - since
+ * @returns {(code: string|null) => string|null}  프레임마다 부르면 지금 확정된 code 를 돌려준다
  */
-export function createCodeStabilizer({ frames = 3 } = {}) {
-  let code = null;
-  let since = 0;
-  let candidate; // 바뀔지도 모르는 새 code (undefined = 후보 없음)
-  let candidateCount = 0;
-  let candidateSince = 0;
-
-  return {
-    update(rawCode, now) {
-      const raw = rawCode ?? null;
-      if (raw === code) {
-        candidate = undefined;
-        candidateCount = 0;
-      } else if (raw === candidate) {
-        candidateCount += 1;
-        if (candidateCount >= frames) {
-          code = raw;
-          since = candidateSince; // 새 모양을 처음 만든 시각부터 유지 시간을 센다
-          candidate = undefined;
-          candidateCount = 0;
-        }
-      } else {
-        candidate = raw;
-        candidateCount = 1;
-        candidateSince = now;
-        if (frames <= 1) {
-          code = raw;
-          since = now;
-          candidate = undefined;
-          candidateCount = 0;
-        }
-      }
-      return { code, since };
-    },
+export function createCodeSmoother(frames = 2) {
+  let stable = null;
+  let candidate = null;
+  let count = 0;
+  return function push(code) {
+    if (code === candidate) {
+      count += 1;
+    } else {
+      candidate = code;
+      count = 1;
+    }
+    if (count >= frames) stable = candidate;
+    return stable;
   };
+}
+
+/**
+ * MediaPipe 의 왼손/오른손 이름('Left' | 'Right')을 그대로 쓴다. 그 밖의 값은 null.
+ * 2026-11-13 라즈베리파이 + C270 실물 확인: 뒤집지 않은 웹캠 영상을 넣으면 MediaPipe 이름이 실제 손과 같다.
+ * (처음에는 MediaPipe 문서의 "거울 영상 기준" 설명대로 뒤집었는데, 그러면 오른손이 왼손으로 나왔다)
+ */
+export function toHandedness(name) {
+  if (name === 'Left' || name === 'Right') return name;
+  return null;
 }

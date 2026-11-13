@@ -7,7 +7,11 @@ AIHand 로봇손과 웹캠 손동작 인식을 이용한 고령자 인지·손�
 
 ## 시연 구성
 
-시연은 **웹 대시보드 + AIHand 실물 1대**로 한다. 노트북 1대에 AIHand 1대를 USB로 연결하는 구성만 지원하며, 여러 대 동시 연결 코드는 만들지 않는다.
+시연은 **웹 대시보드 + AIHand 실물 1대**로 한다. 라즈베리파이 시연 스테이션 1대에 AIHand 1대를 USB로 연결하는 구성만 지원하며, 여러 대 동시 연결 코드는 만들지 않는다.
+
+- 시연 스테이션: 라즈베리파이 5 + 로지텍 C270 웹캠 + 디스플레이(종류는 라즈베리파이 시험 후 확정) + USB 스피커. 브라우저는 Chromium
+- 배포 주소(GitHub Pages)로 연다. 시연장 인터넷은 장담할 수 없으므로 라즈베리파이에서 `npm run build` → `npm run preview`로도 띄울 수 있어야 한다 (README "라즈베리파이 준비")
+- 라즈베리파이 성능을 기준으로 판단한다 (손 인식은 손 1개, 기본 640×480)
 
 - 웹 대시보드: 프로그램 선택, 진행 화면, 장치 연결 상태, 활동 결과를 한 화면 흐름에서 보여준다.
 - AIHand: 문제 출제·시범·피드백 동작을 실제로 수행한다.
@@ -17,9 +21,9 @@ AIHand 로봇손과 웹캠 손동작 인식을 이용한 고령자 인지·손�
 
 ## 실행
 
-- `npm install` → `npm run dev` → Chrome 또는 Edge에서 `http://localhost:5173`
+- `npm install` → `npm run dev` → Chrome 또는 Edge에서 `http://localhost:5173` (시연: 라즈베리파이 Chromium)
 - 테스트: `npm test` (Vitest)
-- Web Serial(로봇 연결)은 Chrome·Edge에서만 동작한다. 다른 브라우저 지원 코드는 만들지 않는다.
+- Web Serial(로봇 연결)은 Chrome·Edge·Chromium에서만 동작한다. 다른 브라우저 지원 코드는 만들지 않는다.
 
 ## 기술 스택
 

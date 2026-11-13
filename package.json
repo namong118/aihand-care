@@ -5,7 +5,9 @@
   "description": "AIHand 로봇손과 웹캠 손동작 인식을 이용한 고령자 인지·손운동 활동 웹 앱",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-mediapipe-wasm.js",
     "dev": "vite",
+    "prebuild": "node scripts/copy-mediapipe-wasm.js",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests"
@@ -15,6 +17,6 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
-    "@mediapipe/tasks-vision": "1.2.0"
+    "@mediapipe/tasks-vision": "1.2.2"
   }
 }

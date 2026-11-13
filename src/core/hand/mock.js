@@ -70,6 +70,10 @@ export function createMockHand({ poses, now = () => Date.now() }) {
     },
 
     // ---- Mock 패널 전용 (프로그램은 쓰지 않는다) ----
+    /** 버튼으로 손모양을 들고 있는 중이면 true. 웹캠이 켜져 있어도 이때는 버튼 입력이 우선이다 (hand/index.js) */
+    get holding() {
+      return currentCode !== null;
+    },
     select,
     lower,
     onView(cb) {
@@ -86,7 +90,7 @@ export function createMockHand({ poses, now = () => Date.now() }) {
     mountControls(container) {
       container.innerHTML = '';
       const title = document.createElement('h2');
-      title.textContent = '사용자 손모양 입력 (웹캠 손 인식 대신 · 로봇은 안 움직여요)';
+      title.textContent = '손모양 입력 (손 인식 대신)';
       const status = document.createElement('p');
       status.className = 'mock-status';
       status.textContent = '지금: 손 내림';

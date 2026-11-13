@@ -2,7 +2,18 @@
 
 import poses from '../../data/poses.json';
 import routines from '../../data/routines.json';
-import { expandRoutine, holdProgress, summarizeSteps } from './logic.js';
+import {
+  expandRoutine,
+  holdMsOf,
+  holdProgress,
+  holdCount,
+  countWord,
+  holdState,
+  shouldShowOldNotice,
+  roundCount,
+  restMs,
+  summarizeSteps,
+} from './logic.js';
 import { createScreen } from './screen.js';
 
 const ID = 'step4-coach';
@@ -17,16 +28,31 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
  */
 async function runStep(ctx, screen, s, info) {
   const { step } = info;
-  const holdMs = step.holdMs ?? 1000;
+  const holdMs = holdMsOf(step);
   const since = Date.now();
   const stop = new AbortController();
   s.waits.add(stop);
 
-  // 유지 게이지: onPose 의 stableMs 로 계속 보여준다.
-  // 동작 시작 전부터 들고 있던 손은 확정되지 않으므로 게이지도 0 으로 둔다.
+  // 유지 게이지·숫자 세기: onPose 의 stableMs 로 계속 보여준다 (확정은 waitForPose 가 한다).
+  // 동작 시작 전부터 들고 있던 손('old')은 확정되지 않으므로 게이지도 0 으로 두고,
+  // 그 상태가 1초 계속되면 "손을 잠깐 내렸다가 다시" 안내를 띄운다.
+  let state = null;
+  let stateAt = since; // 지금 state 가 시작된 시각
   const offGauge = ctx.hand.onPose((pose) => {
-    const fresh = Date.now() - pose.stableMs >= since;
-    screen.gauge(fresh ? holdProgress(pose, step) : 0, pose.stableMs, holdMs);
+    const now = Date.now();
+    const next = holdState(pose, step, { now, since });
+    if (next !== state) {
+      state = next;
+      stateAt = now;
+    }
+    const holding = state === 'holding';
+    screen.hold({
+      ratio: holding ? holdProgress(pose, step) : 0,
+      stableMs: pose.stableMs,
+      holdMs,
+      count: holding ? countWord(holdCount(pose, step)) : '',
+      showOld: shouldShowOldNotice(state, now - stateAt),
+    });
   });
 
   const method = await Promise.race([
@@ -50,6 +76,7 @@ async function runStep(ctx, screen, s, info) {
 async function playRound(ctx, screen, s, routine) {
   const startedAt = new Date().toISOString();
   const steps = expandRoutine(routine);
+  const rounds = roundCount(steps);
   const results = [];
 
   for (let i = 0; i < steps.length; i++) {
@@ -59,14 +86,14 @@ async function playRound(ctx, screen, s, routine) {
     await ctx.robot.showPose(step.pose);
     if (!s.alive) return;
 
-    const result = await runStep(ctx, screen, s, { index: i + 1, count: steps.length, step });
+    const info = { index: i + 1, count: steps.length, step, rounds, holdMs: holdMsOf(step) };
+    const result = await runStep(ctx, screen, s, info);
     if (!result) return;
     results.push(result);
-    if (result.method !== 'skipped') {
-      screen.stepDone(result.method);
-      await wait(ctx.settings.speed === 'SLOW' ? 1000 : 500);
-      if (!s.alive) return;
-    }
+    // 동작 사이 쉬는 시간: 어떻게 마쳤는지와 다음 동작을 보여 주고, 건너뛴 뒤에도 쉬었다가 다음 시범으로 넘어간다
+    screen.rest(result.method, steps[i + 1]);
+    await wait(restMs(ctx.settings.speed));
+    if (!s.alive) return;
   }
 
   const summary = summarizeSteps(results);
@@ -78,7 +105,6 @@ async function playRound(ctx, screen, s, routine) {
 
   ctx.log.record({
     program: ID,
-    user: ctx.settings.user,
     startedAt,
     endedAt: new Date().toISOString(),
     total: summary.total,

@@ -77,23 +77,19 @@ AIHand가 이 손모양을 모두 만들 수 있는지는 아직 확인하지 �
 - 다른 손모양을 누르면 바뀌고 `stableMs`는 0부터 다시 센다. 같은 버튼을 다시 누르면 그대로 유지된다.
 - **손 내리기**를 누르면 `{ code: null, name: null, handedness: null, stableMs: 0 }`을 한 번 보내고 멈춘다.
 
-### 실제 손 인식 (웹캠 + MediaPipe)
+### 실제 손 인식 (웹캠, MediaPipe)
 
-- 상단 바의 **"웹캠 켜기"** 버튼을 누르면 웹캠 손 인식으로 바뀐다. 처음 한 번 브라우저가 웹캠 사용 허락을 묻는다.
-- 켜져 있는 동안 화면 오른쪽 아래에 웹캠 미리 보기(손 관절 점·선, "인식: 브이(가위)" 같은 결과)가 보인다.
-- **"웹캠 끄기"**를 누르거나 웹캠이 끊기면 자동으로 Mock(화면 버튼)으로 돌아간다. 이때 `code: null`을 한 번 보낸다.
-- 웹캠이 켜져 있는 동안 개발자 입력의 손모양 버튼은 프로그램에 전달되지 않는다.
-- Mock과 **같은 `onPose` 형태**(0.1초마다, `{ code, name, handedness, stableMs }`)라서 프로그램 코드는 바꿀 필요가 없다.
+상단 바 **웹캠 켜기**를 누르면 `src/core/hand/mediapipe.js`가 웹캠과 MediaPipe Hand Landmarker로 손을 인식한다. 프로그램 쪽은 바뀌는 것이 없다 (같은 `onPose` 형태).
 
-| 파일 | 하는 일 |
-|---|---|
-| `src/core/hand/fingers.js` | 손 관절 점 21개 → 5비트 code. 손끝이 가운데 마디보다 손목에서 멀면 "펴짐". 엄지는 새끼 뿌리·검지 뿌리와의 거리로 판단. 3프레임 연속으로 같아야 code가 바뀜(안정화) |
-| `src/core/hand/mediapipe.js` | 웹캠 열기, MediaPipe Hand Landmarker 실행, 미리 보기 그리기 |
-| `src/core/hand/index.js` | Mock ↔ 웹캠 전환 (`startCamera`, `stopCamera`, `status`) |
-
-인터넷이 없어도 동작하도록 모델(`public/models/hand_landmarker.task`)과 wasm(npm 패키지 `@mediapipe/tasks-vision`)을 앱 안에서 불러온다.
-
-판단 기준값(`FINGER_RATIO` 1.1, `THUMB_SPREAD` 0.5)으로 7개 손모양 인식을 실물 웹캠으로 확인했다 (2026-11-11). 고령자 손·조명·거리는 아직 확인 전이다 [검증 필요]. 결과는 `docs/hardware-check.md` 5번에 기록한다.
+- 손 1개만 인식, 해상도 기본 640×480 (라즈베리파이 5 + C270 시연 기준). GPU로 먼저 시도하고 안 되면 CPU
+- 매 프레임 랜드마크 21개 → 손가락별 펴짐 → 5비트 `code` (`src/core/hand/fingers.js`, 테스트 있음)
+- 한 프레임만 튀는 값은 무시한다: 같은 `code`가 **2프레임 연속**이어야 바뀐 것으로 친다
+- `onPose`는 Mock과 같이 0.1초마다. 손이 안 보이면 `code: null`이 계속 온다 (Mock은 손 내리기 때 한 번)
+- 웹캠이 켜져 있어도 Mock 손모양 버튼은 쓸 수 있다. 버튼으로 손모양을 들고 있는 동안(손 내리기 전까지)은 버튼이 우선
+- 웹캠이 꺼지거나 끊기면 화면 버튼(Mock)으로 돌아가고, 상단 바에 이유를 보여준다
+- 모델 `public/models/hand_landmarker.task`, WASM `public/mediapipe/wasm/`(빌드 때 `node_modules`에서 복사). 인터넷을 쓰지 않는다
+- 측정: 맨 아래 개발자 입력 → "웹캠 손 인식 (측정용)"에서 카메라·해상도 고르기, 미리보기(거울 모드), FPS·GPU/CPU·실제 해상도·지금 code
+- 판정 기준값(`THRESHOLDS`)과 왼손/오른손 이름은 실물로 확인 전이다 [검증 필요] (`hardware-check.md` 5번)
 
 ---
 

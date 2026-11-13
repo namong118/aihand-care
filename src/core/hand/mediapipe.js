@@ -1,216 +1,266 @@
 // 웹캠 + MediaPipe Hand Landmarker 로 손모양을 인식하는 모듈.
-// index.js 가 "웹캠 켜기" 버튼을 눌렀을 때만 불러온다 (첫 화면을 빨리 열고, 테스트에서 불러오지 않게).
+// hand/index.js 가 "웹캠 켜기" 때만 불러온다 (import()). 처음 화면을 가볍게 하려고.
 //
-// 흐름: 웹캠 영상 → (화면 프레임마다) 랜드마크 21개 → fingers.js 로 5비트 code → 안정화
-//       → 0.1초마다 onPose 로 { code, name, handedness, stableMs } 를 보낸다 (mock.js 와 같은 모양)
+// 시연 장비: 라즈베리파이 5 + 로지텍 C270, Chromium. 그래서
+//  - 손 1개만 인식, 해상도 기본 640×480
+//  - GPU 로 먼저 시도하고, 안 되면 CPU 로 바꾼다
+//  - 모델(public/models/)과 WASM(public/mediapipe/wasm/, 빌드 때 복사)을 같은 주소에서 불러온다.
+//    인터넷(CDN)을 쓰지 않는다.
 //
-// 인터넷 없이 동작하도록 파일을 모두 이 앱 안에서 불러온다.
-//  - wasm: npm 패키지 안의 파일을 Vite 가 함께 묶는다 (?url)
-//  - 모델: public/models/hand_landmarker.task
-// 반환 형태와 이벤트 값은 docs/hand-api.md 를 따른다.
+// 반환 형태와 이벤트 값은 docs/hand-api.md 를 따른다 (mock.js 와 같은 onPose).
 
-import { HandLandmarker } from '@mediapipe/tasks-vision';
-import wasmLoaderPath from '@mediapipe/tasks-vision/vision_wasm_internal.js?url';
-import wasmBinaryPath from '@mediapipe/tasks-vision/vision_wasm_internal.wasm?url';
+import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import { codeToName } from './codes.js';
-import { landmarksToCode, createCodeStabilizer } from './fingers.js';
+import { landmarksToCode, createCodeSmoother, toHandedness, thumbOut } from './fingers.js';
 
-const TICK_MS = 100; // onPose 를 보내는 간격 (mock.js 와 같음)
-// GitHub Pages 주소(/aihand-care/)에서도 맞도록 BASE_URL 을 붙인다 (vite.config.js 참고)
-const MODEL_PATH = `${import.meta.env.BASE_URL}models/hand_landmarker.task`;
+// GitHub Pages 주소(/aihand-care/)에서도 맞게 BASE_URL 을 붙인다 (vite.config.js 참고)
+const BASE = import.meta.env.BASE_URL;
+const WASM_PATH = `${BASE}mediapipe/wasm`;
+const MODEL_PATH = `${BASE}models/hand_landmarker.task`;
 
-const CAMERA_ERROR_TEXT = {
-  NotAllowedError: '웹캠 사용을 허용해 주세요',
-  NotFoundError: '웹캠을 찾지 못했어요',
-  OverconstrainedError: '웹캠을 찾지 못했어요',
-  NotReadableError: '다른 프로그램이 웹캠을 쓰고 있어요',
-};
+const TICK_MS = 100; // onPose 를 보내는 간격 (Mock 과 같음)
 
-/** 화면에 보여줄 오류 문구를 담은 Error */
-function friendlyError(text, cause) {
-  const err = new Error(text);
-  err.cause = cause;
-  return err;
+// 기본 해상도. 고르기 목록은 hand/index.js 의 resolutions
+const DEFAULT_RESOLUTION = { width: 640, height: 480 };
+
+/** getUserMedia 오류 → 화면 안내 문구 */
+function cameraErrorText(err) {
+  switch (err?.name) {
+    case 'NotAllowedError':
+      return '카메라 사용을 허용해 주세요';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return '웹캠을 찾지 못했어요';
+    case 'NotReadableError':
+      return '다른 프로그램이 웹캠을 쓰고 있어요';
+    default:
+      return '웹캠을 켜지 못했어요';
+  }
 }
 
-async function createLandmarker() {
-  const fileset = { wasmLoaderPath, wasmBinaryPath };
-  const options = (delegate) => ({
+async function createLandmarker(delegate) {
+  const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
+  return HandLandmarker.createFromOptions(fileset, {
     baseOptions: { modelAssetPath: MODEL_PATH, delegate },
     runningMode: 'VIDEO',
     numHands: 1,
   });
-  try {
-    return await HandLandmarker.createFromOptions(fileset, options('GPU'));
-  } catch (err) {
-    console.warn('GPU 로 손 인식을 시작하지 못해 CPU 로 다시 시도합니다', err);
-    return HandLandmarker.createFromOptions(fileset, options('CPU'));
-  }
 }
 
 /**
- * MediaPipe 는 거울처럼 뒤집힌(셀카) 영상을 기준으로 왼손·오른손을 정한다.
- * 웹캠 원본 영상을 그대로 넣으므로 반대로 바꾼다. [검증 필요] 실물 웹캠으로 확인
+ * @param {object} o
+ * @param {Array} o.poses         data/poses.json
+ * @param {Function} o.onStop     웹캠이 꺼지거나 끊겼을 때 cb(reason). 사용자가 끈 경우 reason 은 null
+ * @returns 웹캠 손 인식 장치
  */
-function flipHandedness(label) {
-  if (label === 'Left') return 'Right';
-  if (label === 'Right') return 'Left';
-  return null;
-}
-
-/**
- * 웹캠을 켜고 손 인식을 시작한다.
- * @param {object} options
- * @param {{name:string, code:string, label:string}[]} options.poses  data/poses.json
- * @param {(reason: string) => void} [options.onLost]  웹캠이 중간에 끊기면 한 번 불린다
- * @returns {Promise<{ kind: 'mediapipe', el: HTMLElement, onPose(cb): () => void, stop(): void }>}
- *          실패하면 화면에 보여줄 문구를 message 로 가진 Error 로 reject
- */
-export async function createMediaPipeHand({ poses, onLost = () => {} }) {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    throw friendlyError('이 브라우저에서는 웹캠을 쓸 수 없어요. Chrome에서 열어 주세요');
-  }
-
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-      audio: false,
-    });
-  } catch (err) {
-    throw friendlyError(CAMERA_ERROR_TEXT[err?.name] ?? '웹캠을 켜지 못했어요', err);
-  }
-
-  // 미리 보기 화면: 영상 + 랜드마크 그림 + 인식 결과 한 줄
+export function createMediaPipeHand({ poses, onStop = () => {} }) {
+  const listeners = new Set();
   const video = document.createElement('video');
   video.muted = true;
   video.playsInline = true;
-  const canvas = document.createElement('canvas');
-  canvas.className = 'cam-overlay';
-  const frame = document.createElement('div');
-  frame.className = 'cam-frame';
-  frame.append(video, canvas);
-  const caption = document.createElement('p');
-  caption.className = 'cam-caption';
-  caption.textContent = '손을 화면에 보여 주세요';
-  const el = document.createElement('div');
-  el.className = 'cam-view';
-  el.append(frame, caption);
+  video.className = 'webcam-video';
 
-  let landmarker;
-  try {
-    video.srcObject = stream;
-    await video.play();
-    landmarker = await createLandmarker();
-  } catch (err) {
-    stream.getTracks().forEach((t) => t.stop());
-    throw friendlyError('손 인식을 준비하지 못했어요', err);
-  }
-
-  const listeners = new Set();
-  const stabilizer = createCodeStabilizer({ frames: 3 });
-  let state = { code: null, since: 0 };
-  let handedness = null;
-  let lastVideoTime = -1;
+  let landmarker = null;
+  let delegate = null; // 'GPU' | 'CPU'
+  let stream = null;
+  let running = false;
   let rafId = 0;
-  let stopped = false;
+  let tickTimer = null;
+  let lastVideoTime = -1;
+  let smooth = createCodeSmoother(2);
+
+  // 지금 손 상태
+  let code = null;
+  let handedness = null;
+  let since = 0; // code 가 바뀐 시각
+  let thumb = null; // 마지막 프레임의 엄지 판정 값 (측정용, fingers.js thumbOut)
+
+  // 초당 인식 횟수 (FPS)
+  let frames = 0;
+  let fpsFrom = 0;
+  let fps = 0;
 
   function makePose() {
-    if (state.code === null) return { code: null, name: null, handedness: null, stableMs: 0 };
-    return {
-      code: state.code,
-      name: codeToName(state.code, poses),
-      handedness,
-      stableMs: Date.now() - state.since,
-    };
+    if (code === null) return { code: null, name: null, handedness: null, stableMs: 0 };
+    return { code, name: codeToName(code, poses), handedness, stableMs: Date.now() - since };
   }
 
-  function draw(points) {
-    const w = video.videoWidth;
-    const h = video.videoHeight;
-    if (canvas.width !== w) canvas.width = w;
-    if (canvas.height !== h) canvas.height = h;
-    const g = canvas.getContext('2d');
-    g.clearRect(0, 0, w, h);
-    if (!points) return;
-    g.lineWidth = 4;
-    g.strokeStyle = '#FFFFFF';
-    for (const { start, end } of HandLandmarker.HAND_CONNECTIONS) {
-      g.beginPath();
-      g.moveTo(points[start].x * w, points[start].y * h);
-      g.lineTo(points[end].x * w, points[end].y * h);
-      g.stroke();
-    }
-    g.fillStyle = '#2F5BD3';
-    for (const p of points) {
-      g.beginPath();
-      g.arc(p.x * w, p.y * h, 6, 0, Math.PI * 2);
-      g.fill();
-    }
-  }
-
-  // 화면 프레임마다: 새 영상 프레임이 있으면 손을 찾는다
-  function onFrame() {
-    if (stopped) return;
-    rafId = requestAnimationFrame(onFrame);
-    if (video.readyState < 2 || video.currentTime === lastVideoTime) return;
-    lastVideoTime = video.currentTime;
-    let result;
-    try {
-      result = landmarker.detectForVideo(video, performance.now());
-    } catch (err) {
-      console.error('손 인식 오류', err);
-      return;
-    }
-    const world = result.worldLandmarks?.[0];
-    state = stabilizer.update(world ? landmarksToCode(world) : null, Date.now());
-    handedness = flipHandedness(result.handedness?.[0]?.[0]?.categoryName);
-    draw(result.landmarks?.[0]);
-  }
-  rafId = requestAnimationFrame(onFrame);
-
-  function showCaption(pose) {
-    if (pose.code === null) {
-      caption.textContent = '손을 화면에 보여 주세요';
-    } else if (pose.name === null) {
-      caption.textContent = '목록에 없는 손모양이에요';
-    } else {
-      const label = poses.find((p) => p.name === pose.name)?.label ?? pose.name;
-      caption.textContent = `인식: ${label} (${(pose.stableMs / 1000).toFixed(1)}초)`;
-    }
-  }
-
-  const timer = setInterval(() => {
+  function emit() {
     const pose = makePose();
     listeners.forEach((cb) => cb(pose));
-    showCaption(pose);
-  }, TICK_MS);
-
-  function stop() {
-    if (stopped) return;
-    stopped = true;
-    cancelAnimationFrame(rafId);
-    clearInterval(timer);
-    stream.getTracks().forEach((t) => t.stop());
-    landmarker.close();
-    listeners.clear();
-    el.remove();
   }
 
-  // 웹캠 USB 를 뽑는 등으로 영상이 끊기면 멈추고 알린다
-  stream.getVideoTracks()[0]?.addEventListener('ended', () => {
-    if (stopped) return;
-    stop();
-    onLost('웹캠 연결이 끊겼어요');
-  });
+  function setCode(next, hand) {
+    if (next !== code) {
+      code = next;
+      since = Date.now();
+    }
+    handedness = next === null ? null : hand;
+  }
+
+  /** 한 프레임 인식. GPU 에서 오류가 나면 CPU 로 한 번 바꿔 본다 */
+  async function detect() {
+    const t = performance.now();
+    let result;
+    try {
+      result = landmarker.detectForVideo(video, t);
+    } catch (err) {
+      if (delegate !== 'GPU') throw err;
+      console.warn('GPU 인식 오류, CPU 로 바꿉니다', err);
+      landmarker.close();
+      landmarker = null;
+      delegate = 'CPU';
+      landmarker = await createLandmarker('CPU');
+      return;
+    }
+    const lm = result.worldLandmarks?.[0] ?? null;
+    const hand = toHandedness(result.handedness?.[0]?.[0]?.categoryName);
+    thumb = lm ? thumbOut(lm) : null;
+    setCode(smooth(landmarksToCode(lm)), hand);
+
+    frames += 1;
+    if (t - fpsFrom >= 1000) {
+      fps = (frames * 1000) / (t - fpsFrom);
+      frames = 0;
+      fpsFrom = t;
+    }
+  }
+
+  async function loop() {
+    if (!running) return;
+    // 새 프레임이 들어왔을 때만 인식한다
+    if (landmarker && video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+      lastVideoTime = video.currentTime;
+      try {
+        await detect();
+      } catch (err) {
+        console.error('손 인식 오류', err);
+        stop('손 인식 중에 문제가 생겼어요');
+        return;
+      }
+    }
+    if (running) rafId = requestAnimationFrame(loop);
+  }
+
+  /**
+   * 웹캠을 켜고 인식을 시작한다. 실패하면 Error(message = 화면 안내 문구)를 던진다.
+   * @param {{ deviceId?: string, width?: number, height?: number }} opts
+   */
+  async function start({ deviceId, width = DEFAULT_RESOLUTION.width, height = DEFAULT_RESOLUTION.height } = {}) {
+    if (running) stopStream();
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('이 브라우저에서는 웹캠을 쓸 수 없어요');
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          width: { ideal: width },
+          height: { ideal: height },
+        },
+      });
+    } catch (err) {
+      console.warn('getUserMedia 실패', err);
+      throw new Error(cameraErrorText(err));
+    }
+    const track = stream.getVideoTracks()[0];
+    track.addEventListener('ended', () => stop('웹캠 연결이 끊겼어요'));
+
+    video.srcObject = stream;
+    await video.play();
+
+    if (!landmarker) {
+      try {
+        delegate = 'GPU';
+        landmarker = await createLandmarker('GPU');
+      } catch (err) {
+        console.warn('GPU 로 만들지 못해 CPU 로 바꿉니다', err);
+        try {
+          delegate = 'CPU';
+          landmarker = await createLandmarker('CPU');
+        } catch (err2) {
+          console.error('손 인식 모델을 불러오지 못했어요', err2);
+          stopStream();
+          throw new Error('손 인식 모델을 불러오지 못했어요');
+        }
+      }
+    }
+
+    running = true;
+    smooth = createCodeSmoother(2);
+    setCode(null, null);
+    frames = 0;
+    fps = 0;
+    fpsFrom = performance.now();
+    lastVideoTime = -1;
+    rafId = requestAnimationFrame(loop);
+    tickTimer = setInterval(emit, TICK_MS);
+  }
+
+  function stopStream() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    if (tickTimer !== null) clearInterval(tickTimer);
+    tickTimer = null;
+    stream?.getTracks().forEach((t) => t.stop());
+    stream = null;
+    video.srcObject = null;
+  }
+
+  /** 웹캠 끄기. reason 이 있으면 끊긴 것(오류), null 이면 사용자가 끈 것 */
+  function stop(reason = null) {
+    if (!running && !stream) return;
+    stopStream();
+    setCode(null, null);
+    emit(); // 손이 사라졌다고 한 번 알린다
+    onStop(reason);
+  }
 
   return {
     kind: 'mediapipe',
-    el,
+    video, // 미리보기용 (개발자 입력 영역에 붙인다)
+
     onPose(cb) {
       listeners.add(cb);
       return () => listeners.delete(cb);
     },
+
+    start,
     stop,
+
+    get running() {
+      return running;
+    },
+
+    /** 측정용 정보: FPS, GPU/CPU, 실제 해상도, 카메라, 지금 code·왼손/오른손·엄지 값 */
+    info() {
+      const s = stream?.getVideoTracks()[0]?.getSettings?.() ?? {};
+      return {
+        fps,
+        delegate,
+        width: s.width ?? null,
+        height: s.height ?? null,
+        deviceId: s.deviceId ?? null,
+        code,
+        name: codeToName(code, poses),
+        handedness, // 'Left' | 'Right' | null (fingers.js toHandedness)
+        thumb,
+      };
+    },
+
+    destroy() {
+      stop();
+      listeners.clear();
+      landmarker?.close();
+      landmarker = null;
+    },
   };
+}
+
+/** 연결된 카메라 목록. 카메라 이름은 웹캠을 한 번 허용한 뒤에야 보인다 */
+export async function listCameras() {
+  if (!navigator.mediaDevices?.enumerateDevices) return [];
+  const all = await navigator.mediaDevices.enumerateDevices();
+  return all
+    .filter((d) => d.kind === 'videoinput')
+    .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `카메라 ${i + 1}` }));
 }

@@ -1,103 +1,104 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createHand } from './index.js';
+import poses from '../../data/poses.json';
 
-const poses = [
-  { name: 'ROCK', code: '00000', label: '주먹(바위)' },
-  { name: 'V', code: '01100', label: '브이(가위)' },
-];
-
-/** 가짜 웹캠 모듈: emit 으로 손모양을 보내고, lose 로 끊김을 흉내 낸다 */
-function fakeCamera() {
-  const fake = { listeners: new Set(), stopped: false, onLost: null };
-  fake.module = {
-    async createMediaPipeHand({ onLost }) {
-      fake.onLost = onLost;
-      return {
-        kind: 'mediapipe',
-        el: { tag: 'cam-view' },
+// 가짜 mediapipe.js: 웹캠 없이 전환기만 시험한다
+function fakeModule({ fail = null } = {}) {
+  const made = {};
+  const mod = {
+    createMediaPipeHand({ onStop }) {
+      const listeners = new Set();
+      const cam = {
+        running: false,
         onPose(cb) {
-          fake.listeners.add(cb);
-          return () => fake.listeners.delete(cb);
+          listeners.add(cb);
+          return () => listeners.delete(cb);
         },
-        stop() {
-          fake.stopped = true;
+        async start() {
+          if (fail) throw new Error(fail);
+          cam.running = true;
         },
+        stop(reason = null) {
+          cam.running = false;
+          onStop(reason);
+        },
+        send(pose) {
+          listeners.forEach((cb) => cb(pose));
+        },
+        destroy() {},
       };
+      made.cam = cam;
+      return cam;
     },
+    listCameras: async () => [{ deviceId: 'a', label: 'C270' }],
   };
-  fake.emit = (pose) => fake.listeners.forEach((cb) => cb(pose));
-  return fake;
+  return { load: async () => mod, made };
 }
 
-let hand;
-afterEach(() => hand?.destroy());
+const V = { code: '01100', name: 'V', handedness: 'Right', stableMs: 300 };
 
-describe('createHand (손 인식 전환기)', () => {
-  it('처음에는 Mock 이고 버튼 손모양이 onPose 로 전달된다', () => {
-    hand = createHand({ poses, loadCamera: async () => fakeCamera().module });
-    const got = [];
-    hand.onPose((p) => got.push(p.name));
-    hand.select('V');
+describe('손 인식 전환기', () => {
+  let hand;
+  afterEach(() => hand?.destroy());
+
+  it('처음에는 Mock', () => {
+    hand = createHand({ poses, loadWebcam: async () => ({}) });
     expect(hand.kind).toBe('mock');
     expect(hand.status()).toMatchObject({ state: 'mock', mock: true });
-    expect(got).toContain('V');
   });
 
-  it('웹캠을 켜면 웹캠 결과만 전달하고 버튼 입력은 무시한다', async () => {
-    const cam = fakeCamera();
-    hand = createHand({ poses, loadCamera: async () => cam.module });
+  it('웹캠을 켜면 웹캠 결과가 onPose 로 간다', async () => {
+    const f = fakeModule();
+    hand = createHand({ poses, loadWebcam: f.load });
+    const got = [];
+    hand.onPose((p) => got.push(p));
+    expect(await hand.startWebcam()).toBe(true);
+    expect(hand.kind).toBe('mediapipe');
+    expect(hand.status()).toMatchObject({ state: 'connected', mock: false, note: '웹캠' });
+    f.made.cam.send(V);
+    expect(got).toEqual([V]);
+  });
+
+  it('버튼으로 손모양을 들고 있는 동안은 웹캠 결과를 무시한다', async () => {
+    const f = fakeModule();
+    hand = createHand({ poses, loadWebcam: f.load });
+    await hand.startWebcam();
     const got = [];
     hand.onPose((p) => got.push(p.name));
-
-    expect(await hand.startCamera()).toBe(true);
-    expect(hand.kind).toBe('mediapipe');
-    expect(hand.status()).toMatchObject({ state: 'connected', mock: false });
-    expect(hand.cameraView).toEqual({ tag: 'cam-view' });
-
-    got.length = 0;
-    hand.select('V'); // 버튼 입력: 무시
-    cam.emit({ code: '00000', name: 'ROCK', handedness: 'Right', stableMs: 0 });
+    hand.select('ROCK');
+    f.made.cam.send(V);
     expect(got).toEqual(['ROCK']);
+    hand.lower();
+    f.made.cam.send(V);
+    expect(got).toEqual(['ROCK', null, 'V']);
   });
 
-  it('웹캠을 끄면 손 없음(null)을 한 번 보내고 Mock 으로 돌아간다', async () => {
-    const cam = fakeCamera();
-    hand = createHand({ poses, loadCamera: async () => cam.module });
-    const got = [];
-    hand.onPose((p) => got.push(p.code));
-    await hand.startCamera();
-    hand.stopCamera();
-    expect(cam.stopped).toBe(true);
-    expect(got.at(-1)).toBeNull();
+  it('웹캠을 켜지 못하면 false, Mock 그대로, 안내 문구', async () => {
+    const f = fakeModule({ fail: '카메라 사용을 허용해 주세요' });
+    hand = createHand({ poses, loadWebcam: f.load });
+    expect(await hand.startWebcam()).toBe(false);
     expect(hand.kind).toBe('mock');
-    expect(hand.status()).toMatchObject({ state: 'disconnected', mock: true, note: '화면 버튼' });
-    expect(hand.cameraView).toBeNull();
+    expect(hand.status().note).toBe('카메라 사용을 허용해 주세요');
   });
 
-  it('웹캠이 끊기면 안내 문구와 함께 Mock 으로 돌아간다', async () => {
-    const cam = fakeCamera();
-    hand = createHand({ poses, loadCamera: async () => cam.module });
+  it('웹캠이 끊기면 Mock 으로 돌아가고 알린다', async () => {
+    const f = fakeModule();
+    hand = createHand({ poses, loadWebcam: f.load });
+    await hand.startWebcam();
     const onChange = vi.fn();
     hand.onChange(onChange);
-    await hand.startCamera();
-    cam.onLost('웹캠 연결이 끊겼어요');
-    expect(hand.kind).toBe('mock');
-    expect(hand.status().note).toBe('웹캠 연결이 끊겼어요. 화면 버튼으로 계속해요');
+    f.made.cam.stop('웹캠 연결이 끊겼어요');
     expect(onChange).toHaveBeenCalled();
+    expect(hand.kind).toBe('mock');
+    expect(hand.status()).toMatchObject({ state: 'disconnected', mock: true });
+    expect(hand.status().note).toContain('웹캠 연결이 끊겼어요');
   });
 
-  it('켜기에 실패하면 오류 문구를 상태에 보여주고 Mock 을 유지한다', async () => {
-    hand = createHand({
-      poses,
-      loadCamera: async () => ({
-        createMediaPipeHand: async () => {
-          throw new Error('웹캠 사용을 허용해 주세요');
-        },
-      }),
-    });
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(await hand.startCamera()).toBe(false);
-    expect(hand.kind).toBe('mock');
-    expect(hand.status()).toMatchObject({ state: 'mock', note: '웹캠 사용을 허용해 주세요', starting: false });
+  it('카메라 목록', async () => {
+    const f = fakeModule();
+    hand = createHand({ poses, loadWebcam: f.load });
+    expect(await hand.listCameras()).toEqual([]); // 켜기 전
+    await hand.startWebcam();
+    expect(await hand.listCameras()).toEqual([{ deviceId: 'a', label: 'C270' }]);
   });
 });

@@ -5,7 +5,7 @@ AIHand 로봇손과 함께하는 **어르신 두뇌·손 놀이 활동** 웹 앱
 
 2026 청년 피지컬AI 일경험 프로젝트 · 4인 팀
 
-**바로 써 보기: <https://namong118.github.io/aihand-care/>** (PC의 Chrome에서 열어 주세요. 하드웨어가 없으면 Mock 모드로 동작합니다.)
+**바로 써 보기: <https://namong118.github.io/aihand-care/>** (PC의 Chrome 또는 라즈베리파이의 Chromium에서 열어 주세요. 하드웨어가 없으면 Mock 모드로 동작합니다.)
 
 ---
 
@@ -15,7 +15,7 @@ AIHand 로봇손과 함께하는 **어르신 두뇌·손 놀이 활동** 웹 앱
 피지컬 AI의 기본 흐름인 **센서 입력 → 웹 판단 → 로봇 출력**이 한 활동 안에서 화면과 실물로 동시에 보이도록 설계했습니다.
 
 - 교구 주제 02 "AI 협동로봇 기반 신호 전달·협업 지원 서비스" (적용 예시: 교육·훈련 보조)
-- 노트북 1대 + AIHand 1대를 USB로 연결
+- 시연 스테이션: 라즈베리파이 5 + 로지텍 C270 웹캠 + 디스플레이 + USB 스피커, AIHand 1대를 USB로 연결 (6. 하드웨어 구성)
 - 하드웨어가 없어도 모든 프로그램이 **Mock(가상) 모드**로 끝까지 동작
 
 | 단계 | 프로그램 | 한 줄 설명 | 로봇 역할 |
@@ -29,7 +29,7 @@ AIHand 로봇손과 함께하는 **어르신 두뇌·손 놀이 활동** 웹 앱
 
 ```mermaid
 flowchart TB
-  subgraph WEB["노트북 Chrome · 웹 앱 (src/)"]
+  subgraph WEB["라즈베리파이 5 Chromium · 웹 앱 (src/)"]
     DASH["대시보드<br/>홈 · 상태 표시줄 · 결과 · CSV"]
     PROG["프로그램 4종<br/>STEP 1 ~ STEP 4"]
     CTX["ctx<br/>프로그램이 장치를 부르는 창구"]
@@ -43,7 +43,7 @@ flowchart TB
     CTX --> HAND & ROBOT & CARD & LOG
   end
 
-  CAM["웹캠"] --> HAND
+  CAM["웹캠 (C270)"] --> HAND
   ROBOT -- "USB 시리얼 115200" --> MB
   MB -- "카드 값" --> CARD
 
@@ -141,6 +141,7 @@ npm run dev
 
 - 화면 오른쪽 **가상 로봇손**이 로봇이 할 동작을 손가락 그림으로 보여줍니다.
 - **손모양 입력 버튼**은 웹캠 손 인식 대신 씁니다. 한 번 누르면 그 손모양을 들고 있는 것으로 처리되고, **손 내리기**를 누르면 손이 없는 상태가 됩니다.
+- 웹캠이 있으면 상단 바 **웹캠 켜기**로 실제 손 인식(MediaPipe)을 씁니다. 맨 아래 "개발자 입력"에서 카메라·해상도를 고르고 미리보기와 FPS를 볼 수 있습니다. 웹캠이 켜져 있어도 손모양 버튼은 계속 쓸 수 있습니다.
 - **색 카드 입력**은 버튼을 누르거나 키보드 `R`(빨강) `B`(파랑) `Y`(노랑) `G`(초록)을 누릅니다.
 
 ### 테스트와 빌드
@@ -151,7 +152,37 @@ npm run build   # 배포용 파일을 dist/ 에 만들기
 npm run preview # dist/ 를 배포 주소와 같은 경로(/aihand-care/)로 미리 보기
 ```
 
+`npm run dev`·`npm run build` 앞에는 MediaPipe 실행 파일(WASM)을 `node_modules`에서 `public/mediapipe/wasm/`으로 복사하는 단계가 자동으로 돌아갑니다(`scripts/copy-mediapipe-wasm.js`). 손 인식 모델은 `public/models/hand_landmarker.task`에 들어 있습니다. 둘 다 같은 주소에서 불러오므로 인터넷(CDN)이 필요 없습니다.
+
 PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요. PR을 올리면 GitHub Actions에서도 자동으로 실행됩니다.
+
+### 라즈베리파이 준비 (시연 스테이션)
+
+시연은 라즈베리파이 5의 **Chromium**에서 합니다. 아래는 **인터넷이 될 때 미리** 한 번 해 둡니다.
+
+1. **Node.js**: `node -v`가 `v22.12.0` 이상이어야 합니다. Raspberry Pi OS의 기본 `apt` 버전은 이보다 낮을 수 있으니 <https://nodejs.org> 안내에 따라 LTS를 설치합니다.
+2. **한글 글꼴**: 화면 글꼴(Google Fonts)은 인터넷에서 받아 오므로, 인터넷이 없으면 기본 글꼴을 씁니다. 한글 글꼴이 없으면 한글이 깨질 수 있습니다.
+   ```
+   sudo apt install fonts-noto-cjk
+   ```
+3. **시리얼 권한** (AIHand 연결): 사용자가 `dialout` 그룹에 있어야 Chromium에서 micro:bit 포트를 열 수 있습니다.
+   ```
+   groups                          # 목록에 dialout 이 있으면 끝
+   sudo usermod -aG dialout $USER  # 없으면 추가한 뒤 로그아웃 → 다시 로그인
+   ```
+4. **코드 받기와 빌드**
+   ```
+   git clone https://github.com/namong118/aihand-care.git
+   cd aihand-care
+   npm install
+   npm run build
+   ```
+
+시연할 때:
+
+- 인터넷이 되면: Chromium에서 배포 주소 <https://namong118.github.io/aihand-care/>
+- **인터넷이 없으면**: `aihand-care` 폴더에서 `npm run preview`를 실행하고 Chromium에서 `http://localhost:4173/aihand-care/`를 엽니다.
+  손 인식 모델·WASM은 빌드 결과에 들어 있어서 인터넷 없이 동작합니다. `localhost` 주소에서는 https가 아니어도 웹캠과 Web Serial을 쓸 수 있습니다.
 
 ## 6. 하드웨어 구성
 
@@ -161,7 +192,10 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
 | micro:bit V2 | 웹과 USB 시리얼로 통신, 확장보드로 서보 명령 전달 |
 | Start:bit 확장보드 | 서보 구동, WonderCam 연결 |
 | WonderCam | 카드 인식 (태그, 숫자 등 카메라 내장 인식) |
-| 노트북 웹캠 | 손 인식 (MediaPipe) |
+| 라즈베리파이 5 | 시연 스테이션 본체. Chromium으로 웹 앱 실행, AIHand(micro:bit)와 USB 연결 |
+| 로지텍 C270 웹캠 | 손 인식 (MediaPipe Hand Landmarker, 기본 640×480, 손 1개) |
+| 디스플레이 | 터치 7인치 또는 HDMI 모니터 (라즈베리파이 시험 후 확정) |
+| USB 스피커 | 안내 소리 |
 
 - 확장보드에는 어댑터 전원이 필요합니다. 전원을 끈 상태에서 micro:bit를 꽂고 켭니다.
 - 서보 안전 범위: 손가락 50~130°, 손목 80~100° (펌웨어에 상수로 고정)

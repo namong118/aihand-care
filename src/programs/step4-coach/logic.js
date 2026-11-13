@@ -4,6 +4,7 @@
 // 맞고 틀림을 따지지 않고 "어떻게 마쳤는지"만 센다.
 // routine 은 data/routines.json 모양:
 //   { id, title, repeat, steps: [{ pose, holdMs, say }] }
+//   repeat 이 0 이하이거나 없으면 1번 (팀 결정 2026-11-12)
 
 /**
  * 동작 하나를 마친 방식
@@ -12,6 +13,25 @@
  *   skipped:  건너뜀
  */
 export const METHODS = ['detected', 'manual', 'skipped'];
+
+/** 루틴에 holdMs 가 없을 때 쓰는 유지 시간 (ms) */
+export const DEFAULT_HOLD_MS = 1000;
+
+/** 동작 사이 쉬는 시간 (ms, 보통 속도). 느리게(SLOW)면 2배 */
+export const REST_MS = 2000;
+
+/** 숫자 세기에 쓰는 말. 1초에 하나씩 센다 */
+export const COUNT_WORDS = ['하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
+
+/** 동작 하나의 유지 시간 (ms). 루틴에 없으면 DEFAULT_HOLD_MS */
+export function holdMsOf(step) {
+  return step.holdMs ?? DEFAULT_HOLD_MS;
+}
+
+/** 동작 사이 쉬는 시간 (ms). speed: 'SLOW' | 'NORMAL' (홈의 진행 속도) */
+export function restMs(speed) {
+  return speed === 'SLOW' ? REST_MS * 2 : REST_MS;
+}
 
 /** 루틴을 실제로 할 동작 목록으로 펼친다 (repeat 번 반복). */
 export function expandRoutine(routine) {
@@ -31,8 +51,59 @@ export function expandRoutine(routine) {
  */
 export function holdProgress(pose, step) {
   if (!pose || pose.name !== step.pose) return 0;
-  const hold = step.holdMs ?? 1000;
+  const hold = holdMsOf(step);
+  if (hold <= 0) return 1; // 유지 시간이 0 이면 손모양을 만들자마자 다 찬 것 (0 으로 나누지 않기)
   return Math.min(1, pose.stableMs / hold);
+}
+
+/**
+ * 숫자 세기 (유지하는 동안 1초에 하나씩). 몇 번째 숫자인지 1, 2, 3… 을 돌려준다.
+ * 다른 손모양이거나 손이 없으면 0. holdMs 가 1초면 1까지, 3초면 3까지 센다.
+ *   예) holdMs 3000: stableMs 0~999 → 1(하나), 1000~1999 → 2(둘), 2000 이상 → 3(셋)
+ */
+export function holdCount(pose, step) {
+  if (!pose || pose.name !== step.pose) return 0;
+  const max = Math.max(1, Math.ceil(holdMsOf(step) / 1000));
+  return Math.min(max, Math.floor(Math.max(0, pose.stableMs) / 1000) + 1);
+}
+
+/** holdCount 의 숫자를 말로 바꾼다. 1 → '하나'. 0 이면 '' (표시 안 함) */
+export function countWord(n) {
+  if (!n || n < 1) return '';
+  return COUNT_WORDS[n - 1] ?? String(n);
+}
+
+/**
+ * 동작 화면에서 지금 손 상태. 판단은 waitForPose 확정 규칙과 같다
+ * (동작이 시작된 since 뒤에 새로 만든, 시범과 같은 손모양만 인정).
+ *   pose: ctx.hand.onPose 로 받은 값, now: 지금 시각, since: 동작 시작 시각
+ * 반환:
+ *   'none'    손이 안 보임
+ *   'other'   시범과 다른 손모양
+ *   'old'     시범과 같지만, 동작이 시작되기 전부터 들고 있던 손 (새로 만들어야 함)
+ *   'holding' 시범과 같은 손모양을 유지하는 중 (게이지가 찬다)
+ */
+export function holdState(pose, step, { now, since }) {
+  if (!pose || pose.code === null || pose.code === undefined) return 'none';
+  if (pose.name !== step.pose) return 'other';
+  if (now - pose.stableMs < since) return 'old';
+  return 'holding';
+}
+
+/**
+ * 'old' 안내("손을 잠깐 내렸다가 다시 해 주세요")를 띄우기 전에 기다리는 시간.
+ * 손을 바꾸는 중에 잠깐 지나가는 상태일 수 있어 1초 계속될 때만 띄운다 (STEP 2와 같은 기준).
+ */
+export const OLD_HAND_NOTICE_MS = 1000;
+
+/** 'old' 상태가 stateMs 동안 계속됐으면 안내를 띄운다. 다른 상태에서는 띄우지 않는다 */
+export function shouldShowOldNotice(state, stateMs) {
+  return state === 'old' && stateMs >= OLD_HAND_NOTICE_MS;
+}
+
+/** 펼친 동작 목록이 몇 번 반복인지 (expandRoutine 결과의 가장 큰 round). 빈 목록이면 0 */
+export function roundCount(steps) {
+  return steps.reduce((max, s) => Math.max(max, s.round ?? 1), 0);
 }
 
 /**
