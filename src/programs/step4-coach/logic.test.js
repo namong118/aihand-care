@@ -10,6 +10,8 @@ import {
   holdState,
   shouldShowOldNotice,
   roundCount,
+  stepCountOf,
+  needsChooser,
   DEFAULT_HOLD_MS,
   REST_MS,
   OLD_HAND_NOTICE_MS,
@@ -24,6 +26,32 @@ describe('routines.json', () => {
     for (const r of routines) {
       for (const s of r.steps) expect(names).toContain(s.pose);
     }
+  });
+  it('루틴 id 가 겹치지 않는다 (기록의 detail.routine 으로 구분)', () => {
+    const ids = routines.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+  it('고르는 카드에 보여 줄 제목·설명이 있다', () => {
+    for (const r of routines) {
+      expect(r.title).toBeTruthy();
+      expect(r.description).toBeTruthy();
+    }
+  });
+});
+
+describe('stepCountOf', () => {
+  it('반복을 포함한 동작 수', () => {
+    const steps = [{ pose: 'ROCK' }, { pose: 'PAPER' }];
+    expect(stepCountOf({ repeat: 3, steps })).toBe(6);
+    expect(stepCountOf({ steps })).toBe(2);
+    expect(stepCountOf({ repeat: 0, steps })).toBe(2);
+  });
+});
+
+describe('needsChooser', () => {
+  it('루틴이 2개 이상일 때만 고르는 화면', () => {
+    expect(needsChooser([{ id: 'a' }])).toBe(false);
+    expect(needsChooser([{ id: 'a' }, { id: 'b' }])).toBe(true);
   });
 });
 

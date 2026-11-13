@@ -106,6 +106,16 @@ export function roundCount(steps) {
   return steps.reduce((max, s) => Math.max(max, s.round ?? 1), 0);
 }
 
+/** 루틴 하나에서 실제로 하는 동작 수 (반복 포함). 루틴 고르는 카드에 "동작 6개"로 보여 준다 */
+export function stepCountOf(routine) {
+  return expandRoutine(routine).length;
+}
+
+/** 루틴이 2개 이상이면 고르는 화면을 먼저 보여 준다. 1개면 바로 그 루틴 소개로 */
+export function needsChooser(routines) {
+  return routines.length > 1;
+}
+
 /**
  * 동작별 결과를 회차 기록용으로 모은다.
  * results: [{ method: 'detected' | 'manual' | 'skipped', reactionMs }]
