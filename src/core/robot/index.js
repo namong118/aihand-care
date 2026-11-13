@@ -98,6 +98,9 @@ export function createRobot({ poses, openPort = openSerialPort, supported = isSe
       note = '';
       changed();
       if (speed) await robot.speed(speed);
+      // 연결하자마자 쉬는 자세를 한 번 보낸다. AIHand 서보(PWM)는 켜진 뒤 첫 명령을 정한 속도와 상관없이
+      // 최고 속도로 움직이므로(2026-11-13 실물 확인), 그 빠른 첫 움직임을 활동 중이 아니라 연결할 때 끝낸다
+      await robot.rest();
       return true;
     },
 

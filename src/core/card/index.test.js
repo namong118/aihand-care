@@ -76,7 +76,7 @@ describe('createCard (Mock ↔ 실제 WonderCam 전환)', () => {
     const f = fakeRobotPort();
     const { robot, card, got } = setup(f);
     await connect(robot);
-    expect(f.sent).toEqual(['PING', 'CAM,TAG', 'SPEED,NORMAL']);
+    expect(f.sent).toEqual(['PING', 'CAM,TAG', 'SPEED,NORMAL', 'REST']); // REST: 연결 때 쉬는 자세 (robot/index.js)
     expect(card.kind).toBe('serial');
     expect(card.status()).toMatchObject({ state: 'connected', mock: false, note: '태그 모드 · 보이는 카드 없음' });
 
@@ -315,7 +315,7 @@ describe('숫자 카드와 카메라 모드 자동 전환 (펌웨어 F3)', () =>
     card.onNumber(() => {});
     await expect(card.ready()).resolves.toBe(false); // 아직 연결 전: Mock 만
     await connect(robot);
-    expect(f.sent).toEqual(['PING', 'CAM,NUM', 'SPEED,NORMAL']);
+    expect(f.sent).toEqual(['PING', 'CAM,NUM', 'SPEED,NORMAL', 'REST']);
     expect(card.mode).toBe('NUM');
   });
 
