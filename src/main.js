@@ -34,7 +34,7 @@ function updateStatusbar() {
   const list = devices.status();
   renderStatusbar(statusEl, {
     devices: list,
-    actions: { connectRobot, showResults: () => showResults(), toggleSettings },
+    actions: { connectRobot, connectWebcam, showResults: () => showResults(), toggleSettings },
     settingsOpen,
   });
   devPanel.renderStatus(list);
@@ -63,6 +63,11 @@ function toggleSettings(open = !settingsOpen) {
 // "AIHand 연결" 버튼. 포트 고르기 창은 클릭 안에서만 열리므로 await 앞에 다른 일을 하지 않는다.
 function connectRobot() {
   devices.robot.connect({ speed: settings.speed });
+}
+
+// "웹캠 켜기" 버튼. 카메라·해상도는 개발자 입력 영역에서 고른 값 (기본: 첫 카메라, 640×480)
+function connectWebcam() {
+  devices.hand.startWebcam(devPanel.webcamOptions());
 }
 
 // ---- 개발자 입력 (Mock): 손모양·색 카드 입력 패널, 웹캠·WonderCam 상태. 맨 아래, 기본 접힘 ----
@@ -95,6 +100,9 @@ devices.robot.onChange(() => {
   updateStatusbar();
   updateRobotBox();
 });
+
+// 손 인식 상태(웹캠 켜는 중·켜짐·끊김)가 바뀌면 상태 표시줄과 개발자 입력 영역 갱신
+devices.hand.onChange(updateStatusbar);
 
 // WonderCam 상태(확인 중·연결됨·찾지 못함)와 지금 보이는 카드가 바뀌면 개발자 입력 영역의 상태 갱신
 devices.card.onChange(updateStatusbar);

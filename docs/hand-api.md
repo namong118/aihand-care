@@ -77,9 +77,19 @@ AIHand가 이 손모양을 모두 만들 수 있는지는 아직 확인하지 �
 - 다른 손모양을 누르면 바뀌고 `stableMs`는 0부터 다시 센다. 같은 버튼을 다시 누르면 그대로 유지된다.
 - **손 내리기**를 누르면 `{ code: null, name: null, handedness: null, stableMs: 0 }`을 한 번 보내고 멈춘다.
 
-### 실제 손 인식 (구현 전)
+### 실제 손 인식 (웹캠, MediaPipe)
 
-`src/core/hand/mediapipe.js`에서 웹캠 + MediaPipe Hand Landmarker로 구현 예정. 같은 `onPose` 형태를 지킨다.
+상단 바 **웹캠 켜기**를 누르면 `src/core/hand/mediapipe.js`가 웹캠과 MediaPipe Hand Landmarker로 손을 인식한다. 프로그램 쪽은 바뀌는 것이 없다 (같은 `onPose` 형태).
+
+- 손 1개만 인식, 해상도 기본 640×480 (라즈베리파이 5 + C270 시연 기준). GPU로 먼저 시도하고 안 되면 CPU
+- 매 프레임 랜드마크 21개 → 손가락별 펴짐 → 5비트 `code` (`src/core/hand/fingers.js`, 테스트 있음)
+- 한 프레임만 튀는 값은 무시한다: 같은 `code`가 **2프레임 연속**이어야 바뀐 것으로 친다
+- `onPose`는 Mock과 같이 0.1초마다. 손이 안 보이면 `code: null`이 계속 온다 (Mock은 손 내리기 때 한 번)
+- 웹캠이 켜져 있어도 Mock 손모양 버튼은 쓸 수 있다. 버튼으로 손모양을 들고 있는 동안(손 내리기 전까지)은 버튼이 우선
+- 웹캠이 꺼지거나 끊기면 화면 버튼(Mock)으로 돌아가고, 상단 바에 이유를 보여준다
+- 모델 `public/models/hand_landmarker.task`, WASM `public/mediapipe/wasm/`(빌드 때 `node_modules`에서 복사). 인터넷을 쓰지 않는다
+- 측정: 맨 아래 개발자 입력 → "웹캠 손 인식 (측정용)"에서 카메라·해상도 고르기, 미리보기(거울 모드), FPS·GPU/CPU·실제 해상도·지금 code
+- 판정 기준값(`THRESHOLDS`)과 왼손/오른손 이름은 실물로 확인 전이다 [검증 필요] (`hardware-check.md` 5번)
 
 ---
 
