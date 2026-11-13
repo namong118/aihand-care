@@ -20,7 +20,7 @@ export const CATALOG = [
   {
     id: 'step3-stroop',
     step: 3,
-    tag: '주의',
+    tag: '집중', // '주의'는 경고로 읽힐 수 있어 바꿈 (2026-11-13)
     title: '색깔손',
     desc: '글자의 뜻이 아니라 글자의 색과 같은 색깔 카드를 보여주세요.',
   },
