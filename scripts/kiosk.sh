@@ -21,6 +21,17 @@ mkdir -p "$(dirname "$LOG")"
 exec >>"$LOG" 2>&1
 echo "==== $(date '+%F %T') 키오스크 시작"
 
+# 시계 확인. 활동 기록의 날짜·시각이 이 시계를 따른다.
+# RTC 배터리가 없으면 켤 때 시계가 "마지막으로 꺼진 시각"에서 시작하고, 인터넷(휴대폰 핫스팟 등)에
+# 연결되어야 맞춰진다 (README "시계 맞추기"). 맞춰지지 않았으면 기록 파일에 남겨 둔다.
+if [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = "yes" ]; then
+  echo "시계: 인터넷 시간과 맞춤"
+elif [ -e /sys/class/rtc/rtc0/since_epoch ] && [ "$(cat /sys/class/rtc/rtc0/since_epoch 2>/dev/null || echo 0)" -gt 1700000000 ]; then
+  echo "시계: RTC(배터리) 시간 사용"
+else
+  echo "시계: 맞춰지지 않음 (지금 $(date '+%F %T')). 기록 날짜가 틀릴 수 있음 → 핫스팟을 켜거나 README '시계 맞추기'"
+fi
+
 if [ ! -f "$APP_DIR/dist/index.html" ]; then
   echo "dist/ 가 없습니다. 먼저 scripts/update-station.sh 로 빌드하세요."
   exit 1
