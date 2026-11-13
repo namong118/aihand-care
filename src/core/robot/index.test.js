@@ -41,20 +41,21 @@ describe('createRobot (Mock ↔ 실제 AIHand 전환)', () => {
     expect(robot.kind).toBe('mock');
   });
 
-  it('연결하면 PING 확인 후 실제 AIHand 를 쓰고, 진행 속도를 보낸다', async () => {
+  it('연결하면 PING 확인 후 실제 AIHand 를 쓰고, 진행 속도와 쉬는 자세를 보낸다', async () => {
     const f = fakeRobotPort();
     const robot = createRobot({ poses, supported: () => true, openPort: async () => f.port });
     const onChange = vi.fn();
     robot.onChange(onChange);
     await expect(robot.connect({ speed: 'SLOW' })).resolves.toBe(true);
-    expect(f.sent).toEqual(['PING', 'SPEED,SLOW']);
+    // REST: 서보의 첫 움직임은 최고 속도라서 연결할 때 미리 한 번 움직여 둔다
+    expect(f.sent).toEqual(['PING', 'SPEED,SLOW', 'REST']);
     expect(robot.kind).toBe('serial');
     expect(robot.status()).toMatchObject({ state: 'connected', mock: false });
     expect(onChange).toHaveBeenCalled();
 
     await expect(robot.showPose('V')).resolves.toEqual({ type: 'DONE', command: 'POSE' });
     await robot.setSpeed('NORMAL');
-    expect(f.sent.slice(2)).toEqual(['POSE,V', 'SPEED,NORMAL']);
+    expect(f.sent.slice(3)).toEqual(['POSE,V', 'SPEED,NORMAL']);
   });
 
   it('PONG 이 없으면 연결하지 않고 Mock 을 유지한다', async () => {
@@ -106,6 +107,6 @@ describe('createRobot (Mock ↔ 실제 AIHand 전환)', () => {
     await expect(robot.connect()).resolves.toBe(true);
     expect(robot.status()).toMatchObject({ state: 'connected', mock: false, note: '' });
     await expect(robot.rest()).resolves.toEqual({ type: 'DONE', command: 'REST' });
-    expect(second.sent).toEqual(['PING', 'REST']);
+    expect(second.sent).toEqual(['PING', 'REST', 'REST']); // 연결 때 한 번 + 위에서 한 번
   });
 });
