@@ -104,6 +104,25 @@ STEP 3에서는 사용자가 **색깔 카드**(빨강·파랑·노랑·초록)�
 | 카메라 모드 중 AIHand 전원이 꺼지면 | 확인됨: 응답 크게 지연 | 2026-11-12 | D | 실물 테스트, 부록 9. 태그 모드에서 AIHand 전원을 끄자 `PING` 응답이 **8초 넘게** 늦게 몰려 옴. 0.1초마다 없는 카메라를 읽으며 오래 기다리는 것으로 보임 (원인은 코드로 확인하지 않음). 웹에서는 로봇 연결이 끊긴 것처럼 보인다. micro:bit 리셋으로 풀림 |
 | AIHand 전원을 다시 켠 뒤 카메라 모드 전환 | 부분 가능 | 2026-11-12 | D | 실물 테스트, 부록 9. 전원을 다시 켜고 **micro:bit를 리셋하지 않은 채** `CAM,TAG`는 한 번 성공, 그 뒤 `CAM,NUM`·`CAM,TAG` 모두 `ERR,CAM_MODE`(약 4.4초)가 5번 연속. 이때 카메라 화면은 숫자 인식 화면(`Num:? P:1.00`)으로 바뀌어 있었음 = 카메라는 바뀌었는데 micro:bit가 확인할 때 다르게 읽음. 원인 미확인 [검증 필요]. **AIHand 전원 켜기 → 카메라 화면이 뜰 때까지 기다리기 → micro:bit 리셋** 순서로 다시 켜자 `CAM,NUM`·`CAM,TAG` 모두 `DONE,CAM`(약 0.5초) |
 
+### 4-1. 얼굴 인식 (얼굴 로그인, #76)
+
+절차와 테스트 코드: 부록 10 (`FACE1`). 결과는 이 표에 날짜와 함께 채운다.
+
+| 항목 | 상태 | 날짜 | 확인자 | 메모 |
+|---|---|---|---|---|
+| 기능 번호·결과 위치 | 공식 확장 기준 | 2026-11-15 | A | 공식 확장([Hiwonder/WonderCam](https://github.com/Hiwonder/WonderCam) `custom.ts`): 얼굴 인식 = 기능 **1**, 결과 레지스터 **0x0400** (512바이트). [1] 얼굴 수, [2] 학습된 얼굴 수, [3] 모르는 얼굴 수, [4..32] 얼굴마다 번호(학습된 얼굴 1~5, 모르는 얼굴 0xFF). 실물 미확인 |
+| 웹(I2C) 명령으로 학습·삭제 | 공식 확장 기준: 안 됨 | 2026-11-15 | A | 공식 확장이 I2C로 쓰는 곳은 기능 바꾸기(0x0035)·LED(0x0030·0x0031)뿐. 학습·삭제 레지스터가 없다 → **카메라 레버로 학습** (`ctx.card.learnFace`는 만들지 않을 예정). 실물로 다른 방법이 없는지 확인 |
+| 카메라 레버로 학습·한 명 지우기 | 미확인 | | | 공식 문서 2.2: 학습 모드(Function 레버 왼쪽) → "+"를 얼굴 가운데 → 카메라 아이콘 → OK. 다음 번호는 Navigation 오른쪽. 한 명 지우기는 그 번호에서 휴지통 아이콘 → OK. 전체 지우기는 설정 Reset(다른 설정도 초기화) |
+| 학습할 수 있는 최대 얼굴 수 | 미확인 | | | 공식 확장 블록이 번호 1~5. 6번째가 되는지 확인 (`src/login/register.js`의 `FACE_ID_MAX` 5) |
+| 전원을 껐다 켜도 학습 유지 | 미확인 | | | 공식 문서에 없음 |
+| 종이에 인쇄한 사진 학습·인식 | 미확인 | | | 시연은 노인 사진(AI 가상 인물 등). 부록 10 순서 6 |
+| 휴대폰·모니터 화면 속 사진 학습·인식 | 미확인 | | | 부록 10 순서 6 |
+| 인식 거리·각도·조명, 번호가 튀는 정도 | 미확인 | | | 확정 1.5초(`src/login/logic.js` `FACE_HOLD_MS`)가 적당한지. 부록 10 순서 7 |
+| 두 사람 구분 | 미확인 | | | 사진 2장으로 1번·2번 |
+| 카메라 메뉴를 손으로 바꾸면 기능 번호(0x0035)도 바뀌는지 | 미확인 | | | 레버 학습 때 웹이 아는 카메라 모드와 어긋나는지 (#91 리뷰) |
+| 모드 전환 시간 (얼굴 ↔ 숫자 ↔ 태그) | 미확인 | | | 부록 10 순서 10. 지금 `CAM` 시간 초과 6초 |
+| 카메라 배치: (가) 사진을 WonderCam 높이로 내려 보여 주기 / (나) AIHand를 올리기 | 미확인 | | | 부록 10 순서 12. 결론은 #76 댓글로 |
+
 ## 5. 웹캠 손 인식 (MediaPipe)
 
 | 항목 | 상태 | 날짜 | 확인 | 방법·메모 |
@@ -692,3 +711,164 @@ micro:bit 포트 이름: 이 노트북에서는 Windows 장치 관리자 **"USB 
 
 - 순서 8~9에서 카메라는 바뀌었는데 `ERR,CAM_MODE`가 난 원인 [검증 필요]
 - 카메라 모드 중 카메라 전원이 꺼졌을 때 펌웨어가 오래 막히지 않게 할지 (펌웨어 담당 A와 상의)
+
+## 부록 10: WonderCam 얼굴 인식 실물 확인 (#76, 테스트 코드 FACE1)
+
+얼굴 로그인(#75~#85)에 쓸 WonderCam 얼굴 인식을 확인한다. 결과는 4-1 표에 채운다.
+`firmware/`가 아니라 확인용 테스트 코드다. 확인이 끝나면 정식 펌웨어 얼굴 모드는 #77에서 만든다.
+
+### 준비
+
+- AIHand 어댑터 전원을 켜고 **카메라 화면이 뜰 때까지 기다린 뒤** micro:bit를 USB로 연결 (부록 9 켜는 순서)
+- 시험용 사진: AI로 만든 가상 인물 노인 사진 2장을 **종이(A4, 얼굴이 손바닥 크기)**로 인쇄, 같은 사진을 휴대폰에도 넣어 둔다. 필요하면 팀원 얼굴
+- <https://makecode.microbit.org> → 새 프로젝트 → JavaScript 탭에 아래 FACE1 전체를 붙여 넣고 다운로드 (확장 추가 없음)
+- **MakeCode 탭을 닫고** [Serial Terminal](https://googlechromelabs.github.io/serial-terminal/)에서 115200으로 연결
+- 켜질 때 ✓면 WonderCam을 찾은 것, ✖면 케이블·전원 확인
+
+### 명령
+
+| 입력 | 응답 | 뜻 |
+|---|---|---|
+| `FUNC` | `FUNC,<번호>` | 카메라의 지금 기능 번호 (1 얼굴, 7 태그, 10 숫자) |
+| `MODE,FACE` / `MODE,NUM` / `MODE,TAG` | `SWITCH,<모드>,<걸린 ms>` 또는 `SWITCH,<모드>,FAIL` | 기능 바꾸기 (정식 펌웨어 `camSwitch`와 같은 방식) |
+| (명령 없이) | `SEE,FACE,<얼굴 수>,<학습된 수>,<모르는 수>,<번호들>,+<앞 줄 뒤 ms>` | 얼굴 모드일 때 결과가 **바뀔 때만** 한 줄. 번호들: 학습된 얼굴은 번호, 모르는 얼굴은 `U` |
+| (명령 없이) | `FUNC,<번호>` | 카메라 메뉴를 손으로 바꿔서 기능 번호가 바뀌면 한 줄 |
+
+### 순서
+
+| 순서 | 할 일 | 볼 것 (4-1 표 항목) |
+|---|---|---|
+| 1 | `FUNC` | 지금 기능 번호 |
+| 2 | `MODE,FACE` | `SWITCH,FACE,<ms>`, 카메라 화면이 얼굴 인식으로 바뀌는지 |
+| 3 | 아무것도 보여 주지 않기 | `SEE,FACE,0,0,0,` |
+| 4 | 학습 전 사진 1을 약 30cm에서 | `SEE,FACE,1,0,1,U` (모르는 얼굴) |
+| 5 | 카메라 레버로 사진 1을 학습 (Function 왼쪽 → "+"를 얼굴 가운데 → 카메라 아이콘 → OK) | 학습하는 동안 `FUNC` 줄이 나오는지(메뉴 이동이 기능 번호를 바꾸는지), 학습 뒤 `SEE,FACE,1,1,0,1` |
+| 6 | 종이 사진 / 휴대폰 화면 사진을 각각 학습·인식 | 둘 다 되는지, 어느 쪽이 잘 되는지 |
+| 7 | 사진 1을 20cm·30cm·50cm, 정면·옆으로 30°, 형광등·보조등에서 각각 **30초** 들고 있기 | 번호가 `1` ↔ `U`·없음으로 튀는 횟수와 간격(`+ms`). 1.5초 확정이 되는지 |
+| 8 | 사진 2를 2번으로 학습 → 사진 1·2를 번갈아 | `1`·`2`가 섞이지 않는지 |
+| 9 | 3·4·5·6번까지 학습해 보기 (사진이 없으면 팀원 얼굴) | 최대 몇 번까지 되는지 |
+| 10 | `MODE,NUM` → `MODE,FACE` → `MODE,TAG` → `MODE,FACE`를 3번씩 | 각 `SWITCH` ms |
+| 11 | 2번 사진만 지우기 (레버 → 휴지통) | 사진 2가 `U`로 바뀌고 사진 1은 그대로인지 |
+| 12 | AIHand 전원을 껐다 켜고(→ 카메라 화면 → micro:bit 리셋) `MODE,FACE` | 학습이 남아 있는지 |
+| 13 | 시연 자리에서 (가) 사진을 WonderCam 높이로 내려 보여 주기 / (나) AIHand를 얼굴 높이로 올리기 | 어느 쪽이 편하고 잘 되는지, 카드 자리(숫자·색깔 카드)와 같이 쓸 수 있는지 |
+
+로그는 Serial Terminal 화면을 복사해 #76에 댓글로 붙인다.
+
+### FACE1 코드
+
+```typescript
+// FACE1: WonderCam 얼굴 인식 실물 확인용 테스트 코드 (#76). 정식 펌웨어(firmware/) 아님
+// 확장 추가 없음. Serial Terminal 115200, 명령은 영문 대문자로
+//   FUNC                         -> FUNC,<기능 번호>
+//   MODE,FACE | MODE,NUM | MODE,TAG -> SWITCH,<모드>,<ms> 또는 SWITCH,<모드>,FAIL
+//   (명령 없이) 얼굴 모드면 결과가 바뀔 때 SEE,FACE,<얼굴 수>,<학습된 수>,<모르는 수>,<번호들>,+<ms>
+//   (명령 없이) 기능 번호가 바뀌면 FUNC,<번호>
+// 결과 형식은 공식 확장 Hiwonder/WonderCam custom.ts 와 같다 (0x0400, 512바이트)
+const CAM = 0x32
+const REG_FUNC = 0x0035
+const REG_FACE = 0x0400
+const FACE_LEN = 512
+const F_FACE = 1
+const F_TAG = 7
+const F_NUM = 10
+
+function rd(reg: number, len: number): Buffer {
+    let req = pins.createBuffer(2)
+    req[0] = reg & 0xff
+    req[1] = (reg >> 8) & 0xff
+    pins.i2cWriteBuffer(CAM, req)
+    return pins.i2cReadBuffer(CAM, len)
+}
+function wr(reg: number, value: number) {
+    let b = pins.createBuffer(3)
+    b[0] = reg & 0xff
+    b[1] = (reg >> 8) & 0xff
+    b[2] = value & 0xff
+    pins.i2cWriteBuffer(CAM, b)
+}
+function send(text: string) {
+    serial.writeLine(text)
+}
+
+// 기능 바꾸기: 정식 펌웨어 camSwitch 와 같다 (0.1초 뒤 확인, 0.05초씩 최대 80번). 걸린 ms, 실패면 -1
+function sw(func: number): number {
+    let t0 = input.runningTime()
+    let count = 0
+    wr(REG_FUNC, func)
+    basic.pause(100)
+    while (rd(REG_FUNC, 1)[0] != func) {
+        if (count >= 80) return -1
+        basic.pause(50)
+        count++
+    }
+    return input.runningTime() - t0
+}
+
+function faceText(): string {
+    let r = rd(REG_FACE, FACE_LEN)
+    let total = r[1]
+    let text = total + "," + r[2] + "," + r[3] + ","
+    for (let i = 4; i < 4 + total && i < 33; i++) {
+        if (i > 4) text = text + " "
+        text = text + (r[i] == 0xff ? "U" : "" + r[i])
+    }
+    return text
+}
+
+let func = -1
+let last = ""
+let lastAt = 0
+
+function mode(arg: string) {
+    let f = 0
+    if (arg == "FACE") f = F_FACE
+    else if (arg == "NUM") f = F_NUM
+    else if (arg == "TAG") f = F_TAG
+    else { send("ERR,BAD_ARG"); return }
+    let ms = sw(f)
+    send("SWITCH," + arg + "," + (ms < 0 ? "FAIL" : "" + ms))
+    last = ""
+}
+
+function handle(line: string) {
+    if (line == "FUNC") send("FUNC," + rd(REG_FUNC, 1)[0])
+    else if (line.indexOf("MODE,") == 0) mode(line.substr(5))
+    else send("ERR,UNKNOWN_CMD")
+}
+
+serial.setBaudRate(BaudRate.BaudRate115200)
+basic.showString("FACE1")
+if (rd(0, 1)[0] == 118) basic.showIcon(IconNames.Yes)
+else basic.showIcon(IconNames.No)
+
+let buf = ""
+basic.forever(function () {
+    let s = serial.readString()
+    for (let i = 0; i < s.length; i++) {
+        let c = s.charAt(i)
+        if (c == "\n" || c == "\r") {
+            if (buf.length > 0) handle(buf)
+            buf = ""
+        } else if (buf.length < 40) {
+            buf = buf + c
+        }
+    }
+    let f = rd(REG_FUNC, 1)[0]
+    if (f != func) {
+        func = f
+        send("FUNC," + f)
+        last = ""
+    }
+    if (f == F_FACE) {
+        let t = faceText()
+        if (t != last) {
+            let now = input.runningTime()
+            send("SEE,FACE," + t + ",+" + (now - lastAt))
+            last = t
+            lastAt = now
+        }
+    }
+    basic.pause(50)
+})
+```
+
