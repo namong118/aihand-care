@@ -100,8 +100,10 @@ export default {
   - `color`: `'red' | 'blue' | 'yellow' | 'green'`. 사용자가 색깔 카드를 WonderCam에 보여주면 발생
   - 프로그램은 카드 ID를 모른다. ID→색 변환은 `core/card` 안에서만 한다 (카드 인식 방식은 [검증 필요])
 - `ctx.card.onNumber(cb)` → `cb({ number })`, 구독 해제 함수 반환. `number`: 1~5 (숫자 카드, WonderCam 숫자 인식)
+- `ctx.card.onFace(cb)` → `cb({ faceId })`, 구독 해제 함수 반환. `faceId`: 학습된 얼굴 번호(1 이상 정수) | `'unknown'`(모르는 얼굴) | `null`(안 보임). 얼굴 로그인용 (`src/login/`)
+  - 펌웨어 얼굴 모드(#77) 전까지는 **개발자 입력의 Mock 얼굴 버튼으로만** 들어온다. 이때 `ctx.card.ready()`는 `false`
 - `ctx.card.ready()` → WonderCam 모드 바꾸기가 끝나면 resolve (`true` = 실제 카메라 준비, `false` = Mock만)
-  - 카메라는 한 번에 한 모드. `onCard` 구독 → 태그 모드, `onNumber` 구독 → 숫자 모드로 core가 알아서 바꾼다
+  - 카메라는 한 번에 한 모드. `onCard` 구독 → 태그 모드, `onNumber` 구독 → 숫자 모드, `onFace` 구독 → 얼굴 모드(#77 뒤)로 core가 알아서 바꾼다
 - `ctx.log.record({ program, ...결과 })`
 - `ctx.settings` (Mock 여부, 진행 속도 등)
 
