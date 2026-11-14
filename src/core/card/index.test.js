@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createCard } from './index.js';
+import { createMockCard } from './mock.js';
 import { createRobot } from '../robot/index.js';
 import colors from '../../data/colors.json';
 import poses from '../../data/poses.json';
@@ -330,5 +331,82 @@ describe('숫자 카드와 카메라 모드 자동 전환 (펌웨어 F3)', () =>
     expect(card.mode).toBe(null);
     expect(card.status()).toMatchObject({ state: 'disconnected', mock: true });
     await expect(card.ready()).resolves.toBe(false);
+  });
+});
+
+describe('얼굴 로그인 onFace (#78, 펌웨어 얼굴 모드 #77 전: Mock 만)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  function withMock(...ports) {
+    const mock = createMockCard({ colors });
+    const robot = createRobot({ poses, supported: () => true, openPort: async () => ports.shift().port });
+    const card = createCard({ colors, robot, mock });
+    return { robot, card, mock };
+  }
+  const camLines = (f) => f.sent.filter((l) => l.startsWith('CAM'));
+
+  it('Mock 얼굴 버튼 → onFace({ faceId }). 해제하면 더 받지 않는다', () => {
+    const { card, mock } = withMock();
+    const got = [];
+    const off = card.onFace((e) => got.push(e.faceId));
+    mock.emitFace(3);
+    mock.emitFace('unknown');
+    mock.emitFace(null);
+    off();
+    mock.emitFace(1);
+    expect(got).toEqual([3, 'unknown', null]);
+  });
+
+  it('얼굴은 색·숫자 카드 구독에 가지 않고, 카드는 얼굴 구독에 가지 않는다', () => {
+    const { card, mock } = withMock();
+    const faces = [];
+    const colorsGot = [];
+    card.onFace((e) => faces.push(e.faceId));
+    card.onCard((e) => colorsGot.push(e.color));
+    mock.emitFace(2);
+    mock.emit('red');
+    mock.emitNumber(4);
+    expect(faces).toEqual([2]);
+    expect(colorsGot).toEqual(['red']);
+  });
+
+  it('AIHand 가 연결되어 있어도 CAM,FACE 를 보내지 않고 ready() 는 false, 상태에 안내', async () => {
+    const f = fakeRobotPort();
+    const { robot, card, mock } = withMock(f);
+    await connect(robot);
+    expect(card.mode).toBe('TAG');
+
+    const faces = [];
+    card.onFace((e) => faces.push(e.faceId));
+    await expect(card.ready()).resolves.toBe(false);
+    expect(camLines(f)).toEqual(['CAM,TAG']);
+    expect(card.status().note).toContain('얼굴 모드는 펌웨어 준비 전');
+
+    mock.emitFace(1); // 실제 AIHand 연결 중에도 Mock 버튼은 동작
+    expect(faces).toEqual([1]);
+  });
+
+  it('로그인 뒤 숫자 카드(STEP 1)로 가면 숫자 모드로 바꾸고 얼굴 안내는 사라진다', async () => {
+    const f = fakeRobotPort();
+    const { robot, card } = withMock(f);
+    await connect(robot);
+    card.onFace(() => {});
+    await card.ready();
+    card.onNumber(() => {});
+    await expect(card.ready()).resolves.toBe(true);
+    expect(camLines(f)).toEqual(['CAM,TAG', 'CAM,NUM']);
+    expect(card.status().note).not.toContain('얼굴');
+  });
+
+  it('얼굴을 원한 채로 AIHand 를 연결해도 카메라 모드를 바꾸지 않는다', async () => {
+    const f = fakeRobotPort();
+    const { robot, card } = withMock(f);
+    card.onFace(() => {});
+    await connect(robot);
+    expect(camLines(f)).toEqual([]);
+    expect(card.mode).toBe(null);
+    expect(card.status()).toMatchObject({ mock: true });
+    expect(card.status().note).toContain('얼굴 모드는 펌웨어 준비 전');
   });
 });
