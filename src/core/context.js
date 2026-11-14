@@ -43,6 +43,7 @@ export function createContext(settings) {
     card: {
       onCard: (cb) => card.onCard(cb), // 색 카드: cb({ color: 'red' | 'blue' | 'yellow' | 'green' })
       onNumber: (cb) => card.onNumber(cb), // 숫자 카드: cb({ number: 1~5 })
+      onFace: (cb) => card.onFace(cb), // 얼굴 로그인: cb({ faceId: 번호 | 'unknown' | null }). #77 전까지 Mock 만
       ready: () => card.ready(), // WonderCam 모드 바꾸기가 끝날 때까지 기다림 (실제 카메라 준비면 true)
     },
     log: { record: (rec) => log.record(rec) },
