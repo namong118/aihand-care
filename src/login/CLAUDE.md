@@ -21,6 +21,12 @@
 - `remove(userId)`는 `{ user, forgetFaceId }`를 돌려준다. `forgetFaceId`가 있으면 "WonderCam에서도 이 얼굴을 지워 주세요" 안내를 띄운다
 - Supabase 동기화는 B 경민 #62 설계에 맞춘다 (여기서 테이블을 정하지 않는다)
 
+## 등록 화면 (`mountRegister`, #84)
+
+- WonderCam 얼굴 번호는 **1~5번** (공식 확장 Hiwonder/WonderCam). 5명까지 얼굴 등록, 그 뒤로는 호칭만 등록
+- 공식 확장에는 학습 명령이 없다 → `ctx.card.learnFace`가 없으면 카메라 레버로 학습하고 번호를 고른다 [검증 필요] #76 결과로 확정
+- 키오스크 터치 화면에는 화면 키보드가 없을 수 있다. 등록은 복지사·팀원이 USB 키보드로 한다고 가정 [검증 필요]
+
 ## 하지 말아야 할 것
 
 - `src/core/`를 import 하지 않는다. 화면은 `ctx`만 쓴다
