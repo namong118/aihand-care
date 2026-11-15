@@ -12,7 +12,8 @@
 
 ## 사용자 저장 (`users.js`, #80)
 
-- localStorage 키: **`aihand-care.users.v1`** (기록 `aihand-care.records.v1`과 같은 형식)
+- localStorage 키: **`aihand-care.users.v2`** (기록 `aihand-care.records.v1`과 같은 형식)
+  - `aihand-care.users.v1`은 쓰지 않는다. 예전 "사용자 이름" 기능의 키라 앱이 켤 때마다 지운다 (`dashboard/prefs.js`, #89 리뷰)
 - 저장 모양: `[{ userId, displayName, faceId, consentAt }, ...]`
   - `userId`: 시각 기반 ID (`'u-2026-11-13T10:00:00.000Z'`)
   - `displayName`: 호칭·별명 (실명 아님), 12글자까지, 같은 호칭은 받지 않음
