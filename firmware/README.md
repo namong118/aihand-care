@@ -8,7 +8,7 @@ WonderCam에 보인 색깔 카드의 태그 번호(STEP 3), 숫자 카드의 숫
   - F1: 로봇 명령 (2026-11-09 실물 확인)
   - F2: F1 + WonderCam 태그 인식 (`CAM,TAG`, `TAG,<번호>`, `TAG,NONE`). 아직 실물 미확인
   - F3: F2 + WonderCam 숫자 인식 (`CAM,NUM`, `NUM,<1~5>`, `NUM,NONE`, 측정용 `DEBUG_NUM`). 2026-11-11 Serial Terminal 실물 확인
-  - F4: F3 + WonderCam 얼굴 인식 (`CAM,FACE`, `FACE,<번호>`, `FACE,UNKNOWN`, `FACE,NONE`). 얼굴 인식 자체는 테스트 코드 FACE1로 확인(2026-11-15, `docs/hardware-check.md` 4-1·부록 10), F4는 2026-11-15 Serial Terminal 실물 확인 (동작 중 확인·웹 연결은 엄지 수리 뒤)
+  - F4: F3 + WonderCam 얼굴 인식 (`CAM,FACE`, `FACE,<번호>`, `FACE,UNKNOWN`, `FACE,NONE`). 얼굴 인식 자체는 테스트 코드 FACE1로 확인(2026-11-15, `docs/hardware-check.md` 4-1·부록 10), F4는 2026-11-15 Serial Terminal 실물 확인 (동작 중 확인·웹 연결은 아직)
 - 동작 설계: `docs/hardware-check.md` 부록 5 확정안, 타이밍·시리얼 처리: 테스트 코드 v8
 - **이 폴더, `src/core/robot/protocol.js`, `docs/protocol.md`는 항상 같이 고친다.**
 
@@ -179,7 +179,7 @@ F3에서도 이 절차는 그대로 쓴다 (LED는 `F3`, 8번만 다름).
 ## Serial Terminal 확인 절차 (F4 얼굴 인식)
 
 준비: 학습된 얼굴 사진 1·2(카메라 레버로 Face ID 1·2에 학습, 생김새가 확실히 다른 사진)와 학습하지 않은 사진 1장.
-F4를 올리고 MakeCode 탭을 닫은 뒤 Serial Terminal 115200 연결. **엄지 받침 수리 전이면 엄지 서보가 움직이지 않게 한 뒤 하고, 8번은 건너뛴다.**
+F4를 올리고 MakeCode 탭을 닫은 뒤 Serial Terminal 115200 연결.
 
 | # | 입력 / 할 일 | 기대 결과 | 결과 |
 |---|---|---|---|
