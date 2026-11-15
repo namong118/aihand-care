@@ -5,12 +5,19 @@ const allText = (o) => Object.values(o).flat().join(' ');
 
 // docs/research/evidence.md 6번 "쓰면 안 되는 표현"
 const FORBIDDEN = ['예방', '치료', '향상', '효과', '개선', '진단'];
+// 팀 원칙: 맞고 틀림·점수 대신 "완료 수" (CLAUDE.md 웹 대시보드, #88 리뷰)
+const SCORE_WORDS = ['맞힌', '정답', '점수'];
 
 describe('동의 화면 문구', () => {
   it('쓰면 안 되는 표현이 없다', () => {
     for (const o of [FACE_CONSENT, RECORD_NOTICE]) {
       for (const word of FORBIDDEN) expect(allText(o)).not.toContain(word);
+      for (const word of SCORE_WORDS) expect(allText(o)).not.toContain(word);
     }
+  });
+
+  it('활동 기록 안내에서 등록하지 않을 수 있다', () => {
+    expect(RECORD_NOTICE.decline).toBeTruthy();
   });
 
   it('동의하지 않아도 버튼으로 이용할 수 있다고 알린다', () => {
@@ -25,6 +32,6 @@ describe('동의 화면 문구', () => {
   });
 
   it('실명을 묻지 않는다', () => {
-    expect(allText(FACE_CONSENT)).not.toMatch(/실명|성함|이름을 (적|입력|말씀)/);
+    expect(allText(FACE_CONSENT)).not.toMatch(/실명|성함|이름을/);
   });
 });
