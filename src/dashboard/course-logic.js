@@ -66,6 +66,24 @@ export function stepInfo(plan, index) {
   };
 }
 
+/**
+ * 코스 진행 표시(활동 사이 안내의 목록, 활동 화면 위쪽 막대)에 쓰는 활동별 상태.
+ * @param plan     loadCourse() 결과
+ * @param index    지금 활동 (0부터)
+ * @param skipped  "이 활동 건너뛰기"로 넘어간 order 목록 (course-store 의 skipped)
+ * @returns [{ order, program, input, state }]
+ *   state: 'done'(마침) | 'skipped'(건너뜀) | 'now'(지금) | 'next'(아직)
+ */
+export function courseProgress(plan, index, skipped = []) {
+  return plan.map((step, i) => {
+    const order = i + 1;
+    let state = 'next';
+    if (i < index) state = skipped.includes(order) ? 'skipped' : 'done';
+    else if (i === index) state = 'now';
+    return { order, program: step.program, input: step.input, state };
+  });
+}
+
 /** ISO 시각 → 그 시간대의 날짜 'YYYY-MM-DD' (기본: 스테이션 현지 시간 Asia/Seoul) */
 export function localDate(iso, timeZone = TIME_ZONE) {
   const d = new Date(iso);

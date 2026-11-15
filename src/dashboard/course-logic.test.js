@@ -4,6 +4,7 @@ import {
   newCourseId,
   tagRecord,
   stepInfo,
+  courseProgress,
   localDate,
   weightedReaction,
   courseOf,
@@ -79,6 +80,20 @@ describe('stepInfo', () => {
   });
   it('없는 순서면 오류', () => {
     expect(() => stepInfo(plan, 4)).toThrow();
+  });
+});
+
+describe('courseProgress', () => {
+  const plan = loadCourse(course, CATALOG);
+  const states = (index, skipped) => courseProgress(plan, index, skipped).map((s) => s.state);
+  it('첫 활동: 지금 1개, 나머지 아직', () => {
+    expect(states(0)).toEqual(['now', 'next', 'next', 'next']);
+  });
+  it('앞 활동은 마침, 건너뛴 활동은 건너뜀', () => {
+    expect(states(2, [2])).toEqual(['done', 'skipped', 'now', 'next']);
+  });
+  it('순서·프로그램·입력 방법을 같이 돌려준다', () => {
+    expect(courseProgress(plan, 0)[2]).toEqual({ order: 3, program: 'step1-memory', input: 'card', state: 'next' });
   });
 });
 
