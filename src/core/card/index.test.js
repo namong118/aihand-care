@@ -8,12 +8,14 @@ import poses from '../../data/poses.json';
 /**
  * 가짜 AIHand 포트. PING 에 PONG, CAM 에 camReply, 다른 명령에 DONE 으로 바로 답한다.
  * camReply: 문자열이면 모든 CAM 명령에 같은 답, 함수면 (보낸 줄) => 답, null 이면 답하지 않음(직접 robotSays)
- * firmware: 'F3'(기본) 은 CAM,TAG·CAM,NUM 모두 DONE,CAM / 'F2' 는 CAM,NUM 에 ERR,BAD_ARG
- * robotSays(text) 로 로봇이 보내는 줄(TAG·NUM 등)을 흉내 낸다.
+ * firmware: 'F4'(기본) 은 CAM,TAG·NUM·FACE 모두 DONE,CAM / 'F3' 는 CAM,FACE 에 ERR,BAD_ARG
+ *           'F2' 는 CAM,NUM·CAM,FACE 에 ERR,BAD_ARG
+ * robotSays(text) 로 로봇이 보내는 줄(TAG·NUM·FACE 등)을 흉내 낸다.
  */
-function fakeRobotPort({ firmware = 'F3', camReply } = {}) {
+const UNSUPPORTED = { F4: [], F3: ['CAM,FACE'], F2: ['CAM,NUM', 'CAM,FACE'] };
+function fakeRobotPort({ firmware = 'F4', camReply } = {}) {
   if (camReply === undefined) {
-    camReply = firmware === 'F2' ? (line) => (line === 'CAM,NUM' ? 'ERR,BAD_ARG' : 'DONE,CAM') : 'DONE,CAM';
+    camReply = (line) => (UNSUPPORTED[firmware].includes(line) ? 'ERR,BAD_ARG' : 'DONE,CAM');
   }
   const sent = [];
   let controller;
@@ -126,10 +128,10 @@ describe('createCard (Mock ↔ 실제 WonderCam 전환)', () => {
     expect(got).toEqual([]);
   });
 
-  it('펌웨어 F1 이면(ERR,UNKNOWN_CMD) F3 가 필요하다고 안내한다', async () => {
+  it('펌웨어 F1 이면(ERR,UNKNOWN_CMD) F4 가 필요하다고 안내한다', async () => {
     const { robot, card } = setup(fakeRobotPort({ camReply: 'ERR,UNKNOWN_CMD' }));
     await connect(robot);
-    expect(card.status()).toMatchObject({ state: 'missing', note: '펌웨어 F3가 필요해요' });
+    expect(card.status()).toMatchObject({ state: 'missing', note: '펌웨어 F4가 필요해요' });
   });
 
   it('USB 가 빠지면 카드도 Mock 으로 돌아가고, 다시 연결하면 다시 확인한다', async () => {
@@ -334,7 +336,7 @@ describe('숫자 카드와 카메라 모드 자동 전환 (펌웨어 F3)', () =>
   });
 });
 
-describe('얼굴 로그인 onFace (#78, 펌웨어 얼굴 모드 #77 전: Mock 만)', () => {
+describe('얼굴 로그인 onFace (#78 인터페이스, #77 펌웨어 F4 얼굴 모드)', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
@@ -371,7 +373,7 @@ describe('얼굴 로그인 onFace (#78, 펌웨어 얼굴 모드 #77 전: Mock �
     expect(colorsGot).toEqual(['red']);
   });
 
-  it('AIHand 가 연결되어 있어도 CAM,FACE 를 보내지 않고 ready() 는 false, 상태에 안내', async () => {
+  it('F4: 구독하면 CAM,FACE 를 보내고, FACE 줄을 onFace 로 넘긴다 (NONE 도 null 로 알림)', async () => {
     const f = fakeRobotPort();
     const { robot, card, mock } = withMock(f);
     await connect(robot);
@@ -379,34 +381,78 @@ describe('얼굴 로그인 onFace (#78, 펌웨어 얼굴 모드 #77 전: Mock �
 
     const faces = [];
     card.onFace((e) => faces.push(e.faceId));
-    await expect(card.ready()).resolves.toBe(false);
-    expect(camLines(f)).toEqual(['CAM,TAG']);
-    expect(card.status().note).toContain('얼굴 모드는 펌웨어 준비 전');
+    await expect(card.ready()).resolves.toBe(true);
+    expect(card.mode).toBe('FACE');
+    expect(camLines(f)).toEqual(['CAM,TAG', 'CAM,FACE']);
+    expect(card.status()).toMatchObject({ state: 'connected', mock: false, note: '얼굴 모드 · 보이는 얼굴 없음' });
 
-    mock.emitFace(1); // 실제 AIHand 연결 중에도 Mock 버튼은 동작
-    expect(faces).toEqual([1]);
+    f.robotSays('FACE,UNKNOWN\nFACE,2\n');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(card.status().note).toBe('얼굴 모드 · 얼굴 2번');
+    f.robotSays('FACE,NONE\n');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(faces).toEqual(['unknown', 2, null]);
+    expect(card.status().note).toBe('얼굴 모드 · 보이는 얼굴 없음');
+
+    mock.emitFace(1); // 실제 카메라가 있어도 Mock 버튼은 동작
+    expect(faces).toEqual(['unknown', 2, null, 1]);
   });
 
-  it('로그인 뒤 숫자 카드(STEP 1)로 가면 숫자 모드로 바꾸고 얼굴 안내는 사라진다', async () => {
+  it('얼굴 모드가 아닐 때 온 FACE 줄은 무시하고, 다른 모드의 줄은 얼굴 구독에 가지 않는다', async () => {
     const f = fakeRobotPort();
     const { robot, card } = withMock(f);
     await connect(robot);
+    const faces = [];
+    card.onFace((e) => faces.push(e.faceId));
+    f.robotSays('FACE,1\n'); // 아직 바꾸기 전 (태그 모드)
+    await card.ready();
+    f.robotSays('TAG,1\nNUM,3\nFACE,4\n');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(faces).toEqual([4]);
+  });
+
+  it('로그인 뒤 숫자 카드(STEP 1)로 가면 숫자 모드로 바꾸고, 얼굴 줄은 더 받지 않는다', async () => {
+    const f = fakeRobotPort();
+    const { robot, card } = withMock(f);
+    await connect(robot);
+    const faces = [];
+    card.onFace((e) => faces.push(e.faceId));
+    await card.ready();
+    card.onNumber(() => {});
+    await expect(card.ready()).resolves.toBe(true);
+    expect(camLines(f)).toEqual(['CAM,TAG', 'CAM,FACE', 'CAM,NUM']);
+    f.robotSays('FACE,1\n');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(faces).toEqual([]);
+  });
+
+  it('얼굴을 원한 채로 AIHand 를 연결하면 처음부터 CAM,FACE 로 맞춘다', async () => {
+    const f = fakeRobotPort();
+    const { robot, card } = withMock(f);
+    card.onFace(() => {});
+    await expect(card.ready()).resolves.toBe(false); // 연결 전: Mock 만
+    await connect(robot);
+    expect(f.sent).toEqual(['PING', 'CAM,FACE', 'SPEED,NORMAL', 'REST']);
+    expect(card.mode).toBe('FACE');
+  });
+
+  it('펌웨어 F3 이면(CAM,FACE 에 ERR,BAD_ARG) F4 가 필요하다고 안내하고 Mock 얼굴 버튼으로, 카메라 모드는 그대로', async () => {
+    const f = fakeRobotPort({ firmware: 'F3' });
+    const { robot, card, mock } = withMock(f);
+    await connect(robot);
+    const faces = [];
+    card.onFace((e) => faces.push(e.faceId));
+    await expect(card.ready()).resolves.toBe(false);
+    expect(card.mode).toBe('TAG');
+    expect(card.status().note).toContain('얼굴 인식은 펌웨어 F4가 필요해요');
+    mock.emitFace(1);
+    expect(faces).toEqual([1]);
+
+    // 다시 구독해도 같은 연결에서는 CAM,FACE 를 다시 보내지 않는다. 숫자 카드는 그대로 된다
     card.onFace(() => {});
     await card.ready();
     card.onNumber(() => {});
     await expect(card.ready()).resolves.toBe(true);
-    expect(camLines(f)).toEqual(['CAM,TAG', 'CAM,NUM']);
-    expect(card.status().note).not.toContain('얼굴');
-  });
-
-  it('얼굴을 원한 채로 AIHand 를 연결해도 카메라 모드를 바꾸지 않는다', async () => {
-    const f = fakeRobotPort();
-    const { robot, card } = withMock(f);
-    card.onFace(() => {});
-    await connect(robot);
-    expect(camLines(f)).toEqual([]);
-    expect(card.mode).toBe(null);
-    expect(card.status()).toMatchObject({ mock: true });
-    expect(card.status().note).toContain('얼굴 모드는 펌웨어 준비 전');
+    expect(camLines(f)).toEqual(['CAM,TAG', 'CAM,FACE', 'CAM,NUM']);
   });
 });

@@ -102,9 +102,9 @@ export default {
   - 프로그램은 카드 ID를 모른다. ID→색 변환은 `core/card` 안에서만 한다 (카드 인식 방식은 [검증 필요])
 - `ctx.card.onNumber(cb)` → `cb({ number })`, 구독 해제 함수 반환. `number`: 1~5 (숫자 카드, WonderCam 숫자 인식)
 - `ctx.card.onFace(cb)` → `cb({ faceId })`, 구독 해제 함수 반환. `faceId`: 학습된 얼굴 번호(1 이상 정수) | `'unknown'`(모르는 얼굴) | `null`(안 보임). 얼굴 로그인용 (`src/login/`)
-  - 펌웨어 얼굴 모드(#77) 전까지는 **개발자 입력의 Mock 얼굴 버튼으로만** 들어온다. 이때 `ctx.card.ready()`는 `false`
+  - 실제 얼굴은 펌웨어 F4 얼굴 모드(#77)로 들어오고, 개발자 입력의 Mock 얼굴 버튼으로도 넣을 수 있다. 펌웨어가 F3 이하면 Mock 버튼으로만 (`ctx.card.ready()`는 `false`)
 - `ctx.card.ready()` → WonderCam 모드 바꾸기가 끝나면 resolve (`true` = 실제 카메라 준비, `false` = Mock만)
-  - 카메라는 한 번에 한 모드. `onCard` 구독 → 태그 모드, `onNumber` 구독 → 숫자 모드, `onFace` 구독 → 얼굴 모드(#77 뒤)로 core가 알아서 바꾼다
+  - 카메라는 한 번에 한 모드. `onCard` 구독 → 태그 모드, `onNumber` 구독 → 숫자 모드, `onFace` 구독 → 얼굴 모드로 core가 알아서 바꾼다
 - `ctx.log.record({ program, ...결과 })`
 - `ctx.settings` (Mock 여부, 진행 속도 등)
 
@@ -168,8 +168,8 @@ ctx.log.record({
 
 텍스트 한 줄 = 명령 하나, `\n`으로 끝난다. 자세한 내용은 `docs/protocol.md`.
 
-- 웹 → 로봇: `HELLO`, `POSE,<이름>`, `REACT,OK`, `REACT,RETRY`, `REST`, `SPEED,SLOW|NORMAL`, `PING`, `CAM,TAG|NUM`
-- 로봇 → 웹: `DONE,<명령>`, `TAG,<번호>|NONE`, `NUM,<1~5>|NONE`, `PONG`, `ERR,<내용>`
+- 웹 → 로봇: `HELLO`, `POSE,<이름>`, `REACT,OK`, `REACT,RETRY`, `REST`, `SPEED,SLOW|NORMAL`, `PING`, `CAM,TAG|NUM|FACE`
+- 로봇 → 웹: `DONE,<명령>`, `TAG,<번호>|NONE`, `NUM,<1~5>|NONE`, `FACE,<번호>|UNKNOWN|NONE`, `PONG`, `ERR,<내용>`
 
 프로토콜을 바꾸는 변경은 `core/robot/protocol.js`, `firmware/`, `docs/protocol.md`를 함께 고친다.
 

@@ -11,7 +11,7 @@
 //   동작 중에 보낸 PING 은 펌웨어가 확장보드로 통로를 돌린 사이 사라진다 (F1 실물 확인).
 //   재시도해도 PONG 이 없으면 연결이 끊긴 것으로 본다.
 // - 'TAG,…' 줄과 알 수 없는 줄(확장보드 잡음 등)은 기다리는 명령에 영향을 주지 않는다.
-//   'TAG,…' 줄은 onTag, 'NUM,…' 줄은 onNumber 로 넘긴다 (core/card 가 받는다). 명령을 기다리는 중에 와도 된다.
+//   'TAG,…' 줄은 onTag, 'NUM,…' 줄은 onNumber, 'FACE,…' 줄은 onFace 로 넘긴다 (core/card 가 받는다). 명령을 기다리는 중에 와도 된다.
 
 import * as protocol from './protocol.js';
 
@@ -56,6 +56,7 @@ function err(message) {
  * @param {(event: {ok: boolean, text?: string}) => void} [options.onResult]  명령 결과 알림 (상태 표시줄용)
  * @param {(id: string | null) => void} [options.onTag]  'TAG,<번호>' 줄을 받으면 번호, 'TAG,NONE' 이면 null
  * @param {(n: number | null) => void} [options.onNumber]  'NUM,<1~5>' 줄을 받으면 숫자, 'NUM,NONE' 이면 null
+ * @param {(faceId: number | 'unknown' | null) => void} [options.onFace]  'FACE,<번호>' 줄이면 번호, UNKNOWN 이면 'unknown', NONE 이면 null
  * @param {object} [options.timeouts]  TIMEOUT_MS 대신 쓸 값 (테스트용)
  */
 export function createSerialRobot({
@@ -64,6 +65,7 @@ export function createSerialRobot({
   onResult = () => {},
   onTag = () => {},
   onNumber = () => {},
+  onFace = () => {},
   timeouts = TIMEOUT_MS,
 }) {
   const encoder = new TextEncoder();
@@ -87,6 +89,10 @@ export function createSerialRobot({
     }
     if (msg.type === 'NUM') {
       onNumber(msg.number);
+      return;
+    }
+    if (msg.type === 'FACE') {
+      onFace(msg.faceId);
       return;
     }
     if (msg.type === 'UNKNOWN') return; // 확장보드 잡음 등은 무시
@@ -198,7 +204,7 @@ export function createSerialRobot({
 
     // ---- 대시보드 전용 ----
     speed: (value) => send(protocol.speed(value)),
-    /** WonderCam 모드 전환 ('TAG' | 'NUM'). DONE,CAM 또는 ERR,NO_CAM 등으로 resolve */
+    /** WonderCam 모드 전환 ('TAG' | 'NUM' | 'FACE'). DONE,CAM 또는 ERR,NO_CAM 등으로 resolve */
     camMode: (mode) => send(protocol.cam(mode)),
     /** 연결 확인. 펌웨어가 막 켜졌을 수도 있으니 RESYNC_TRIES 번까지 PING 을 보낸다 */
     async check() {

@@ -8,7 +8,7 @@ import { createSerialRobot, openSerialPort, isSerialSupported } from './serial.j
 /**
  * @returns 로봇 전환기. ctx.robot 함수(hello, showPose, react, rest)는 지금 쓰는 장치로 보낸다.
  *          대시보드용: connect, setSpeed, status, onChange, mountControls
- *          core/card 용: onTag(태그 번호), onNumber(숫자 카드), camMode(WonderCam 모드 전환)
+ *          core/card 용: onTag(태그 번호), onNumber(숫자 카드), onFace(얼굴 번호), camMode(WonderCam 모드 전환)
  */
 export function createRobot({ poses, openPort = openSerialPort, supported = isSerialSupported }) {
   const mock = createMockRobot({ poses });
@@ -19,6 +19,7 @@ export function createRobot({ poses, openPort = openSerialPort, supported = isSe
   const listeners = new Set();
   const tagListeners = new Set();
   const numberListeners = new Set();
+  const faceListeners = new Set();
 
   const active = () => serial ?? mock;
   function changed() {
@@ -85,6 +86,9 @@ export function createRobot({ poses, openPort = openSerialPort, supported = isSe
         onNumber: (n) => {
           if (serial === robot) numberListeners.forEach((cb) => cb(n));
         },
+        onFace: (faceId) => {
+          if (serial === robot) faceListeners.forEach((cb) => cb(faceId));
+        },
       });
       const ok = await robot.check();
       connecting = false;
@@ -109,7 +113,7 @@ export function createRobot({ poses, openPort = openSerialPort, supported = isSe
       return serial ? serial.speed(value) : Promise.resolve(null);
     },
 
-    /** WonderCam 모드 전환 ('TAG' | 'NUM'). 실제 AIHand 에 연결되어 있지 않으면 null */
+    /** WonderCam 모드 전환 ('TAG' | 'NUM' | 'FACE'). 실제 AIHand 에 연결되어 있지 않으면 null */
     camMode(mode) {
       return serial ? serial.camMode(mode) : Promise.resolve(null);
     },
@@ -124,6 +128,12 @@ export function createRobot({ poses, openPort = openSerialPort, supported = isSe
     onNumber(cb) {
       numberListeners.add(cb);
       return () => numberListeners.delete(cb);
+    },
+
+    /** WonderCam 얼굴 줄 구독. cb(faceId): 학습된 얼굴 번호, 모르는 얼굴이면 'unknown', 얼굴이 사라지면 null */
+    onFace(cb) {
+      faceListeners.add(cb);
+      return () => faceListeners.delete(cb);
     },
 
     /** 상태 표시줄용 */
