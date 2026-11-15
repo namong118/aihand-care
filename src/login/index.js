@@ -73,7 +73,7 @@ export default {
   /**
    * 등록 화면 (#84, 복지사·팀원용). 끝나면 onDone(등록한 사용자), 홈으로 가면 onCancel()
    *   1. 얼굴 동의 → 동의하지 않으면 호칭만 등록 (faceId: null)
-   *   2. 활동 기록 안내 → 호칭 적기
+   *   2. 활동 기록 안내 → 호칭 적기 ([등록하지 않을게요]면 등록하지 않고 onCancel, 손님으로 이용)
    *   3. 얼굴 학습: ctx.card.learnFace 가 있으면 빈 번호로 학습, 없으면 카메라 레버로 학습하고 번호 고르기
    *   4. 저장 → 5. 인식 시험 (onFace 가 있을 때) → 6. 끝 (보호자 연결 QR 자리)
    */
@@ -85,7 +85,8 @@ export default {
       cleanup(s);
       cb?.(...args);
     };
-    const screen = createRegisterScreen(container, { onCancel: () => finish(onCancel) });
+    const cancel = () => finish(onCancel);
+    const screen = createRegisterScreen(container, { onCancel: cancel });
     const canWatch = typeof ctx.card?.onFace === 'function';
     let withFace = false;
     let consentAt = null;
@@ -183,12 +184,12 @@ export default {
       () => {
         withFace = true;
         consentAt = new Date().toISOString();
-        screen.recordNotice(() => askName());
+        screen.recordNotice(() => askName(), cancel);
       },
       () => {
         withFace = false;
         consentAt = null;
-        screen.recordNotice(() => askName());
+        screen.recordNotice(() => askName(), cancel);
       },
     );
   },

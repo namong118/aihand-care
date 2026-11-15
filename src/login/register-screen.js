@@ -35,9 +35,18 @@ export function createRegisterScreen(container, { onCancel }) {
       );
     },
 
-    /** 활동 기록 안내 */
-    recordNotice(onOk) {
-      set(h('p', { class: 'big-prompt' }, RECORD_NOTICE.title), lines(RECORD_NOTICE.lines), h('div', { class: 'row' }, button(RECORD_NOTICE.ok, onOk)));
+    /** 활동 기록 안내. [등록하지 않을게요]는 동의서 2번 "동의하지 않습니다"와 같다 (손님으로 이용) */
+    recordNotice(onOk, onDecline) {
+      set(
+        h('p', { class: 'big-prompt' }, RECORD_NOTICE.title),
+        lines(RECORD_NOTICE.lines),
+        h(
+          'div',
+          { class: 'row' },
+          button(RECORD_NOTICE.ok, onOk),
+          button(RECORD_NOTICE.decline, onDecline, { variant: 'secondary' }),
+        ),
+      );
     },
 
     /** 2. 호칭 적기. error: 다시 적어야 할 때 안내 */
