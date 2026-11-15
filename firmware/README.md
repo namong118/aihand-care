@@ -1,13 +1,14 @@
 # AIHand 펌웨어 (micro:bit, MakeCode)
 
 웹 앱이 Web Serial로 보내는 명령(로봇 통신 프로토콜 v1, `docs/protocol.md`)을 받아 AIHand를 움직이고,
-WonderCam에 보인 색깔 카드의 태그 번호(STEP 3)와 숫자 카드의 숫자(STEP 1)를 웹으로 보낸다.
+WonderCam에 보인 색깔 카드의 태그 번호(STEP 3), 숫자 카드의 숫자(STEP 1), 학습된 얼굴 번호(얼굴 로그인)를 웹으로 보낸다.
 
 - 코드: `main.ts` (MakeCode JavaScript 탭에 전체 붙여 넣기)
-- 버전: **F3** (켜질 때 LED에 `F3`가 지나간 뒤 ✓ 또는 ✖ 아이콘)
+- 버전: **F4** (켜질 때 LED에 `F4`가 지나간 뒤 ✓ 또는 ✖ 아이콘)
   - F1: 로봇 명령 (2026-11-09 실물 확인)
   - F2: F1 + WonderCam 태그 인식 (`CAM,TAG`, `TAG,<번호>`, `TAG,NONE`). 아직 실물 미확인
   - F3: F2 + WonderCam 숫자 인식 (`CAM,NUM`, `NUM,<1~5>`, `NUM,NONE`, 측정용 `DEBUG_NUM`). 2026-11-11 Serial Terminal 실물 확인
+  - F4: F3 + WonderCam 얼굴 인식 (`CAM,FACE`, `FACE,<번호>`, `FACE,UNKNOWN`, `FACE,NONE`). 얼굴 인식 자체는 테스트 코드 FACE1로 확인(2026-11-15, `docs/hardware-check.md` 4-1·부록 10), F4는 아직 실물 미확인
 - 동작 설계: `docs/hardware-check.md` 부록 5 확정안, 타이밍·시리얼 처리: 테스트 코드 v8
 - **이 폴더, `src/core/robot/protocol.js`, `docs/protocol.md`는 항상 같이 고친다.**
 
@@ -17,9 +18,9 @@ WonderCam에 보인 색깔 카드의 태그 번호(STEP 3)와 숫자 카드의 �
 2. https://makecode.microbit.org → 새 프로젝트 → **확장은 추가하지 않는다** (Hiwonder StartbitV2·WonderCam 모두.
    WonderCam에 필요한 I2C 코드는 `main.ts` 안에 들어 있다)
 3. JavaScript 탭에 `main.ts` 전체를 붙여 넣기 → 다운로드 → micro:bit에 올리기
-4. LED에 `F3`가 지나가고 아이콘이 나오면 준비 완료 (약 3초, F1과 같음)
+4. LED에 `F4`가 지나가고 아이콘이 나오면 준비 완료 (약 3초, F1과 같음)
    - ✓ : 로봇·WonderCam 모두 준비
-   - ✖ : 켜질 때 WonderCam이 안 보임. 로봇 명령은 그대로 동작하고, `CAM,TAG`·`CAM,NUM`을 받을 때 다시 찾는다. 계속 안 되면 카메라 케이블(I2C)과 확장보드 전원을 확인한다
+   - ✖ : 켜질 때 WonderCam이 안 보임. 로봇 명령은 그대로 동작하고, `CAM,TAG`·`CAM,NUM`·`CAM,FACE`를 받을 때 다시 찾는다. 계속 안 되면 카메라 케이블(I2C)과 확장보드 전원을 확인한다
    - 켜질 때 카메라를 오래 기다리거나 모드를 바꾸지 않는다. 그동안 웹의 `PING`에 답하지 못하기 때문
 5. **MakeCode 탭을 닫는다** (MakeCode가 시리얼을 잡고 있으면 웹·터미널이 연결되지 않는다)
    - MakeCode "장치 연결"(WebUSB)이 남아 있으면 **연결은 되는데 응답 글자가 빠질 수 있다** (`PONG` → `PNG`, `DONE,CAM` → `DONE,CA`). 웹 앱이 `DONE`을 못 알아봐 시간 초과가 난다. 연결은 되는데 이상하면 MakeCode 탭부터 확인한다 (`docs/hardware-check.md` 부록 9)
@@ -29,10 +30,10 @@ WonderCam에 보인 색깔 카드의 태그 번호(STEP 3)와 숫자 카드의 �
 1. **AIHand(확장보드) 전원**을 켠다
 2. **WonderCam 화면이 뜰 때까지** 기다린다
 3. **micro:bit 리셋** (뒷면 버튼, 또는 USB를 그때 연결)
-4. LED에 `F3` 다음 **✓**가 나오는지 확인한다. ✖면 AIHand 전원이 켜져 있는지 먼저 본다
+4. LED에 `F4` 다음 **✓**가 나오는지 확인한다. ✖면 AIHand 전원이 켜져 있는지 먼저 본다
 5. 웹 앱에서 "AIHand 연결"
 
-카메라 모드(태그·숫자) 중에 AIHand 전원을 껐다 켰다면 **micro:bit도 리셋**한다. 리셋하지 않으면 응답이 크게 늦어지거나(8초 이상) `CAM,…`이 `ERR,CAM_MODE`로 실패할 수 있다 (부록 9, 원인 [검증 필요] #51)
+카메라 모드(태그·숫자·얼굴) 중에 AIHand 전원을 껐다 켰다면 **micro:bit도 리셋**한다. 리셋하지 않으면 응답이 크게 늦어지거나(8초 이상) `CAM,…`이 `ERR,CAM_MODE`로 실패할 수 있다 (부록 9, 원인 [검증 필요] #51)
 
 ## 명령과 시간
 
@@ -47,12 +48,13 @@ WonderCam에 보인 색깔 카드의 태그 번호(STEP 3)와 숫자 카드의 �
 | `SPEED,SLOW` / `SPEED,NORMAL` | `DONE,SPEED` | 모든 이동·대기 시간 ×2 / ×1 | 바로 | 바로 |
 | `CAM,TAG` | `DONE,CAM` | WonderCam 태그(AprilTag) 모드로 전환. 카메라 없음 `ERR,NO_CAM`(약 1초), 전환 안 됨 `ERR,CAM_MODE` | 보통 0.1~0.2초, 최악 약 5.1초 | 같음 |
 | `CAM,NUM` | `DONE,CAM` | WonderCam 숫자 인식 모드로 전환. 오류는 `CAM,TAG`와 같음 | 같음 | 같음 |
+| `CAM,FACE` | `DONE,CAM` | WonderCam 얼굴 인식 모드로 전환. 오류는 `CAM,TAG`와 같음. 태그→얼굴 0.37초(FACE1 실물) | 같음 | 같음 |
 
 손모양 이름: `ROCK` `PAPER` `V` `INDEX` `THREE` `FOUR` `THUMB`
 
 오류 응답: `ERR,UNKNOWN_CMD` (모르는 명령), `ERR,UNKNOWN_POSE` (모르는 손모양), `ERR,BAD_ARG` (값이 틀림)
 
-명령과 상관없이 로봇이 보내는 줄 (F2·F3):
+명령과 상관없이 로봇이 보내는 줄 (F2·F3·F4):
 
 | 줄 | 언제 |
 |---|---|
@@ -61,9 +63,12 @@ WonderCam에 보인 색깔 카드의 태그 번호(STEP 3)와 숫자 카드의 �
 | `NUM,<1~5>` | 숫자 모드. 보이는 숫자가 바뀌었을 때 한 번 |
 | `NUM,NONE` | 숫자 모드. 보이던 숫자가 0.5초 넘게 안 보일 때 한 번 |
 | `RAW,NUM,<숫자>,<확신도×100>` | 숫자 모드이고 `DEBUG_NUM = true`일 때만. 카메라 결과가 바뀔 때마다 (웹은 무시) |
+| `FACE,<번호>` | 얼굴 모드. 학습된 얼굴(카메라 레버로 학습한 Face ID)이 보일 때. 번호가 바뀌면 바로 한 번 |
+| `FACE,UNKNOWN` | 얼굴 모드. 학습되지 않은 얼굴만 보일 때 한 번 (학습된 얼굴에서 바뀐 경우는 1초 넘게 이어질 때) |
+| `FACE,NONE` | 얼굴 모드. 보이던 얼굴이 1초 넘게 안 보일 때 한 번 |
 
-- 카메라는 한 번에 한 모드: 태그 모드면 `TAG` 줄만, 숫자 모드면 `NUM` 줄만 나온다
-- `TAG`·`NUM` 줄은 `CAM` 명령이 성공한 뒤부터 나온다. 웹은 프로그램에 맞춰 자동으로 보내고, Serial Terminal에서는 직접 입력한다
+- 카메라는 한 번에 한 모드: 태그 모드면 `TAG` 줄만, 숫자 모드면 `NUM` 줄만, 얼굴 모드면 `FACE` 줄만 나온다
+- `TAG`·`NUM`·`FACE` 줄은 `CAM` 명령이 성공한 뒤부터 나온다. 웹은 프로그램에 맞춰 자동으로 보내고, Serial Terminal에서는 직접 입력한다
 - 숫자 인식은 카드가 없으면 숫자 `0`을 준다 (확신도는 높게 나옴). 숫자가 1~5가 아니거나 확신도가 `MIN_CONF`(80%)보다 낮으면 안 보인 것으로 친다
 - 교구 숫자 카드는 카메라에서 **10~15cm**일 때 잘 읽힌다. 그보다 멀면 `0`(안 보임)으로 바뀐다 (2026-11-11 실물 측정)
 - 명령을 처리하지 않을 때 약 0.1초마다 카메라를 읽는다. 서보가 움직이는 동안에는 읽지도 보내지도 않는다
@@ -171,6 +176,27 @@ F3에서도 이 절차는 그대로 쓴다 (LED는 `F3`, 8번만 다름).
 `main.ts`의 `MIN_CONF`를 고친 뒤 **`DEBUG_NUM`을 `false`로 되돌려서** 다시 올리고, 8~11을 한 번 더 한다.
 결과는 `docs/hardware-check.md` 4번 표(F3 숫자 인식)에 기록한다.
 
+## Serial Terminal 확인 절차 (F4 얼굴 인식)
+
+준비: 학습된 얼굴 사진 1·2(카메라 레버로 Face ID 1·2에 학습, 생김새가 확실히 다른 사진)와 학습하지 않은 사진 1장.
+F4를 올리고 MakeCode 탭을 닫은 뒤 Serial Terminal 115200 연결. **엄지 받침 수리 전이면 엄지 서보가 움직이지 않게 한 뒤 하고, 8번은 건너뛴다.**
+
+| # | 입력 / 할 일 | 기대 결과 | 결과 |
+|---|---|---|---|
+| 0 | (전원 켜기) | LED `F4` → ✓, 서보는 움직이지 않음 | |
+| 1 | `PING` | `PONG` | |
+| 2 | 사진 1을 보여 주기 (`CAM,FACE` 전) | 아무 줄도 나오지 않음 | |
+| 3 | `CAM,FACE` | `DONE,CAM` (보통 바로), 카메라 화면이 얼굴 인식으로 바뀜 | |
+| 4 | 사진 1을 30cm 앞에 10초 | `FACE,1` 한 줄. 중간에 끊겨도 `FACE,NONE`·`FACE,UNKNOWN`이 나오지 않아야 함 (1초 기다림) | |
+| 5 | 사진 1을 치우기 | 약 1초 뒤 `FACE,NONE` | |
+| 6 | 학습하지 않은 사진 | `FACE,UNKNOWN` 바로 | |
+| 7 | 사진 1 → 사진 2로 바로 바꾸기 | `FACE,1` → `FACE,2` (번호가 바뀌면 바로) | |
+| 8 | 사진 1을 보여 주는 채로 `HELLO` | 동작 중에는 줄이 없고, `DONE,HELLO` 뒤 그대로 보이면 `FACE,1` 다시 나오지 않음 (같은 값) | |
+| 9 | `CAM,NUM` → `CAM,FACE` | 둘 다 `DONE,CAM`. 숫자 모드에서는 `FACE` 줄 없음 | |
+| 10 | 사진 1과 함께 사람 얼굴도 화면에 | `FACE,1` 그대로 (학습된 번호 우선) | |
+
+결과는 `docs/hardware-check.md` 4-1 표에 적는다.
+
 ## 웹 확인 절차 (F2·F3, 11/12 점검: 태그 번호 웹 수신)
 
 준비: Serial Terminal 연결을 끊는다 (포트는 한 프로그램만 쓸 수 있다). `npm run dev` → Chrome `http://localhost:5173`.
@@ -187,7 +213,7 @@ F3에서도 이 절차는 그대로 쓴다 (LED는 `F3`, 8번만 다름).
 | 8 | STEP 1이나 STEP 4로 로봇 동작 확인 | F1 때와 같이 동작, 상단 바에 시간 초과·오류 문구 없음 | |
 | 9 | USB 뽑기 | `AIHand 연결 안 됨`, `WonderCam: 연결 안 됨 (AIHand 연결이 끊겨 카드 대신 키보드·버튼) · Mock` | |
 | 10 | USB 다시 꽂고 "AIHand 연결" | 2번과 같이 `WonderCam: 연결됨` | |
-| 11 | (선택) 펌웨어 F1이 올라간 micro:bit로 연결 | 로봇은 연결됨, `WonderCam: 찾지 못함 (펌웨어 F3가 필요해요)` | |
+| 11 | (선택) 펌웨어 F1이 올라간 micro:bit로 연결 | 로봇은 연결됨, `WonderCam: 찾지 못함 (펌웨어 F4가 필요해요)` | |
 | 12 | (F3) 개발자 입력에서 키보드 1~5 | `마지막 카드: 숫자 <n>` (숫자 카드 Mock 입력) | |
 | 13 | (F3, STEP 1 숫자 버전이 들어온 뒤) STEP 1 시작 | 개발자 입력에 잠깐 `WonderCam: 모드 바꾸는 중 (숫자 모드로)` → `연결됨 (숫자 모드 · 보이는 숫자 없음)` | |
 | 14 | (F3) 숫자 카드 3 보여주기 | `숫자 모드 · 보이는 숫자: 3` | |
@@ -199,6 +225,7 @@ F3에서도 이 절차는 그대로 쓴다 (LED는 `F3`, 8번만 다름).
 
 `main.ts`의 "명령 처리" 부분은 명령 하나 = 함수 하나(`cmdPing`, `cmdPose` …)다.
 새 명령은 `cmdXxx(arg)` 함수를 만들고 `handle()`에 `else if (name == "XXX") cmdXxx(arg)` 한 줄을 추가한다.
-(예: F3의 `CAM,NUM`은 새 명령이 아니라 `cmdCam()`에 값 하나를 더한 것이다. 카메라 결과 줄은
-`pollTag()`·`pollNum()`처럼 값을 읽는 함수만 만들고, 보내는 규칙은 `report()`를 함께 쓴다)
+(예: F3의 `CAM,NUM`, F4의 `CAM,FACE`는 새 명령이 아니라 `cmdCam()`에 값 하나를 더한 것이다. 카메라 결과 줄은
+`pollTag()`·`pollNum()`처럼 값을 읽는 함수만 만들고, 보내는 규칙은 `report()`를 함께 쓴다.
+얼굴만 `pollFace()`가 따로 규칙을 가진다: 모르는 얼굴이 있고, 실물에서 끊김이 길어(0.6초) 1초를 기다린다)
 명령을 추가하면 `docs/protocol.md`와 `src/core/robot/protocol.js`도 함께 고친다.

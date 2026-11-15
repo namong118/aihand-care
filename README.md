@@ -257,7 +257,7 @@ cd ~/aihand-care
 
 1. <https://makecode.microbit.org> 에서 **새 프로젝트**를 만듭니다. 확장은 추가하지 않습니다.
 2. JavaScript 탭에 [firmware/main.ts](firmware/main.ts) 전체를 붙여 넣고 다운로드합니다.
-3. micro:bit LED에 버전(F3)이 지나간 뒤 ✓가 나오면 준비 완료입니다. ✖가 나오면 WonderCam을 찾지 못한 것이고, 로봇 동작은 그대로 됩니다.
+3. micro:bit LED에 버전(F4)이 지나간 뒤 ✓가 나오면 준비 완료입니다. ✖가 나오면 WonderCam을 찾지 못한 것이고, 로봇 동작은 그대로 됩니다.
 4. 웹에서 연결하기 전에 **MakeCode 탭을 닫습니다.** 시리얼 포트는 한 프로그램만 쓸 수 있습니다.
 
 자세한 확인 절차는 [firmware/README.md](firmware/README.md)를 봐 주세요.

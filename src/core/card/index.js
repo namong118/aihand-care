@@ -6,11 +6,11 @@
 // 카메라 모드는 한 번에 하나다: 태그(색 카드, onCard) / 숫자(숫자 카드, onNumber) / 얼굴(얼굴 로그인, onFace).
 // 모드는 여기서 알아서 바꾼다.
 //   - onCard 를 새로 구독하면 태그 모드, onNumber 는 숫자 모드, onFace 는 얼굴 모드를 원하는 것으로 본다.
-//   - 얼굴 모드는 아직 펌웨어에 없다 (#77). 그래서 실제 AIHand 가 연결되어 있어도 CAM,FACE 를 보내지 않고,
-//     얼굴 번호는 개발자 입력의 Mock 버튼으로만 받는다. ready() 는 false. [검증 필요] WonderCam 얼굴 인식 (#76)
+//   - 얼굴 모드는 펌웨어 F4 부터 (#77). F3 이하면 CAM,FACE 에 ERR,BAD_ARG 가 오고, 얼굴 번호는
+//     개발자 입력의 Mock 버튼으로만 받는다 (ready() 는 false, 상태에 "펌웨어 F4가 필요해요").
 //   - 구독을 해제해도 모드는 그대로 둔다. (STEP 3 처럼 문제마다 구독·해제하는 프로그램이 있어서,
 //     해제할 때 바꾸면 문제마다 모드를 바꾸게 된다)
-//   - 원하는 모드와 카메라 모드가 다르면 'CAM,TAG' / 'CAM,NUM' 을 보낸다. 로봇 명령과 같은 줄(큐)을 쓰고
+//   - 원하는 모드와 카메라 모드가 다르면 'CAM,TAG' / 'CAM,NUM' / 'CAM,FACE' 를 보낸다. 로봇 명령과 같은 줄(큐)을 쓰고
 //     최대 약 5초 걸린다. 그동안 상태는 'switching'. 프로그램은 await ctx.card.ready() 로 기다릴 수 있다.
 //   - AIHand 를 연결하면 지금 원하는 모드(처음에는 태그)로 맞춘다.
 //
@@ -24,13 +24,12 @@ export { CARD_NUMBERS, isCardNumber, MOCK_FACE_IDS, isFaceId } from './mock.js';
 
 const MOCK_NOTE = '카드 대신 키보드·버튼';
 const MODE_LABEL = { TAG: '태그 모드', NUM: '숫자 모드', FACE: '얼굴 모드' };
-// 펌웨어가 바꿀 수 있는 모드. FACE 는 #77(펌웨어 얼굴 모드) 뒤에 넣는다
-const FIRMWARE_MODES = ['TAG', 'NUM'];
-const FACE_NOTE = '얼굴 모드는 펌웨어 준비 전이라 개발자 입력 버튼으로 (#77)';
+// 펌웨어가 그 모드를 모를 때(CAM 에 ERR,BAD_ARG) 안내. 숫자는 F3, 얼굴은 F4 부터
+const NEED_FIRMWARE = { NUM: '숫자 카드는 펌웨어 F3가 필요해요', FACE: '얼굴 인식은 펌웨어 F4가 필요해요' };
 
 /**
  * @param colors  data/colors.json
- * @param robot   core/robot 의 전환기 (kind, onChange, onTag, onNumber, camMode). 없으면 Mock 만 쓴다
+ * @param robot   core/robot 의 전환기 (kind, onChange, onTag, onNumber, onFace, camMode). 없으면 Mock 만 쓴다
  * @param mock    카드 Mock (테스트에서 emit·emitNumber·emitFace 를 직접 부르려고 넘긴다). 없으면 새로 만든다
  * @returns ctx.card 용 onCard·onNumber·onFace·ready 와 대시보드용 kind, status, onChange, mountControls
  */
@@ -63,6 +62,7 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
   mock.onFace(emitFace);
   real.onCard(emitCard);
   real.onNumber(emitNumber);
+  real.onFace(emitFace);
 
   function labelOf(color) {
     return colors.find((c) => c.color === color)?.label ?? color;
@@ -92,9 +92,9 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
       active = mode;
       problem = null;
     } else if (msg?.message === 'BAD_ARG') {
-      // 펌웨어 F2 는 CAM,NUM 을 모른다. 카메라 모드는 그대로
+      // 펌웨어 F2 는 CAM,NUM, F2·F3 은 CAM,FACE 를 모른다. 카메라 모드는 그대로
       unsupported.add(mode);
-      problem = mode === 'NUM' ? '숫자 카드는 펌웨어 F3가 필요해요' : `${MODE_LABEL[mode]}를 쓸 수 없어요`;
+      problem = NEED_FIRMWARE[mode] ?? `${MODE_LABEL[mode]}를 쓸 수 없어요`;
     } else if (msg?.message === 'NO_CAM') {
       fatal = true;
       active = null;
@@ -102,7 +102,7 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
     } else if (msg?.message === 'UNKNOWN_CMD') {
       fatal = true;
       active = null;
-      problem = '펌웨어 F3가 필요해요';
+      problem = '펌웨어 F4가 필요해요';
     } else {
       // ERR,CAM_MODE · 시간 초과 등: 카메라 모드를 알 수 없다
       failed.add(mode);
@@ -124,7 +124,6 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
       everLinked = true;
     }
     if (switching) return switching;
-    if (!FIRMWARE_MODES.includes(wanted)) return Promise.resolve(); // 얼굴: 카메라 모드는 그대로 두고 Mock 으로
     if (fatal || active === wanted || unsupported.has(wanted) || failed.has(wanted)) return Promise.resolve();
     switching = switchTo(wanted).then(() => {
       switching = null;
@@ -152,13 +151,18 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
       real.handleNumber(n);
       changed();
     });
+    robot.onFace((faceId) => {
+      if (active !== 'FACE') return;
+      real.handleFace(faceId);
+      changed();
+    });
   }
 
   return {
     get kind() {
       return active ? 'serial' : 'mock';
     },
-    /** 카메라의 지금 모드 ('TAG' | 'NUM' | null). 얼굴은 #77 뒤에 'FACE' */
+    /** 카메라의 지금 모드 ('TAG' | 'NUM' | 'FACE' | null) */
     get mode() {
       return active;
     },
@@ -178,7 +182,7 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
     },
     /**
      * 얼굴 로그인. cb({ faceId }) — faceId: 학습된 얼굴 번호(1 이상 정수) | 'unknown'(모르는 얼굴) | null(안 보임).
-     * 구독하면 얼굴 모드를 원하는 것으로 본다. 지금은 Mock 버튼으로만 들어온다 (#77 전까지)
+     * 구독하면 카메라를 얼굴 모드로 바꾼다 (펌웨어 F4). Mock 얼굴 버튼으로도 들어온다
      */
     onFace(cb) {
       faceListeners.add(cb);
@@ -203,8 +207,7 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
           : { state: 'mock', mock: true, note: MOCK_NOTE };
       }
       if (switchingTo) return { state: 'switching', mock: false, note: `${MODE_LABEL[switchingTo]}로` };
-      const notes = [problem, wanted === 'FACE' ? FACE_NOTE : null].filter(Boolean);
-      const extra = notes.map((n) => ` · ${n}`).join('');
+      const extra = problem ? ` · ${problem}` : '';
       if (active === 'TAG') {
         const shown = real.shown();
         let text = '보이는 카드 없음';
@@ -216,7 +219,14 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
         const text = n ? `보이는 숫자: ${n}` : '보이는 숫자 없음';
         return { state: 'connected', mock: false, note: `숫자 모드 · ${text}${extra}` };
       }
-      return { state: 'missing', mock: true, note: notes.length ? notes.join(' · ') : MOCK_NOTE };
+      if (active === 'FACE') {
+        const f = real.shownFace();
+        let text = '보이는 얼굴 없음';
+        if (f === 'unknown') text = '모르는 얼굴';
+        else if (f !== null) text = `얼굴 ${f}번`;
+        return { state: 'connected', mock: false, note: `얼굴 모드 · ${text}${extra}` };
+      }
+      return { state: 'missing', mock: true, note: problem ?? MOCK_NOTE };
     },
 
     onChange(cb) {
