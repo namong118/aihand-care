@@ -425,7 +425,12 @@ input[type='text'] {
 
 /* ---------- 프로그램 화면 틀 ---------- */
 .program-bar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 20px; }
-.program-bar h1 { margin: 0; flex: 1; }
+.program-bar h1 { margin: 0; flex: 1; font-size: 32px; line-height: 1.3; display: flex; align-items: center; gap: 12px; }
+.program-bar .step-pill { font-size: 18px; align-self: center; }
+.program-bar.step1 { --step-bg: var(--step1-bg); --step-fg: var(--step1-fg); }
+.program-bar.step2 { --step-bg: var(--step2-bg); --step-fg: var(--step2-fg); }
+.program-bar.step3 { --step-bg: var(--step3-bg); --step-fg: var(--step3-fg); }
+.program-bar.step4 { --step-bg: var(--step4-bg); --step-fg: var(--step4-fg); }
 .program-body { display: flex; flex-direction: column; gap: 16px; }
 
 .big-prompt { font-size: 40px; font-weight: 800; text-align: center; margin: 8px 0; }
