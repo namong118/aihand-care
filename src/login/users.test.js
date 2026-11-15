@@ -135,6 +135,7 @@ describe('createUserStore', () => {
   it('정해 둔 키에 저장하고, 깨진 값은 빈 목록으로 읽는다', () => {
     const { storage, users } = store();
     users.add({ displayName: '가' });
+    expect(USERS_KEY).toBe('aihand-care.users.v2'); // v1 은 앱 시작 때 지워지는 예전 키
     expect(JSON.parse(storage.getItem(USERS_KEY))).toHaveLength(1);
     storage.setItem(USERS_KEY, '{깨짐');
     expect(users.list()).toEqual([]);

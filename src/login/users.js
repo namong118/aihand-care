@@ -9,7 +9,8 @@
 // 저장 위치는 스테이션 브라우저 localStorage (기록과 같은 방식, src/core/log.js 참고).
 // Supabase 동기화는 경민 님 #62 설계가 나오면 맞춘다.
 
-export const USERS_KEY = 'aihand-care.users.v1';
+// v1 은 예전 "사용자 이름" 기능의 키라 앱이 켤 때마다 지운다 (dashboard/prefs.js removeOldUsers). 그래서 v2
+export const USERS_KEY = 'aihand-care.users.v2';
 
 /** 호칭 최대 글자 수 (화면 버튼에 한 줄로 들어가게) */
 export const NAME_MAX = 12;
