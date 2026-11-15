@@ -21,7 +21,7 @@
 | `PING` | 연결 확인 | `PONG` | 확인됨 (F1, 2026-11-09) |
 | `CAM,TAG` | WonderCam을 태그(AprilTag) 인식 모드로 바꾼다 (색 카드, STEP 3) | `DONE,CAM` / 카메라 없음 `ERR,NO_CAM` / 모드가 안 바뀜 `ERR,CAM_MODE` | 미확인 (F2) |
 | `CAM,NUM` | WonderCam을 숫자 인식 모드로 바꾼다 (숫자 카드 1~5, STEP 1) | `CAM,TAG`와 같음 | 미확인 (F3) |
-| `CAM,FACE` | WonderCam을 얼굴 인식 모드로 바꾼다 (얼굴 로그인) | `CAM,TAG`와 같음 | 미확인 (F4). 얼굴 인식·전환 시간(태그→얼굴 0.37초)은 테스트 코드 FACE1로 확인 (2026-11-15) |
+| `CAM,FACE` | WonderCam을 얼굴 인식 모드로 바꾼다 (얼굴 로그인) | `CAM,TAG`와 같음 | 확인됨 (F4 Serial Terminal, 2026-11-15). 태그→얼굴 0.37초 (FACE1) |
 
 - 웹은 `CAM` 명령을 직접 부르지 않는다. `core/card`가 프로그램의 구독(`onCard` / `onNumber` / `onFace`)에 맞춰 알아서 보낸다 (아래 "카메라 모드").
 - 카메라 모드가 실패(`ERR,NO_CAM`, `ERR,CAM_MODE`)하면 펌웨어는 모드 없음이 되어 `TAG`·`NUM`·`FACE` 줄을 보내지 않는다.
@@ -40,9 +40,9 @@
 | `TAG,NONE` | 보이던 태그가 **0.5초 넘게** 안 보임 (카드를 치움). 웹은 `onCard`를 부르지 않고 "지금 보이는 카드"만 비운다. 미확인 (F2) |
 | `NUM,<1~5>` | WonderCam에 보이는 숫자 카드. 태그와 같은 규칙으로 **바뀔 때만 한 번**. 웹은 `ctx.card.onNumber({ number })`로 넘긴다. 미확인 (F3) |
 | `NUM,NONE` | 보이던 숫자가 **0.5초 넘게** 안 보임. 미확인 (F3) |
-| `FACE,<번호>` | 학습된 얼굴(카메라 레버로 학습한 Face ID, 1~5)이 보임. **번호가 바뀌면 바로 한 번**. 웹은 `ctx.card.onFace({ faceId: 번호 })`로 넘긴다. 미확인 (F4) |
-| `FACE,UNKNOWN` | 학습되지 않은 얼굴만 보임. 웹은 `onFace({ faceId: 'unknown' })`. 미확인 (F4) |
-| `FACE,NONE` | 보이던 얼굴이 **1초 넘게** 안 보임. 카드와 달리 웹은 `onFace({ faceId: null })`로 **알린다**. 미확인 (F4) |
+| `FACE,<번호>` | 학습된 얼굴(카메라 레버로 학습한 Face ID, 1~5)이 보임. **번호가 바뀌면 바로 한 번**. 웹은 `ctx.card.onFace({ faceId: 번호 })`로 넘긴다. 확인됨 (F4, 2026-11-15) |
+| `FACE,UNKNOWN` | 학습되지 않은 얼굴만 보임. 웹은 `onFace({ faceId: 'unknown' })`. 확인됨 (F4, 2026-11-15) |
+| `FACE,NONE` | 보이던 얼굴이 **1초 넘게** 안 보임. 카드와 달리 웹은 `onFace({ faceId: null })`로 **알린다**. 확인됨 (F4, 2026-11-15) |
 | `RAW,NUM,<숫자>,<확신도×100>` | 펌웨어 `DEBUG_NUM = true`일 때만. 확신도 기준값을 정하려고 실물에서 재는 줄. **웹은 무시한다** (`UNKNOWN`) |
 | `PONG` | `PING` 응답 |
 | `ERR,<내용>` | 오류. `ERR,UNKNOWN_CMD` (모르는 명령), `ERR,UNKNOWN_POSE` (모르는 손모양), `ERR,BAD_ARG` (값이 틀림). 오류가 나면 로봇은 움직이지 않는다 |
