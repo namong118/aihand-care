@@ -8,7 +8,7 @@ import { renderSettings } from './dashboard/settings.js';
 import { createDevPanel } from './dashboard/devpanel.js';
 import { renderResults } from './dashboard/results.js';
 import { CATALOG, findProgramInfo } from './dashboard/catalog.js';
-import { loadCourse, newCourseId, tagRecord, stepInfo, courseOf, summarizeCourse } from './dashboard/course-logic.js';
+import { loadCourse, newCourseId, tagRecord, stepInfo, courseProgress, courseOf, summarizeCourse } from './dashboard/course-logic.js';
 import { createCourseStore } from './dashboard/course-store.js';
 import { renderCourseIntro, renderStepIntro, createCourseBar, renderCourseSummary } from './dashboard/course.js';
 import courseJson from './data/course.json';
@@ -151,7 +151,7 @@ function showProgram(id, step = null) {
   const body = h('div', { class: 'program-body' });
   let bar;
   if (step) {
-    course.bar = createCourseBar({ info: step, onNext: nextCourseStep, onSkip: skipCourseStep, onStop: stopCourse });
+    course.bar = createCourseBar({ info: step, progress: progressNow(), onNext: nextCourseStep, onSkip: skipCourseStep, onStop: stopCourse });
     bar = course.bar.el;
   } else {
     bar = h(
@@ -233,7 +233,12 @@ function showStepIntro() {
   leaveProgram();
   setScreen('course');
   const step = stepInfo(coursePlan, course.index);
-  renderStepIntro(appEl, { info: step, onStart: () => showProgram(step.program, step), onStop: stopCourse });
+  renderStepIntro(appEl, { info: step, progress: progressNow(), onStart: () => showProgram(step.program, step), onStop: stopCourse });
+}
+
+/** 지금 코스의 활동별 상태 (마침·건너뜀·지금·아직) */
+function progressNow() {
+  return courseProgress(coursePlan, course.index, courseStore.get(course.id)?.skipped ?? []);
 }
 
 function nextCourseStep() {
