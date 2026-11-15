@@ -284,7 +284,7 @@ function roundsView(all, filter, onFilter) {
  * @param opts.log       core/log (list)
  * @param opts.courses   코스 진행 정보 목록 (course-store list()). 없으면 기록만으로 코스를 묶는다
  * @param opts.filter    { view: 'days' | 'programs' | 'reaction' | 'rounds', program }
- *                       program 만 주면(활동 화면의 "활동 기록 보기") 회차별 기록을 그 활동으로 연다
+ *                       program 만 주면(활동 화면의 "기록 보기") 회차별 기록을 그 활동으로 연다
  * @param opts.onFilter  (filter) => 다시 그리기
  * @param opts.onHome
  */

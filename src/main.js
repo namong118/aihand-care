@@ -156,10 +156,11 @@ function showProgram(id, step = null) {
   } else {
     bar = h(
       'div',
-      { class: 'program-bar' },
-      h('h1', {}, info ? `STEP ${info.step} ${info.title}` : id),
-      button('← 홈으로', showHome, { variant: 'secondary' }),
-      button('활동 기록 보기', () => showResults({ program: id }), { variant: 'secondary' }),
+      { class: `program-bar${info ? ` step${info.step}` : ''}` },
+      // 7인치(1280×720)에서 한 줄에 들어가게 STEP 번호는 작은 알약으로 (#102)
+      h('h1', {}, info ? [h('span', { class: 'step-pill' }, `STEP ${info.step}`), ` ${info.title}`] : id),
+      smallButton(button('← 홈으로', showHome, { variant: 'secondary' })),
+      smallButton(button('기록 보기', () => showResults({ program: id }), { variant: 'secondary' })),
     );
   }
   appEl.innerHTML = '';
@@ -201,6 +202,12 @@ devices.log.onRecord((rec) => {
   const c = courseOf(rec);
   if (c?.id === course.id && c.order === course.index + 1) course.bar?.setFinished();
 });
+
+/** 위쪽 막대 버튼은 글자를 조금 작게 (높이 64px 는 그대로) */
+function smallButton(el) {
+  el.classList.add('btn-small');
+  return el;
+}
 
 /** 코스 시작 화면의 장치 안내 한 줄 */
 function deviceNote() {
