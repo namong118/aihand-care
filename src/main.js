@@ -279,6 +279,7 @@ function showResults(filter = {}) {
   const state = { program: null, ...filter };
   renderResults(appEl, {
     log: devices.log,
+    courses: courseStore.list(),
     filter: state,
     onFilter: (next) => showResults(next),
     onHome: showHome,

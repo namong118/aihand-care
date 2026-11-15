@@ -162,6 +162,34 @@ export function groupCourses(records, metas = [], timeZone = TIME_ZONE) {
 }
 
 /**
+ * 결과 화면(#8)의 날짜별 기록: 하루 = 그날 한 코스들 + 코스 밖에서 하나만 한 활동들.
+ * 날짜는 최근 날짜부터, 그날 안에서도 최근 것부터.
+ * @param records  기록 목록
+ * @param metas    코스 진행 정보 목록 (course-store)
+ * @returns [{ date, courses: [코스 요약...], singles: [기록...] }]
+ *   singles: detail.course 가 없는 기록. 시작 시각을 읽을 수 없는 기록은 date 가 null 인 날로 맨 뒤에 모은다
+ */
+export function groupByDay(records, metas = [], timeZone = TIME_ZONE) {
+  const days = new Map();
+  const dayOf = (date) => {
+    if (!days.has(date)) days.set(date, { date, courses: [], singles: [] });
+    return days.get(date);
+  };
+  for (const summary of groupCourses(records, metas, timeZone)) dayOf(summary.date).courses.push(summary);
+  for (const r of records) {
+    if (courseOf(r)) continue;
+    dayOf(localDate(r.startedAt, timeZone)).singles.push(r);
+  }
+  const newestFirst = (a, b) => (a < b ? 1 : a > b ? -1 : 0);
+  for (const day of days.values()) day.singles.sort((a, b) => newestFirst(a.startedAt, b.startedAt));
+  return [...days.values()].sort((a, b) => {
+    if (a.date === null) return 1;
+    if (b.date === null) return -1;
+    return newestFirst(a.date, b.date);
+  });
+}
+
+/**
  * 한 활동의 반응 시간 변화: 날짜별로 문제 수 가중 평균 (날짜 오름차순). 코스 밖 기록도 포함한다.
  * 반응 시간이 없는 날은 넣지 않는다.
  * @returns [{ date, avgReactionMs, rounds }]

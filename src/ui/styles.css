@@ -455,6 +455,40 @@ table { border-collapse: collapse; width: 100%; font-size: 22px; }
 th, td { border: 2px solid var(--line); padding: 8px 12px; text-align: left; }
 th { background: var(--card); }
 
+/* ---------- 결과 화면 (#8) ---------- */
+.result-tabs { margin: 16px 0 20px; }
+.result-day { margin-bottom: 28px; }
+.result-day h3 { font-size: 26px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 3px solid var(--line); }
+.result-day h4 { font-size: 22px; margin: 16px 0 8px; }
+.result-course {
+  border: 2px solid var(--c-line-strong);
+  border-radius: 12px;
+  background: var(--c-surface);
+  margin-bottom: 12px;
+}
+.result-course > summary {
+  min-height: 64px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 24px;
+}
+.result-course > summary::before { content: '▶'; font-size: 18px; }
+.result-course[open] > summary::before { content: '▼'; }
+.result-course > summary::-webkit-details-marker { display: none; }
+.result-course > summary { list-style: none; }
+.result-course-title { font-weight: 700; }
+.result-course-meta { color: var(--c-text-sub); }
+.result-course .table-wrap { padding: 0 16px 16px; }
+.result-note { font-size: 22px; color: var(--c-text-sub); margin: 0 0 16px; }
+.result-trend { margin-bottom: 24px; }
+.result-trend h3 { font-size: 24px; margin: 0 0 8px; }
+.trend-cell { width: 40%; }
+.trend-bar { display: block; height: 22px; border-radius: 6px; background: var(--c-accent); }
+
 /* ---------- 가상 로봇손 (활동 화면 오른쪽) ---------- */
 #mock-panel { display: flex; flex-direction: column; gap: 20px; }
 .mock-box {

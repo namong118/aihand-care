@@ -81,3 +81,13 @@ detail: {
 ## 5. 반응 시간 변화 (#8)
 
 `reactionTrend(records, program)` → `[{ date, avgReactionMs, rounds }]` (날짜 오름차순, 문제 수 가중 평균, 코스 밖 기록 포함, 반응 시간이 없는 날은 뺌).
+
+## 6. 결과 화면의 날짜별 기록 (#8)
+
+`groupByDay(records, metas)` → `[{ date, courses: [코스 요약...], singles: [기록...] }]`
+
+- 하루 = 그날 한 코스들(위 4번 형식) + 코스 밖에서 하나만 한 활동(`detail.course`가 없는 기록)
+- 최근 날짜부터, 하루 안에서도 최근 것부터. 날짜는 Asia/Seoul 기준
+- 기록 없이 진행 정보만 있는 코스(시작하자마자 그만둠)도 그날에 보인다
+- 결과 화면(`src/dashboard/results.js`) 탭: 날짜별 기록 / 활동별 모아 보기 / 반응 시간 변화 / 회차별 기록(활동 고르기·CSV)
+- 비율(%)은 보여 주지 않는다. "완료 수 / 전체"로만 쓴다
