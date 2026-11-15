@@ -15,9 +15,10 @@
   --c-line: #E1E5EB;        /* 카드·상단 바 테두리 */
   --c-line-strong: #D5DAE2; /* 버튼·설정 테두리 */
   --c-chip: #EEF0F3;        /* 회색 알약 */
-  --c-accent: #2F5BD3;      /* 선택된 버튼, 글자 버튼 */
-  --c-accent-dark: #1E3F99;
-  --c-accent-soft: #EEF2FC; /* 열린 "설정" 버튼 */
+  /* 강조색 3개. 앱 아이콘 색이 정해지면 이 3개 값만 바꾼다 (흰 글자와 대비 4.5:1 이상) */
+  --c-accent: #2F5BD3;        /* 주요 버튼, 선택된 버튼, 글자 버튼 */
+  --c-accent-strong: #1E3F99; /* 강조 글자, 주요 버튼 누를 때 */
+  --c-accent-soft: #EEF2FC;   /* 연한 배경: 열린 "설정" 버튼, 안내 상자 */
   --c-ok-bg: #E7F5EE;       /* AIHand 연결됨 */
   --c-ok-fg: #135C3B;
   --c-ok-dot: #1F9D61;
@@ -55,19 +56,20 @@
   --gap-cards: 24px;
   --font-main: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans CJK KR', sans-serif; /* Noto: 라즈베리파이 오프라인 (fonts-noto-cjk) */
 
-  /* ---- 프로그램 화면에서 쓰는 기존 변수 (각 STEP 화면이 그대로 쓴다) ---- */
-  --bg: #ffffff;
-  --fg: #111111;
-  --muted: #3a3a3a;
-  --line: #222222;
-  --card: #f4f4f4;
-  --primary: #0b3d91;
-  --primary-fg: #ffffff;
-  --good: #0a6b2d;
-  --good-bg: #e3f5e8;
-  --retry: #8a4b00;
-  --retry-bg: #fff1dc;
-  --info-bg: #e6eefc;
+  /* ---- 프로그램 화면에서 쓰는 기존 변수 (각 STEP 화면이 그대로 쓴다) ----
+     이름은 그대로 두고 값만 시안 색으로 맞췄다 (굵은 검은 테두리 → 연한 회색) */
+  --bg: var(--c-surface);
+  --fg: var(--c-text);
+  --muted: var(--c-text-sub);
+  --line: var(--c-line-strong);
+  --card: var(--c-surface);
+  --primary: var(--c-accent);
+  --primary-fg: #FFFFFF;
+  --good: var(--c-ok-fg);
+  --good-bg: var(--c-ok-bg);
+  --retry: #7A3A05;
+  --retry-bg: #FBEBDD;
+  --info-bg: var(--c-accent-soft);
   --focus: #ff9e00;
   --robot-up: #ffd8a8;
   --robot-down: #c9a27a;
@@ -140,22 +142,24 @@ p  { margin: 0 0 12px; }
   font: inherit;
   font-size: 26px;
   font-weight: 700;
-  border: 3px solid var(--line);
-  border-radius: 14px;
+  border: 2px solid var(--c-line-strong);
+  border-radius: 16px;
   cursor: pointer;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--c-surface);
+  color: var(--c-text);
 }
-.btn-primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
-.btn-secondary { background: var(--bg); color: var(--fg); }
+.btn-primary { background: var(--c-accent); color: #FFFFFF; border-color: var(--c-accent); }
+.btn-secondary { background: var(--c-surface); color: var(--c-text); }
 .btn-choice[aria-pressed='true'],
 .btn[aria-pressed='true'] {
-  background: var(--primary);
-  color: var(--primary-fg);
-  border-color: var(--primary);
+  background: var(--c-accent);
+  color: #FFFFFF;
+  border-color: var(--c-accent);
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-primary:hover:not(:disabled) { background: var(--c-accent-strong); border-color: var(--c-accent-strong); }
+.btn-secondary:hover:not(:disabled),
+.btn-choice:hover:not(:disabled):not([aria-pressed='true']) { background: var(--c-accent-soft); }
 
 .btn-small { font-size: 22px; padding: 8px 14px; } /* 높이 64px 은 유지 */
 
@@ -235,7 +239,7 @@ p  { margin: 0 0 12px; }
   text-underline-offset: 4px;
   cursor: pointer;
 }
-.link-button:hover { color: var(--c-accent-dark); }
+.link-button:hover { color: var(--c-accent-strong); }
 
 /* ---------- 설정 영역 ---------- */
 .settings-panel {
@@ -387,16 +391,17 @@ p  { margin: 0 0 12px; }
 .webcam-video { display: block; width: 100%; height: auto; border-radius: 10px; background: #000; transform: scaleX(-1); }
 
 /* ---------- 안내 문구 ---------- */
-.msg { padding: 16px 20px; border-radius: 12px; border: 3px solid var(--line); font-size: 28px; font-weight: 700; }
-.msg-info { background: var(--info-bg); }
-.msg-good { background: var(--good-bg); color: var(--good); border-color: var(--good); }
-.msg-retry { background: var(--retry-bg); color: var(--retry); border-color: var(--retry); }
+/* 연한 배경 상자 + 앞 기호(ℹ ○ ↻) + 글자. 테두리 대신 왼쪽 띠로 종류를 나눈다 */
+.msg { padding: 16px 22px; border-radius: 16px; border: 0; border-left: 8px solid var(--c-accent); font-size: 28px; font-weight: 600; background: var(--c-accent-soft); color: var(--c-text); }
+.msg-info { background: var(--c-accent-soft); border-left-color: var(--c-accent); }
+.msg-good { background: var(--c-ok-bg); color: var(--c-ok-fg); border-left-color: var(--c-ok-dot); }
+.msg-retry { background: var(--retry-bg); color: var(--retry); border-left-color: var(--step2-btn); }
 
 /* ---------- 카드 (결과 화면 등) ---------- */
 .card {
-  background: var(--card);
-  border: 3px solid var(--line);
-  border-radius: 16px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-panel);
   padding: 20px 24px;
 }
 .cards {
@@ -411,8 +416,10 @@ input[type='text'] {
   min-height: 64px;
   font: inherit;
   padding: 8px 16px;
-  border: 3px solid var(--line);
+  border: 2px solid var(--c-line-strong);
   border-radius: 12px;
+  background: var(--c-surface);
+  color: var(--c-text);
   min-width: 260px;
 }
 
@@ -437,32 +444,33 @@ input[type='text'] {
 /* STEP 4 유지 게이지 (숫자 글자도 함께 표시) */
 .gauge {
   height: 32px;
-  border: 3px solid var(--line);
+  border: 0;
   border-radius: 16px;
-  background: var(--bg);
+  background: var(--c-chip);
   overflow: hidden;
 }
 .gauge-fill {
   height: 100%;
   width: 0;
-  background: var(--good);
+  background: var(--c-ok-dot);
   transition: width 0.1s linear;
 }
 
 /* ---------- 표 ---------- */
-.table-wrap { overflow-x: auto; }
+.table-wrap { overflow-x: auto; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; }
 table { border-collapse: collapse; width: 100%; font-size: 22px; }
-th, td { border: 2px solid var(--line); padding: 8px 12px; text-align: left; }
-th { background: var(--card); }
+th, td { border-bottom: 1px solid var(--c-line); padding: 10px 14px; text-align: left; }
+tr:last-child td { border-bottom: 0; }
+th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
 
 /* ---------- 결과 화면 (#8) ---------- */
 .result-tabs { margin: 16px 0 20px; }
 .result-day { margin-bottom: 28px; }
-.result-day h3 { font-size: 26px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 3px solid var(--line); }
+.result-day h3 { font-size: 26px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--c-line-strong); }
 .result-day h4 { font-size: 22px; margin: 16px 0 8px; }
 .result-course {
-  border: 2px solid var(--c-line-strong);
-  border-radius: 12px;
+  border: 1px solid var(--c-line);
+  border-radius: 18px;
   background: var(--c-surface);
   margin-bottom: 12px;
 }
@@ -482,7 +490,7 @@ th { background: var(--card); }
 .result-course > summary { list-style: none; }
 .result-course-title { font-weight: 700; }
 .result-course-meta { color: var(--c-text-sub); }
-.result-course .table-wrap { padding: 0 16px 16px; }
+.result-course .table-wrap { margin: 0 16px 16px; }
 .result-note { font-size: 22px; color: var(--c-text-sub); margin: 0 0 16px; }
 .result-trend { margin-bottom: 24px; }
 .result-trend h3 { font-size: 24px; margin: 0 0 8px; }
@@ -492,10 +500,10 @@ th { background: var(--card); }
 /* ---------- 가상 로봇손 (활동 화면 오른쪽) ---------- */
 #mock-panel { display: flex; flex-direction: column; gap: 20px; }
 .mock-box {
-  border: 3px dashed var(--line);
-  border-radius: 16px;
+  border: 1px dashed var(--c-dev-line);
+  border-radius: var(--r-panel);
   padding: 16px;
-  background: var(--card);
+  background: var(--c-surface);
 }
 .mock-box h2 { font-size: 24px; }
 .mock-status { font-size: 22px; color: var(--muted); margin: 8px 0; }
@@ -532,7 +540,7 @@ th { background: var(--card); }
   gap: 16px;
   padding: 8px 20px;
   background: var(--c-surface);
-  border: 2px solid var(--c-line);
+  border: 1px solid var(--c-line);
   border-radius: 16px;
   font-size: 24px;
 }
