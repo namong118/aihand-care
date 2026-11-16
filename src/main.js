@@ -8,7 +8,7 @@ import { renderSettings } from './dashboard/settings.js';
 import { createDevPanel } from './dashboard/devpanel.js';
 import { renderResults } from './dashboard/results.js';
 import { CATALOG, findProgramInfo } from './dashboard/catalog.js';
-import { loadCourse, newCourseId, tagRecord, stepInfo, courseOf, summarizeCourse } from './dashboard/course-logic.js';
+import { loadCourse, newCourseId, tagRecord, stepInfo, courseProgress, courseOf, summarizeCourse } from './dashboard/course-logic.js';
 import { createCourseStore } from './dashboard/course-store.js';
 import { renderCourseIntro, renderStepIntro, createCourseBar, renderCourseSummary } from './dashboard/course.js';
 import courseJson from './data/course.json';
@@ -151,15 +151,16 @@ function showProgram(id, step = null) {
   const body = h('div', { class: 'program-body' });
   let bar;
   if (step) {
-    course.bar = createCourseBar({ info: step, onNext: nextCourseStep, onSkip: skipCourseStep, onStop: stopCourse });
+    course.bar = createCourseBar({ info: step, progress: progressNow(), onNext: nextCourseStep, onSkip: skipCourseStep, onStop: stopCourse });
     bar = course.bar.el;
   } else {
     bar = h(
       'div',
-      { class: 'program-bar' },
-      h('h1', {}, info ? `STEP ${info.step} ${info.title}` : id),
-      button('← 홈으로', showHome, { variant: 'secondary' }),
-      button('활동 기록 보기', () => showResults({ program: id }), { variant: 'secondary' }),
+      { class: `program-bar${info ? ` step${info.step}` : ''}` },
+      // 7인치(1280×720)에서 한 줄에 들어가게 STEP 번호는 작은 알약으로 (#102)
+      h('h1', {}, info ? [h('span', { class: 'step-pill' }, `STEP ${info.step}`), ` ${info.title}`] : id),
+      smallButton(button('← 홈으로', showHome, { variant: 'secondary' })),
+      smallButton(button('기록 보기', () => showResults({ program: id }), { variant: 'secondary' })),
     );
   }
   appEl.innerHTML = '';
@@ -202,6 +203,12 @@ devices.log.onRecord((rec) => {
   if (c?.id === course.id && c.order === course.index + 1) course.bar?.setFinished();
 });
 
+/** 위쪽 막대 버튼은 글자를 조금 작게 (높이 64px 는 그대로) */
+function smallButton(el) {
+  el.classList.add('btn-small');
+  return el;
+}
+
 /** 코스 시작 화면의 장치 안내 한 줄 */
 function deviceNote() {
   const list = devices.status();
@@ -233,7 +240,12 @@ function showStepIntro() {
   leaveProgram();
   setScreen('course');
   const step = stepInfo(coursePlan, course.index);
-  renderStepIntro(appEl, { info: step, onStart: () => showProgram(step.program, step), onStop: stopCourse });
+  renderStepIntro(appEl, { info: step, progress: progressNow(), onStart: () => showProgram(step.program, step), onStop: stopCourse });
+}
+
+/** 지금 코스의 활동별 상태 (마침·건너뜀·지금·아직) */
+function progressNow() {
+  return courseProgress(coursePlan, course.index, courseStore.get(course.id)?.skipped ?? []);
 }
 
 function nextCourseStep() {
@@ -279,6 +291,7 @@ function showResults(filter = {}) {
   const state = { program: null, ...filter };
   renderResults(appEl, {
     log: devices.log,
+    courses: courseStore.list(),
     filter: state,
     onFilter: (next) => showResults(next),
     onHome: showHome,

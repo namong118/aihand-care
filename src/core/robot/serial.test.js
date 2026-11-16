@@ -253,4 +253,18 @@ describe('createSerialRobot', () => {
     expect(onNumber.mock.calls).toEqual([[3], [null]]);
     expect(onTag).not.toHaveBeenCalled();
   });
+
+  it('FACE 줄은 onFace 로 넘긴다 (기다리는 명령에도 영향 없음)', async () => {
+    const f = fakePort();
+    const onFace = vi.fn();
+    const onNumber = vi.fn();
+    const robot = createSerialRobot({ port: f.port, onFace, onNumber });
+    const p = robot.camMode('FACE');
+    await untilSent(f.sent, 1);
+    expect(f.sent[0]).toBe('CAM,FACE\n');
+    f.robotSays('FACE,UNKNOWN\nFACE,2\nFACE,NONE\nDONE,CAM\n');
+    await expect(p).resolves.toEqual({ type: 'DONE', command: 'CAM' });
+    expect(onFace.mock.calls).toEqual([['unknown'], [2], [null]]);
+    expect(onNumber).not.toHaveBeenCalled();
+  });
 });

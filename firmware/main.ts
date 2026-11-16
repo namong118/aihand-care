@@ -1,4 +1,4 @@
-// AIHand 펌웨어 F3 (로봇 통신 프로토콜 v1 + WonderCam 태그·숫자 인식)
+// AIHand 펌웨어 F4 (로봇 통신 프로토콜 v1 + WonderCam 태그·숫자·얼굴 인식)
 // MakeCode(micro:bit) JavaScript 탭에 이 파일 전체를 붙여 넣는다.
 // Hiwonder 확장(StartbitV2, WonderCam 모두)은 추가하지 않는다. "Initialize StartbitV2" 블록도 쓰지 않는다.
 // WonderCam 은 공식 확장(github.com/Hiwonder/WonderCam)과 같은 I2C 읽기·쓰기를 이 파일 안에 직접 넣었다.
@@ -15,8 +15,9 @@
 //   SPEED,SLOW|NORMAL  → DONE,SPEED
 //   CAM,TAG            → DONE,CAM       (WonderCam 태그 모드. 카메라 없음 ERR,NO_CAM / 전환 안 됨 ERR,CAM_MODE)
 //   CAM,NUM            → DONE,CAM       (WonderCam 숫자 인식 모드. 오류는 CAM,TAG 와 같음)
-//                                        켜질 때는 모드를 바꾸지 않는다. TAG·NUM 줄은 CAM 명령이 성공한 뒤부터 나온다
-//                                        카메라는 한 번에 한 모드: 태그 모드면 TAG 줄만, 숫자 모드면 NUM 줄만
+//   CAM,FACE           → DONE,CAM       (WonderCam 얼굴 인식 모드, 얼굴 로그인. 오류는 CAM,TAG 와 같음)
+//                                        켜질 때는 모드를 바꾸지 않는다. TAG·NUM·FACE 줄은 CAM 명령이 성공한 뒤부터 나온다
+//                                        카메라는 한 번에 한 모드: 태그 모드면 TAG 줄만, 숫자 모드면 NUM 줄만, 얼굴 모드면 FACE 줄만
 //   그 밖              → ERR,UNKNOWN_CMD / ERR,UNKNOWN_POSE / ERR,BAD_ARG
 //
 // 로봇 → 웹 (명령과 상관없이 보냄)
@@ -24,11 +25,14 @@
 //   TAG,NONE           보이던 태그가 0.5초 넘게 안 보일 때 한 번
 //   NUM,<1~5>          보이는 숫자 카드가 바뀌었을 때 한 번 (예: NUM,3)
 //   NUM,NONE           보이던 숫자가 0.5초 넘게 안 보일 때 한 번
+//   FACE,<번호>        학습된 얼굴이 보일 때 (번호는 카메라 레버로 학습한 Face ID, 1~5). 바뀌면 바로 한 번
+//   FACE,UNKNOWN       학습되지 않은 얼굴만 보일 때 한 번 (보이던 학습된 얼굴에서 바뀔 때는 1초 넘게 이어져야)
+//   FACE,NONE          보이던 얼굴이 1초 넘게 안 보일 때 한 번
 //   RAW,NUM,<숫자>,<확신도×100>   DEBUG_NUM = true 일 때만. 기준값 MIN_CONF 정하기용 (웹은 무시)
 //
 // DONE 은 정해진 시간이 지나면 보낸다. 서보가 실제로 도착했다는 뜻이 아니다 (부록 4).
 
-const FIRMWARE_VERSION = "F3" // 켜질 때 LED에 잠깐 보여준다 (프로토콜과 무관)
+const FIRMWARE_VERSION = "F4" // 켜질 때 LED에 잠깐 보여준다 (프로토콜과 무관)
 
 // 숫자 인식 확신도 기준값 정하기용. true 로 바꾸면 숫자 모드에서 카메라 결과가 바뀔 때마다
 // RAW,NUM,<숫자>,<확신도×100> 줄을 보낸다 (웹은 이 줄을 무시한다). 평소에는 false
@@ -163,9 +167,18 @@ const MIN_CONF = 80
 const POLL_MS = 100        // 명령이 없을 때 이 간격으로 카메라 결과를 읽는다
 const LOST_MS = 500        // 이 시간 넘게 안 보여야 카드가 사라진 것으로 친다 (인식이 0.17~0.34초씩 끊김)
 
+// 얼굴 인식 (공식 확장 custom.ts 와 #76 실물 확인 FACE1, hardware-check.md 4-1)
+const FUNC_FACE = 1        // 1 = 얼굴 인식
+const REG_FACE = 0x0400    // 얼굴 결과: [1] = 얼굴 수, [2] = 그중 학습된 얼굴 수, [3] = 모르는 얼굴 수, [4..] = 얼굴마다 번호
+const FACE_LEN = 512       // 공식 확장과 같은 길이
+const FACE_UNKNOWN = 0xFF  // 번호 자리의 "모르는 얼굴"
+// 얼굴이 보이는 동안에도 0.24~0.6초짜리 "얼굴 없음"과 "모르는 얼굴"이 끼어들었다 (2026-11-15 실물).
+// 그래서 학습된 얼굴이 사라지거나 모르는 얼굴로 바뀐 것은 1초 넘게 이어질 때만 알린다
+const FACE_LOST_MS = 1000
+
 let camOk = false
-let camMode = 0            // 지금 모드: 0 = 없음, FUNC_TAG, FUNC_NUM. CAM 명령이 성공했을 때만 바뀐다
-let shown = -1             // 웹에 마지막으로 알린 값 (태그 번호 또는 숫자). -1 = 없음
+let camMode = 0            // 지금 모드: 0 = 없음, FUNC_TAG, FUNC_NUM, FUNC_FACE. CAM 명령이 성공했을 때만 바뀐다
+let shown = -1             // 웹에 마지막으로 알린 값 (태그 번호, 숫자, 얼굴 번호·FACE_UNKNOWN). -1 = 없음
 let lastSeenAt = 0         // shown 을 마지막으로 본 시각
 let lastPoll = 0
 let lastRaw = ""           // DEBUG_NUM: 마지막으로 보낸 RAW 줄
@@ -265,6 +278,50 @@ function pollNum() {
     report("NUM", seeNum())
 }
 
+// 보이는 얼굴 하나 고르기: 학습된 얼굴이 하나라도 보이면 그 번호 (알린 번호가 아직 보이면 그대로, 아니면 가장 작은 번호).
+// 학습된 얼굴이 없고 모르는 얼굴만 있으면 FACE_UNKNOWN, 얼굴이 없으면 -1.
+// (사진 뒤 진행자 얼굴이 함께 잡혀도 학습된 얼굴을 고르려고. 2026-11-15 실물에서 얼굴 2개가 잡힌 적 있음)
+function seeFace(): number {
+    if (camRead(REG_FUNC, 1)[0] != FUNC_FACE) return -1 // 카메라 메뉴에서 기능을 바꾼 경우
+    let r = camRead(REG_FACE, FACE_LEN)
+    let n = r[1]
+    let pick = -1
+    let unknown = false
+    for (let i = 4; i < 4 + n && i < r.length; i++) {
+        let id = r[i]
+        if (id == FACE_UNKNOWN) { unknown = true; continue }
+        if (id == shown) return id
+        if (pick < 0 || id < pick) pick = id
+    }
+    if (pick >= 0) return pick
+    return unknown ? FACE_UNKNOWN : -1
+}
+
+function faceLine(id: number): string {
+    if (id < 0) return "FACE,NONE"
+    if (id == FACE_UNKNOWN) return "FACE,UNKNOWN"
+    return "FACE," + id
+}
+
+// 얼굴을 웹에 알리는 규칙 (태그·숫자의 report() 와 다른 점: 모르는 얼굴, 끊김을 1초 기다림)
+//   - 학습된 번호가 새로 보이면 바로 알린다 (다른 번호로 바뀐 것도 바로: 웹은 처음부터 다시 잰다)
+//   - 아무것도 안 알린 상태에서 모르는 얼굴이 보이면 바로 알린다
+//   - 그 밖(알린 얼굴이 안 보임, 학습된 얼굴 → 모르는 얼굴)은 FACE_LOST_MS 넘게 이어질 때만
+function pollFace() {
+    let id = seeFace()
+    let now = input.runningTime()
+    if (id == shown) {
+        if (id >= 0) lastSeenAt = now
+        return
+    }
+    let learned = id >= 0 && id != FACE_UNKNOWN
+    if (learned || (shown < 0 && id == FACE_UNKNOWN) || now - lastSeenAt > FACE_LOST_MS) {
+        shown = id
+        lastSeenAt = now
+        send(faceLine(id))
+    }
+}
+
 // ---------- 명령 처리 ----------
 // 명령 하나 = 함수 하나. 새 명령은 cmdXxx 함수를 만들고 handle() 에 한 줄 추가한다.
 // (명령을 추가하면 docs/protocol.md 와 src/core/robot/protocol.js 도 함께 고친다)
@@ -295,14 +352,15 @@ function cmdRest(arg: string) {
     doRest()
     send("DONE,REST")
 }
-// CAM,TAG / CAM,NUM: WonderCam 모드 바꾸기. 켜질 때 못 찾았으면 여기서 다시 찾는다 (카메라가 늦게 켜진 경우)
+// CAM,TAG / CAM,NUM / CAM,FACE: WonderCam 모드 바꾸기. 켜질 때 못 찾았으면 여기서 다시 찾는다 (카메라가 늦게 켜진 경우)
 // 걸리는 시간: 카메라 없음 약 1초 / 있음 보통 0.1~0.2초, 최악 약 5.1초 (찾기 1초 + 전환 4.1초). 웹 시간 초과 6초
 // 모드를 바꾸면 보이던 카드는 없는 것으로 치고 처음부터 다시 알린다 (웹도 DONE,CAM 을 받으면 같은 규칙)
-// 실패하면 모드 없음(0)이 되어 TAG·NUM 줄을 보내지 않는다. 값이 틀린 경우(ERR,BAD_ARG)만 지금 모드를 그대로 둔다
+// 실패하면 모드 없음(0)이 되어 TAG·NUM·FACE 줄을 보내지 않는다. 값이 틀린 경우(ERR,BAD_ARG)만 지금 모드를 그대로 둔다
 function cmdCam(arg: string) {
     let func = 0
     if (arg == "TAG") func = FUNC_TAG
     else if (arg == "NUM") func = FUNC_NUM
+    else if (arg == "FACE") func = FUNC_FACE
     else { send("ERR,BAD_ARG"); return }
     camMode = 0
     shown = -1
@@ -341,7 +399,7 @@ toUSB()
 basic.showString(FIRMWARE_VERSION) // 펌웨어 버전 확인용. 켜질 때 서보는 움직이지 않는다 (글자가 지나가는 약 2.5초 동안 카메라도 켜진다)
 // 켜질 때는 카메라를 한 번만 확인하고 기다리지 않는다. 모드 전환(최악 4.1초)도 하지 않는다.
 // 여기서 오래 막히면 반복문에 늦게 들어가 웹의 PING(1.5초 × 3번)에 답하지 못하기 때문. 반복문까지 F1 과 같은 약 3초
-// 모드 전환은 웹이 보내는 CAM,TAG / CAM,NUM 에서 한다 (Serial Terminal 에서는 직접 입력)
+// 모드 전환은 웹이 보내는 CAM,TAG / CAM,NUM / CAM,FACE 에서 한다 (Serial Terminal 에서는 직접 입력)
 camOk = camAlive()
 if (camOk) basic.showIcon(IconNames.Yes) // ✓ 로봇·WonderCam 준비
 else basic.showIcon(IconNames.No)        // ✖ 지금은 WonderCam 이 안 보임. CAM 명령 때 다시 찾는다 (로봇 명령은 그대로)
@@ -366,7 +424,8 @@ basic.forever(function () {
     if (camMode != 0 && input.runningTime() - lastPoll >= POLL_MS) {
         lastPoll = input.runningTime()
         if (camMode == FUNC_TAG) pollTag()
-        else pollNum()
+        else if (camMode == FUNC_NUM) pollNum()
+        else pollFace()
     }
     basic.pause(20)
 })
