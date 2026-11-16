@@ -102,7 +102,7 @@ async function playRound(ctx, screen, s) {
       questions: answers.map(({ correct, ...rest }) => rest),
     },
   });
-  // 로봇 역할: 모두 맞히면 한 번 더 인사한다
+  // 로봇 역할: 모두 해내면 한 번 더 인사한다
   if (isPerfect(summary)) {
     await ctx.robot.hello();
     if (!s.alive) return;

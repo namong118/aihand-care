@@ -98,7 +98,7 @@ export function createScreen(container, colors) {
         h('p', {}, '이번 회차가 끝났어요. 한 번 더 해도 좋아요.'),
         h('div', { class: 'row' }, button('한 번 더 하기', onAgain)),
       );
-      speak(done === total ? `${total}문제를 모두 맞히셨어요! 정말 잘하셨어요!` : `${total}문제를 모두 마쳤어요. 수고하셨어요!`);
+      speak(done === total ? `${total}문제를 모두 함께 해내셨어요! 정말 잘하셨어요!` : `${total}문제를 모두 마쳤어요. 수고하셨어요!`);
     },
   };
 }
