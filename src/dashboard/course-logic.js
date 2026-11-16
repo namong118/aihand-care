@@ -49,14 +49,24 @@ export function tagRecord(record, { id, order, of, userId }) {
   return { ...record, detail: { ...(record.detail ?? {}), course } };
 }
 
+/** 코스를 누가 했는지: 등록한 분 / 손님 / 알 수 없음(로그인 기능 #82 전 코스) */
+export const WHO = { user: 'user', guest: 'guest', unknown: 'unknown' };
+
 /**
- * 코스 사용자 ID. 진행 정보(meta.userId)를 먼저 보고, 없으면 기록의 detail.course.userId.
- * 로그인 전에 만든 코스·손님 코스는 null
+ * 코스를 누가 했는지 → { userId, who }.
+ * 진행 정보(meta)를 먼저 보고, 없으면 그 코스 기록의 detail.course 를 본다.
+ *   - userId 값이 있으면 등록한 분          → { userId: 'u-…', who: 'user' }
+ *   - userId 키가 있고 값이 null 이면 손님  → { userId: null, who: 'guest' }
+ *   - userId 키가 아예 없으면 로그인 기능 전 코스 → { userId: null, who: 'unknown' }
+ * 손님과 예전 코스는 둘 다 userId 가 null 이라 "키가 있는지"로 나눈다.
  */
-export function courseUserId(meta, records = []) {
-  if (typeof meta?.userId === 'string') return meta.userId;
-  const tagged = records.map(courseOf).find((c) => c?.id === meta?.id && typeof c.userId === 'string');
-  return tagged?.userId ?? null;
+export function courseUser(meta, records = []) {
+  const fromValue = (userId) =>
+    typeof userId === 'string' ? { userId, who: WHO.user } : { userId: null, who: WHO.guest };
+  if (meta && 'userId' in meta) return fromValue(meta.userId);
+  const tagged = records.map(courseOf).find((c) => c?.id === meta?.id && 'userId' in c);
+  if (tagged) return fromValue(tagged.userId);
+  return { userId: null, who: WHO.unknown };
 }
 
 /**
@@ -154,7 +164,8 @@ export function summarizeCourse(meta, records, timeZone = TIME_ZONE) {
   return {
     version: SUMMARY_VERSION,
     courseId: meta.id,
-    userId: courseUserId(meta, mine), // 손님·로그인 전 코스는 null (#82)
+    // 누가 한 코스인지 (#82). userId: 손님·로그인 기능 전 코스는 null, who: 'user' | 'guest' | 'unknown'
+    ...courseUser(meta, mine),
     date: localDate(meta.id, timeZone),
     startedAt: meta.id,
     endedAt: meta.endedAt ?? ends[ends.length - 1] ?? null,
@@ -227,13 +238,18 @@ export const GUEST = 'guest';
  * 날짜별 기록(groupByDay 결과)을 한 분의 코스만 남긴다 (#82).
  * 코스 밖에서 하나만 한 활동은 로그인을 하지 않으므로 사용자를 고르면 빠진다.
  * @param days  groupByDay() 결과
- * @param user  null·undefined = 모든 분, GUEST = 손님(userId 가 null 인 코스, 로그인 기능 전 코스 포함), 그 밖은 userId
+ * @param user  null·undefined = 모든 분, GUEST = 손님(who 'guest'), 그 밖은 userId
+ *              로그인 기능 전 코스(who 'unknown')는 "모든 분"에서만 보인다
  */
 export function filterDaysByUser(days, user) {
   if (user === null || user === undefined) return days;
   const want = user === GUEST ? null : user;
   return days
-    .map((day) => ({ ...day, courses: day.courses.filter((c) => (c.userId ?? null) === want), singles: [] }))
+    .map((day) => ({
+      ...day,
+      courses: day.courses.filter((c) => (want === null ? c.who === WHO.guest : c.userId === want)),
+      singles: [],
+    }))
     .filter((day) => day.courses.length > 0);
 }
 

@@ -6,7 +6,7 @@
 import { h, button, seconds } from '../ui/components.js';
 import { summarize, downloadCSV } from '../core/log.js';
 import { CATALOG, findProgramInfo } from './catalog.js';
-import { groupByDay, filterDaysByUser, reactionTrend, GUEST, TIME_ZONE } from './course-logic.js';
+import { groupByDay, filterDaysByUser, reactionTrend, GUEST, WHO, TIME_ZONE } from './course-logic.js';
 import { activityText } from './course.js';
 
 /** 위쪽 탭: 보는 방법 */
@@ -98,9 +98,10 @@ function empty() {
 
 // ---- 날짜별 기록 ----
 
-/** 코스를 한 분의 호칭. 손님·로그인 전 코스는 null, 등록이 지워진 분은 따로 (#82) */
+/** 코스를 한 분: 호칭, 손님이면 "손님", 로그인 기능 전 코스는 null(표시 안 함), 지운 분은 따로 (#82) */
 function whoOf(summary, names) {
-  if (!summary.userId) return null;
+  if (summary.who === WHO.guest) return '손님';
+  if (summary.who !== WHO.user) return null;
   return names.get(summary.userId) ?? '등록이 지워진 분';
 }
 
