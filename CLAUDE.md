@@ -23,7 +23,7 @@ AIHand 로봇손과 웹캠 손동작 인식을 이용한 고령자 인지·손�
 - 순서: **손운동(STEP 4) → 가위바위보(STEP 2) → 숫자 기억(STEP 1) → 색깔손(STEP 3)** (손으로 하는 활동 → 카드로 하는 활동, 쉬운 것 → 어려운 것)
 - STEP 번호와 폴더명은 바꾸지 않는다. 화면에는 코스 순서로 "1번째 활동: 손운동"처럼 보여 준다
 - 앞 활동 결과로 다음 활동을 맞춤 조정하는 기능은 지금 범위에서 뺐다 (`docs/decisions.md` 3번)
-- 코스는 대시보드가 진행한다. 프로그램 코드는 코스를 몰라도 된다: 활동 끝은 기록 알림으로 알고, 코스 동안 `ctx.log`만 감싸 기록에 `detail.course = { id, order, of }`를 붙인다. `ctx.course`는 만들지 않는다
+- 코스는 대시보드가 진행한다. 프로그램 코드는 코스를 몰라도 된다: 활동 끝은 기록 알림으로 알고, 코스 동안 `ctx.log`만 감싸 기록에 `detail.course = { id, order, of, userId }`를 붙인다 (`userId`: 로그인한 분, 손님은 `null`). `ctx.course`는 만들지 않는다
 - 코스 요약 형식(결과 화면·보호자 앱 공통)과 진행 방식: `docs/course.md`
 
 - 웹 대시보드: 프로그램 선택, 진행 화면, 장치 연결 상태, 활동 결과를 한 화면 흐름에서 보여준다.
@@ -102,9 +102,9 @@ export default {
   - 프로그램은 카드 ID를 모른다. ID→색 변환은 `core/card` 안에서만 한다 (카드 인식 방식은 [검증 필요])
 - `ctx.card.onNumber(cb)` → `cb({ number })`, 구독 해제 함수 반환. `number`: 1~5 (숫자 카드, WonderCam 숫자 인식)
 - `ctx.card.onFace(cb)` → `cb({ faceId })`, 구독 해제 함수 반환. `faceId`: 학습된 얼굴 번호(1 이상 정수) | `'unknown'`(모르는 얼굴) | `null`(안 보임). 얼굴 로그인용 (`src/login/`)
-  - 펌웨어 얼굴 모드(#77) 전까지는 **개발자 입력의 Mock 얼굴 버튼으로만** 들어온다. 이때 `ctx.card.ready()`는 `false`
+  - 실제 얼굴은 펌웨어 F4 얼굴 모드(#77)로 들어오고, 개발자 입력의 Mock 얼굴 버튼으로도 넣을 수 있다. 펌웨어가 F3 이하면 Mock 버튼으로만 (`ctx.card.ready()`는 `false`)
 - `ctx.card.ready()` → WonderCam 모드 바꾸기가 끝나면 resolve (`true` = 실제 카메라 준비, `false` = Mock만)
-  - 카메라는 한 번에 한 모드. `onCard` 구독 → 태그 모드, `onNumber` 구독 → 숫자 모드, `onFace` 구독 → 얼굴 모드(#77 뒤)로 core가 알아서 바꾼다
+  - 카메라는 한 번에 한 모드. `onCard` 구독 → 태그 모드, `onNumber` 구독 → 숫자 모드, `onFace` 구독 → 얼굴 모드로 core가 알아서 바꾼다
 - `ctx.log.record({ program, ...결과 })`
 - `ctx.settings` (Mock 여부, 진행 속도 등)
 
@@ -168,8 +168,8 @@ ctx.log.record({
 
 텍스트 한 줄 = 명령 하나, `\n`으로 끝난다. 자세한 내용은 `docs/protocol.md`.
 
-- 웹 → 로봇: `HELLO`, `POSE,<이름>`, `REACT,OK`, `REACT,RETRY`, `REST`, `SPEED,SLOW|NORMAL`, `PING`, `CAM,TAG|NUM`
-- 로봇 → 웹: `DONE,<명령>`, `TAG,<번호>|NONE`, `NUM,<1~5>|NONE`, `PONG`, `ERR,<내용>`
+- 웹 → 로봇: `HELLO`, `POSE,<이름>`, `REACT,OK`, `REACT,RETRY`, `REST`, `SPEED,SLOW|NORMAL`, `PING`, `CAM,TAG|NUM|FACE`
+- 로봇 → 웹: `DONE,<명령>`, `TAG,<번호>|NONE`, `NUM,<1~5>|NONE`, `FACE,<번호>|UNKNOWN|NONE`, `PONG`, `ERR,<내용>`
 
 프로토콜을 바꾸는 변경은 `core/robot/protocol.js`, `firmware/`, `docs/protocol.md`를 함께 고친다.
 

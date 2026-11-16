@@ -22,10 +22,11 @@ describe('명령 만들기', () => {
   });
 });
 
-describe('cam (WonderCam 모드, 펌웨어 F2·F3)', () => {
-  it('CAM,TAG 와 CAM,NUM 을 만든다', () => {
+describe('cam (WonderCam 모드, 펌웨어 F2·F3·F4)', () => {
+  it('CAM,TAG · CAM,NUM · CAM,FACE 를 만든다', () => {
     expect(P.cam('TAG')).toBe('CAM,TAG\n');
     expect(P.cam('NUM')).toBe('CAM,NUM\n');
+    expect(P.cam('FACE')).toBe('CAM,FACE\n');
   });
   it('그 밖의 모드는 바로 에러', () => {
     expect(() => P.cam('COLOR')).toThrow();
@@ -57,6 +58,21 @@ describe('parseLine', () => {
     expect(P.parseLine('NUM,12').type).toBe('UNKNOWN');
     expect(P.parseLine('NUM').type).toBe('UNKNOWN');
     expect(P.parseLine('RAW,NUM,3,87')).toEqual({ type: 'UNKNOWN', raw: 'RAW,NUM,3,87' });
+  });
+
+  it('얼굴: 번호는 숫자로, UNKNOWN 은 \'unknown\', NONE 은 null (펌웨어 F4)', () => {
+    expect(P.parseLine('FACE,1')).toEqual({ type: 'FACE', faceId: 1 });
+    expect(P.parseLine('FACE,5\r\n')).toEqual({ type: 'FACE', faceId: 5 });
+    expect(P.parseLine('FACE,UNKNOWN')).toEqual({ type: 'FACE', faceId: 'unknown' });
+    expect(P.parseLine('FACE,NONE')).toEqual({ type: 'FACE', faceId: null });
+  });
+
+  it('얼굴 번호가 아닌 값은 UNKNOWN (0, 음수, 글자, 값 없음)', () => {
+    expect(P.parseLine('FACE,0').type).toBe('UNKNOWN');
+    expect(P.parseLine('FACE,-1').type).toBe('UNKNOWN');
+    expect(P.parseLine('FACE,U').type).toBe('UNKNOWN');
+    expect(P.parseLine('FACE,100').type).toBe('UNKNOWN');
+    expect(P.parseLine('FACE').type).toBe('UNKNOWN');
   });
 
   it('commandName 은 보낸 명령의 이름만 꺼낸다', () => {

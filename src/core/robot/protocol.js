@@ -17,9 +17,10 @@ export const CMD = Object.freeze({
 
 const REACT_KINDS = { ok: 'OK', retry: 'RETRY' };
 const SPEEDS = ['SLOW', 'NORMAL'];
-// WonderCam 모드: TAG(AprilTag, 색 카드) / NUM(숫자 인식, 숫자 카드 1~5). 펌웨어 F3
-export const CAM_MODES = ['TAG', 'NUM'];
+// WonderCam 모드: TAG(AprilTag, 색 카드) / NUM(숫자 인식, 숫자 카드 1~5, 펌웨어 F3) / FACE(얼굴 인식, 얼굴 로그인, 펌웨어 F4)
+export const CAM_MODES = ['TAG', 'NUM', 'FACE'];
 const CARD_NUMBER = /^[1-5]$/;
+const FACE_NUMBER = /^[1-9][0-9]?$/; // 학습된 얼굴 번호 (WonderCam 은 1~5, 넉넉히 1~99)
 const POSE_NAME = /^[A-Z][A-Z0-9_]*$/;
 
 function line(text) {
@@ -63,9 +64,10 @@ export function ping() {
 }
 
 /**
- * CAM,TAG | CAM,NUM: WonderCam 을 태그 / 숫자 인식 모드로 바꾼다 (TAG 는 펌웨어 F2, NUM 은 F3).
+ * CAM,TAG | CAM,NUM | CAM,FACE: WonderCam 을 태그 / 숫자 인식 / 얼굴 인식 모드로 바꾼다
+ * (TAG 는 펌웨어 F2, NUM 은 F3, FACE 는 F4).
  * 응답: DONE,CAM / 카메라가 없으면 ERR,NO_CAM / 모드가 안 바뀌면 ERR,CAM_MODE
- *       F2 에 CAM,NUM 을 보내면 ERR,BAD_ARG (모드는 그대로)
+ *       F2 에 CAM,NUM, F2·F3 에 CAM,FACE 를 보내면 ERR,BAD_ARG (모드는 그대로)
  */
 export function cam(mode) {
   if (!CAM_MODES.includes(mode)) throw new Error(`WonderCam 모드는 ${CAM_MODES.join(', ')} 입니다: ${mode}`);
@@ -79,6 +81,9 @@ export function cam(mode) {
  *   'TAG,NONE'   → { type: 'TAG', id: null }    (보이던 카드가 사라짐)
  *   'NUM,3'      → { type: 'NUM', number: 3 }   (숫자 카드 3 이 보임, 1~5 만)
  *   'NUM,NONE'   → { type: 'NUM', number: null }
+ *   'FACE,2'     → { type: 'FACE', faceId: 2 }          (학습된 얼굴 2번이 보임)
+ *   'FACE,UNKNOWN' → { type: 'FACE', faceId: 'unknown' } (모르는 얼굴만 보임)
+ *   'FACE,NONE'  → { type: 'FACE', faceId: null }       (얼굴이 안 보임)
  *   'RAW,NUM,…'  → UNKNOWN (펌웨어 DEBUG_NUM 측정용 줄, 웹은 무시)
  *   'PONG'       → { type: 'PONG' }
  *   'ERR,UNKNOWN_POSE' → { type: 'ERR', message: 'UNKNOWN_POSE' }
@@ -100,6 +105,11 @@ export function parseLine(raw) {
     case 'NUM':
       if (rest === 'NONE') return { type: 'NUM', number: null };
       if (CARD_NUMBER.test(rest)) return { type: 'NUM', number: Number(rest) };
+      break;
+    case 'FACE':
+      if (rest === 'NONE') return { type: 'FACE', faceId: null };
+      if (rest === 'UNKNOWN') return { type: 'FACE', faceId: 'unknown' };
+      if (FACE_NUMBER.test(rest)) return { type: 'FACE', faceId: Number(rest) };
       break;
     case 'PONG':
       if (!rest) return { type: 'PONG' };

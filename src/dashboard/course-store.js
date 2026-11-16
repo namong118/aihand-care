@@ -1,9 +1,10 @@
-// 시연 코스 진행 정보 저장: 코스마다 { id, plan, skipped, finished, endedAt }.
+// 시연 코스 진행 정보 저장: 코스마다 { id, userId, plan, skipped, finished, endedAt }.
 // 활동 결과는 ctx.log 기록에 있고(detail.course), 여기에는 기록으로 알 수 없는 것만 둔다:
+//   - 누가 한 코스인지 (userId: 로그인한 사용자, 손님이면 null. #82)
 //   - 어떤 순서로 하려던 코스인지 (plan: 프로그램 id 목록)
 //   - "이 활동 건너뛰기"로 넘어간 활동 (skipped: order 목록)
 //   - "코스 마치기"까지 갔는지 (finished), 끝낸 시각 (endedAt)
-// 기록과 같은 이유로 이 브라우저(localStorage)에만 남는다. 개인정보는 넣지 않는다.
+// 기록과 같은 이유로 이 브라우저(localStorage)에만 남는다. 개인정보는 넣지 않는다 (호칭도 넣지 않고 userId 만).
 
 import { createMemoryStorage } from '../core/log.js';
 
@@ -48,9 +49,9 @@ export function createCourseStore({ storage = defaultStorage() } = {}) {
   }
 
   return {
-    /** 코스 시작. plan: 프로그램 id 목록 */
-    start({ id, plan }) {
-      const meta = { id, plan: [...plan], skipped: [], finished: false, endedAt: null };
+    /** 코스 시작. plan: 프로그램 id 목록, userId: 로그인한 사용자 (손님이면 null) */
+    start({ id, plan, userId = null }) {
+      const meta = { id, userId, plan: [...plan], skipped: [], finished: false, endedAt: null };
       save([...load().filter((m) => m.id !== id), meta]);
       return meta;
     },

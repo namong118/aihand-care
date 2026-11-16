@@ -65,24 +65,30 @@ export function createScreen(container) {
      */
     recall({ index, total, attempt, count, given }, onPick, onRestart, onSkip) {
       // 숫자 카드는 카메라에서 10~15cm일 때만 읽힌다 (docs/hardware-check.md 부록 8)
+      // 7인치(1280×720)에서 숫자 버튼과 건너뛰기가 스크롤 없이 보이도록 줄 수를 줄였다 (#102)
       set(
-        progress(index, total),
-        h('p', { class: 'big-prompt' }, `기억한 숫자 카드를 순서대로 보여 주세요 (${given.length + 1} / ${count})`),
-        attempt > 1 ? h('p', { style: TEXT_28 }, '한 번 더 해 보는 중이에요.') : null,
-        given.length > 0 ? h('p', { style: TEXT_28 }, `지금까지: ${join(given)}`) : null,
-        message('카드는 카메라 가까이(약 10~15cm) 보여 주세요. 하나 보여 준 뒤에는 내려 주세요. 카드 대신 아래 숫자 버튼을 눌러도 돼요.', 'info'),
         h(
           'div',
-          { class: 'row', role: 'group', 'aria-label': '숫자 고르기' },
-          CARD_NUMBERS.map((n) => {
-            const b = button(String(n), () => onPick(n));
-            b.setAttribute('aria-label', `숫자 ${n}`);
-            return b;
-          }),
+          { class: 'row', style: { margin: '0' } },
+          progress(index, total),
+          h('span', { class: 'pill', style: { 'font-size': '24px' } }, `카드 ${given.length + 1} / ${count}`),
+          attempt > 1 ? h('span', { class: 'pill', style: { 'font-size': '24px' } }, '한 번 더 해 보는 중') : null,
+          given.length > 0 ? h('span', { class: 'pill pill-ok', style: { 'font-size': '24px' } }, `지금까지: ${join(given)}`) : null,
         ),
+        h('p', { class: 'big-prompt' }, '기억한 순서대로 카드를 보여 주세요'),
+        message('카드는 카메라 가까이(10~15cm) 하나씩 보여 주세요. 아래 숫자 버튼을 눌러도 돼요.', 'info'),
         h(
           'div',
           { class: 'row' },
+          h(
+            'div',
+            { class: 'row', role: 'group', 'aria-label': '숫자 고르기', style: { margin: '0' } },
+            CARD_NUMBERS.map((n) => {
+              const b = button(String(n), () => onPick(n));
+              b.setAttribute('aria-label', `숫자 ${n}`);
+              return b;
+            }),
+          ),
           given.length > 0 ? button('처음부터 다시', onRestart, { variant: 'secondary' }) : null,
           button('이 문제 건너뛰기', onSkip, { variant: 'secondary' }),
         ),

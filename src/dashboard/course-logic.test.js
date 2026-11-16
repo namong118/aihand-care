@@ -4,11 +4,17 @@ import {
   newCourseId,
   tagRecord,
   stepInfo,
+  courseProgress,
   localDate,
   weightedReaction,
   courseOf,
+  courseUser,
+  WHO,
+  filterDaysByUser,
+  GUEST,
   summarizeCourse,
   groupCourses,
+  groupByDay,
   reactionTrend,
   SUMMARY_VERSION,
 } from './course-logic.js';
@@ -58,6 +64,10 @@ describe('tagRecord', () => {
     expect(t.detail).toEqual({ difficulty: 'easy', course: { id: 'C1', order: 2, of: 4 } });
     expect(r.detail).toEqual({ difficulty: 'easy' }); // 원본은 그대로
   });
+  it('userId 를 넘기면 detail.course 에 함께 붙인다 (손님은 null, #82)', () => {
+    expect(tagRecord({ program: 'x' }, { id: 'C1', order: 1, of: 4, userId: 'u-1' }).detail.course).toEqual({ id: 'C1', order: 1, of: 4, userId: 'u-1' });
+    expect(tagRecord({ program: 'x' }, { id: 'C1', order: 1, of: 4, userId: null }).detail.course.userId).toBeNull();
+  });
   it('detail 이 없어도 된다', () => {
     expect(tagRecord({ program: 'x' }, { id: 'C1', order: 1, of: 4 }).detail).toEqual({ course: { id: 'C1', order: 1, of: 4 } });
   });
@@ -78,6 +88,20 @@ describe('stepInfo', () => {
   });
   it('없는 순서면 오류', () => {
     expect(() => stepInfo(plan, 4)).toThrow();
+  });
+});
+
+describe('courseProgress', () => {
+  const plan = loadCourse(course, CATALOG);
+  const states = (index, skipped) => courseProgress(plan, index, skipped).map((s) => s.state);
+  it('첫 활동: 지금 1개, 나머지 아직', () => {
+    expect(states(0)).toEqual(['now', 'next', 'next', 'next']);
+  });
+  it('앞 활동은 마침, 건너뛴 활동은 건너뜀', () => {
+    expect(states(2, [2])).toEqual(['done', 'skipped', 'now', 'next']);
+  });
+  it('순서·프로그램·입력 방법을 같이 돌려준다', () => {
+    expect(courseProgress(plan, 0)[2]).toEqual({ order: 3, program: 'step1-memory', input: 'card', state: 'next' });
   });
 });
 
@@ -202,5 +226,110 @@ describe('reactionTrend', () => {
   });
   it('반응 시간이 없는 활동은 빈 목록', () => {
     expect(reactionTrend([rec('step4-coach', { avg: null })], 'step4-coach')).toEqual([]);
+  });
+});
+
+describe('groupByDay (결과 화면 날짜별 기록)', () => {
+  const A = '2026-11-13T05:00:00.000Z'; // 한국 11/13 14시
+  const B = '2026-11-14T01:00:00.000Z'; // 한국 11/14 10시
+  const C = '2026-11-13T16:30:00.000Z'; // UTC 로는 11/13, 한국은 11/14 01:30
+
+  it('날짜마다 코스와 코스 밖 활동을 나누고, 최근 날짜부터', () => {
+    const records = [
+      rec('step4-coach', { course: { id: A, order: 1, of: 4 }, start: A }),
+      rec('step2-rps', { start: '2026-11-13T06:00:00.000Z' }),
+      rec('step1-memory', { start: B }),
+    ];
+    const metas = [{ id: A, plan: PLAN, skipped: [], finished: false, endedAt: null }];
+    const days = groupByDay(records, metas);
+    expect(days.map((d) => d.date)).toEqual(['2026-11-14', '2026-11-13']);
+    expect(days[0].courses).toEqual([]);
+    expect(days[0].singles.map((r) => r.program)).toEqual(['step1-memory']);
+    expect(days[1].courses.map((c) => c.courseId)).toEqual([A]);
+    expect(days[1].singles.map((r) => r.program)).toEqual(['step2-rps']);
+  });
+
+  it('하루 안에서도 최근 것부터 (코스, 코스 밖 활동 모두)', () => {
+    const A2 = '2026-11-13T07:00:00.000Z';
+    const records = [
+      rec('step4-coach', { course: { id: A, order: 1, of: 4 }, start: A }),
+      rec('step4-coach', { course: { id: A2, order: 1, of: 4 }, start: A2 }),
+      rec('step2-rps', { start: '2026-11-13T03:00:00.000Z' }),
+      rec('step3-stroop', { start: '2026-11-13T08:00:00.000Z' }),
+    ];
+    const [day] = groupByDay(records, []);
+    expect(day.courses.map((c) => c.courseId)).toEqual([A2, A]);
+    expect(day.singles.map((r) => r.program)).toEqual(['step3-stroop', 'step2-rps']);
+  });
+
+  it('날짜는 한국 시간으로 센다', () => {
+    const [day] = groupByDay([rec('step2-rps', { start: C })], []);
+    expect(day.date).toBe('2026-11-14');
+  });
+
+  it('진행 정보만 있고 기록이 없는 코스(바로 그만둠)도 그날에 보인다', () => {
+    const metas = [{ id: A, plan: PLAN, skipped: [1], finished: false, endedAt: A }];
+    const [day] = groupByDay([], metas);
+    expect(day.date).toBe('2026-11-13');
+    expect(day.courses[0].activities.map((a) => a.status)).toEqual(['skipped', 'notPlayed', 'notPlayed', 'notPlayed']);
+  });
+
+  it('시작 시각을 읽을 수 없는 기록은 날짜 없음(null)으로 맨 뒤', () => {
+    const days = groupByDay([rec('step2-rps', { start: '' }), rec('step1-memory', { start: A })], []);
+    expect(days.map((d) => d.date)).toEqual(['2026-11-13', null]);
+  });
+
+  it('기록이 없으면 빈 목록', () => {
+    expect(groupByDay([], [])).toEqual([]);
+  });
+});
+
+describe('코스 사용자 (#82)', () => {
+  const id = '2026-11-16T05:00:00.000Z';
+  it('요약에 진행 정보의 userId 를 먼저, 없으면 기록의 userId', () => {
+    const tagged = [rec('step4-coach', { course: { id, order: 1, of: 4, userId: 'u-b' } })];
+    expect(summarizeCourse({ id, userId: 'u-a', plan: PLAN, skipped: [] }, tagged)).toMatchObject({ userId: 'u-a', who: WHO.user });
+    expect(summarizeCourse({ id, plan: PLAN, skipped: [] }, tagged)).toMatchObject({ userId: 'u-b', who: WHO.user });
+  });
+
+  it('손님(userId 키가 있고 null)과 로그인 기능 전 코스(키 없음)를 나눈다', () => {
+    expect(courseUser({ id, userId: null })).toEqual({ userId: null, who: WHO.guest });
+    expect(courseUser({ id })).toEqual({ userId: null, who: WHO.unknown });
+    // 진행 정보에 키가 없어도 기록에 userId: null 이 있으면 손님
+    const guestRec = [rec('step4-coach', { course: { id, order: 1, of: 4, userId: null } })];
+    expect(courseUser({ id }, guestRec)).toEqual({ userId: null, who: WHO.guest });
+    // 예전 기록 (키 없음)
+    const oldRec = [rec('step4-coach', { course: { id, order: 1, of: 4 } })];
+    expect(courseUser({ id }, oldRec)).toEqual({ userId: null, who: WHO.unknown });
+  });
+
+  it('진행 정보가 지워진 코스도 기록으로 누가 했는지 찾는다', () => {
+    const records = [
+      rec('step4-coach', { course: { id, order: 1, of: 4, userId: 'u-a' } }),
+      rec('step4-coach', { course: { id: 'G', order: 1, of: 4, userId: null } }),
+      rec('step4-coach', { course: { id: 'OLD', order: 1, of: 4 } }),
+    ];
+    const who = Object.fromEntries(groupCourses(records, []).map((c) => [c.courseId, c.who]));
+    expect(who).toEqual({ [id]: WHO.user, G: WHO.guest, OLD: WHO.unknown });
+  });
+
+  it('날짜별 기록을 한 분의 코스만 남긴다. 코스 밖 활동은 사용자를 고르면 빠진다', () => {
+    const days = [
+      {
+        date: '2026-11-16',
+        courses: [
+          { courseId: 'A', userId: 'u-a', who: 'user' },
+          { courseId: 'B', userId: null, who: 'guest' },
+          { courseId: 'OLD', userId: null, who: 'unknown' },
+        ],
+        singles: [{ program: 'x' }],
+      },
+      { date: '2026-11-15', courses: [{ courseId: 'C', userId: 'u-b', who: 'user' }], singles: [] },
+    ];
+    expect(filterDaysByUser(days, null)).toBe(days);
+    expect(filterDaysByUser(days, 'u-a')).toEqual([{ date: '2026-11-16', courses: [{ courseId: 'A', userId: 'u-a', who: 'user' }], singles: [] }]);
+    // 손님을 고르면 진짜 손님 코스(B)만. 로그인 기능 전 코스(OLD)는 "모든 분"에서만
+    expect(filterDaysByUser(days, GUEST).map((d) => d.courses.map((c) => c.courseId))).toEqual([['B']]);
+    expect(filterDaysByUser(days, 'u-zz')).toEqual([]);
   });
 });
