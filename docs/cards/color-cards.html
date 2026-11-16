@@ -6,7 +6,7 @@
 <style>
   /* 색 인식(WonderCam Color Recognition)용 단색 카드
      - 위: 색 정사각형 90 x 90 mm (무늬·글자 없음, 로봇이 한 덩어리로 보게)
-     - 아래: 흰 띠 + 큰 색 이름 + 명언 한 줄 (색만으로 구분하지 않기, 잡는 곳)
+     - 아래: 흰 띠 + 큰 색 이름 (색만으로 구분하지 않기, 잡는 곳)
      - 색은 서로 색상 차이가 크게: 초록은 파랑과 헷갈리지 않게 노란빛 쪽 */
   :root {
     --red: #e3121b;
@@ -31,16 +31,12 @@
   .label { height: 43mm; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .name { font-size: 24mm; font-weight: 900; letter-spacing: 3mm; line-height: 1; margin-left: 3mm; }
   .sub { font-size: 3.4mm; color: #555; margin-top: 3mm; letter-spacing: .3mm; }
-  /* 명언: 색 이름 아래 한 줄 (색 정사각형에는 글자를 넣지 않는다) */
-  .quote { font-family: "Batang", "Nanum Myeongjo", serif; font-size: 3.6mm; font-weight: 700; line-height: 1.35;
-    text-align: center; margin-top: 2.5mm; padding: 0 4mm; word-break: keep-all; }
-  .quote .who { font-family: "Malgun Gothic", sans-serif; font-weight: 400; font-size: 2.8mm; color: #555; white-space: nowrap; }
 
   /* 큰 카드: A4에 2장 (130 x 130 색 + 띠) */
   .big { position: absolute; left: 40mm; width: 130mm; outline: 0.25mm dashed var(--cut); }
   .big .swatch { width: 130mm; height: 100mm; }
   .big .label { height: 34mm; }
-  .big .name { font-size: 18mm; }
+  .big .name { font-size: 22mm; }
   .big.top { top: 10mm; }
   .big.bottom { top: 153mm; }
 
@@ -64,10 +60,10 @@
 <!-- 1쪽: 앞면 -->
 <section class="page">
   <div class="sheet">
-    <div class="card"><div class="swatch" style="background:var(--red)"></div><div class="label"><div class="name">빨강</div><div class="quote">죽고자 하면 살 것이요, 살고자 하면 죽을 것이다. <span class="who">이순신 · 조선 수군 장군</span></div><div class="sub">흰 부분을 잡고 색을 로봇 카메라에</div></div></div>
-    <div class="card"><div class="swatch" style="background:var(--blue)"></div><div class="label"><div class="name">파랑</div><div class="quote">세계는 넓고 할 일은 많다. <span class="who">김우중 · 대우그룹 창업자</span></div><div class="sub">흰 부분을 잡고 색을 로봇 카메라에</div></div></div>
-    <div class="card"><div class="swatch" style="background:var(--yellow)"></div><div class="label"><div class="name">노랑</div><div class="quote">이봐, 해 봤어? <span class="who">정주영 · 현대그룹 창업자</span></div><div class="sub">흰 부분을 잡고 색을 로봇 카메라에</div></div></div>
-    <div class="card"><div class="swatch" style="background:var(--green)"></div><div class="label"><div class="name">초록</div><div class="quote">짧은 인생을 영원 조국에 <span class="who">박태준 · 포스코 창업자</span></div><div class="sub">흰 부분을 잡고 색을 로봇 카메라에</div></div></div>
+    <div class="card"><div class="swatch" style="background:var(--red)"></div><div class="label"><div class="name">빨강</div><div class="sub">흰 부분을 잡고 색을 로봇 카메라에</div></div></div>
+    <div class="card"><div class="swatch" style="background:var(--blue)"></div><div class="label"><div class="name">파랑</div><div class="sub">흰 부분을 잡고 색을 로봇 카메라에</div></div></div>
+    <div class="card"><div class="swatch" style="background:var(--yellow)"></div><div class="label"><div class="name">노랑</div><div class="sub">흰 부분을 잡고 색을 로봇 카메라에</div></div></div>
+    <div class="card"><div class="swatch" style="background:var(--green)"></div><div class="label"><div class="name">초록</div><div class="sub">흰 부분을 잡고 색을 로봇 카메라에</div></div></div>
   </div>
   <div class="head"><span>STEP 3 색깔손 · 색 인식용 카드 · 앞면 (점선을 따라 자르기)</span><span>1</span></div>
 </section>
@@ -75,23 +71,23 @@
 <!-- 2쪽: 뒷면 (양면 인쇄 "긴 쪽으로 넘기기"면 앞면과 같은 색이 겹치도록 좌우를 바꿈) -->
 <section class="page">
   <div class="sheet">
-    <div class="card"><div class="swatch" style="background:var(--blue)"></div><div class="label"><div class="name">파랑</div><div class="quote">세계는 넓고 할 일은 많다. <span class="who">김우중 · 대우그룹 창업자</span></div><div class="sub">뒷면</div></div></div>
-    <div class="card"><div class="swatch" style="background:var(--red)"></div><div class="label"><div class="name">빨강</div><div class="quote">죽고자 하면 살 것이요, 살고자 하면 죽을 것이다. <span class="who">이순신 · 조선 수군 장군</span></div><div class="sub">뒷면</div></div></div>
-    <div class="card"><div class="swatch" style="background:var(--green)"></div><div class="label"><div class="name">초록</div><div class="quote">짧은 인생을 영원 조국에 <span class="who">박태준 · 포스코 창업자</span></div><div class="sub">뒷면</div></div></div>
-    <div class="card"><div class="swatch" style="background:var(--yellow)"></div><div class="label"><div class="name">노랑</div><div class="quote">이봐, 해 봤어? <span class="who">정주영 · 현대그룹 창업자</span></div><div class="sub">뒷면</div></div></div>
+    <div class="card"><div class="swatch" style="background:var(--blue)"></div><div class="label"><div class="name">파랑</div><div class="sub">뒷면</div></div></div>
+    <div class="card"><div class="swatch" style="background:var(--red)"></div><div class="label"><div class="name">빨강</div><div class="sub">뒷면</div></div></div>
+    <div class="card"><div class="swatch" style="background:var(--green)"></div><div class="label"><div class="name">초록</div><div class="sub">뒷면</div></div></div>
+    <div class="card"><div class="swatch" style="background:var(--yellow)"></div><div class="label"><div class="name">노랑</div><div class="sub">뒷면</div></div></div>
   </div>
   <div class="head"><span>뒷면 · 양면 인쇄는 "긴 쪽으로 넘기기". 한 면만 쓸 거면 이 쪽은 인쇄하지 않아도 됩니다</span><span>2</span></div>
 </section>
 
 <!-- 3~4쪽: 큰 카드 (멀리서 보여 줄 때, 시연용) -->
 <section class="page">
-  <div class="big top"><div class="swatch" style="background:var(--red)"></div><div class="label"><div class="name">빨강</div><div class="quote">죽고자 하면 살 것이요, 살고자 하면 죽을 것이다. <span class="who">이순신 · 조선 수군 장군</span></div></div></div>
-  <div class="big bottom"><div class="swatch" style="background:var(--blue)"></div><div class="label"><div class="name">파랑</div><div class="quote">세계는 넓고 할 일은 많다. <span class="who">김우중 · 대우그룹 창업자</span></div></div></div>
+  <div class="big top"><div class="swatch" style="background:var(--red)"></div><div class="label"><div class="name">빨강</div></div></div>
+  <div class="big bottom"><div class="swatch" style="background:var(--blue)"></div><div class="label"><div class="name">파랑</div></div></div>
   <div class="head"><span>큰 카드 (멀리서 보여 줄 때) · 점선을 따라 자르기</span><span>3</span></div>
 </section>
 <section class="page">
-  <div class="big top"><div class="swatch" style="background:var(--yellow)"></div><div class="label"><div class="name">노랑</div><div class="quote">이봐, 해 봤어? <span class="who">정주영 · 현대그룹 창업자</span></div></div></div>
-  <div class="big bottom"><div class="swatch" style="background:var(--green)"></div><div class="label"><div class="name">초록</div><div class="quote">짧은 인생을 영원 조국에 <span class="who">박태준 · 포스코 창업자</span></div></div></div>
+  <div class="big top"><div class="swatch" style="background:var(--yellow)"></div><div class="label"><div class="name">노랑</div></div></div>
+  <div class="big bottom"><div class="swatch" style="background:var(--green)"></div><div class="label"><div class="name">초록</div></div></div>
   <div class="head"><span>큰 카드 (멀리서 보여 줄 때) · 점선을 따라 자르기</span><span>4</span></div>
 </section>
 
