@@ -41,10 +41,32 @@ export function newCourseId(now = new Date()) {
 /**
  * 기록에 코스 정보를 붙인다. 원래 기록과 detail 은 바꾸지 않고 새 객체를 돌려준다.
  * @param record  프로그램이 ctx.log.record 에 넘긴 값
- * @param course  { id, order, of }
+ * @param course  { id, order, of, userId }
+ *   userId: 코스 시작 때 로그인한 사용자 (#82). 손님이면 null. 넘기지 않으면 붙이지 않는다 (예전 기록과 같은 모양)
  */
-export function tagRecord(record, { id, order, of }) {
-  return { ...record, detail: { ...(record.detail ?? {}), course: { id, order, of } } };
+export function tagRecord(record, { id, order, of, userId }) {
+  const course = userId === undefined ? { id, order, of } : { id, order, of, userId };
+  return { ...record, detail: { ...(record.detail ?? {}), course } };
+}
+
+/** 코스를 누가 했는지: 등록한 분 / 손님 / 알 수 없음(로그인 기능 #82 전 코스) */
+export const WHO = { user: 'user', guest: 'guest', unknown: 'unknown' };
+
+/**
+ * 코스를 누가 했는지 → { userId, who }.
+ * 진행 정보(meta)를 먼저 보고, 없으면 그 코스 기록의 detail.course 를 본다.
+ *   - userId 값이 있으면 등록한 분          → { userId: 'u-…', who: 'user' }
+ *   - userId 키가 있고 값이 null 이면 손님  → { userId: null, who: 'guest' }
+ *   - userId 키가 아예 없으면 로그인 기능 전 코스 → { userId: null, who: 'unknown' }
+ * 손님과 예전 코스는 둘 다 userId 가 null 이라 "키가 있는지"로 나눈다.
+ */
+export function courseUser(meta, records = []) {
+  const fromValue = (userId) =>
+    typeof userId === 'string' ? { userId, who: WHO.user } : { userId: null, who: WHO.guest };
+  if (meta && 'userId' in meta) return fromValue(meta.userId);
+  const tagged = records.map(courseOf).find((c) => c?.id === meta?.id && 'userId' in c);
+  if (tagged) return fromValue(tagged.userId);
+  return { userId: null, who: WHO.unknown };
 }
 
 /**
@@ -142,6 +164,8 @@ export function summarizeCourse(meta, records, timeZone = TIME_ZONE) {
   return {
     version: SUMMARY_VERSION,
     courseId: meta.id,
+    // 누가 한 코스인지 (#82). userId: 손님·로그인 기능 전 코스는 null, who: 'user' | 'guest' | 'unknown'
+    ...courseUser(meta, mine),
     date: localDate(meta.id, timeZone),
     startedAt: meta.id,
     endedAt: meta.endedAt ?? ends[ends.length - 1] ?? null,
@@ -205,6 +229,28 @@ export function groupByDay(records, metas = [], timeZone = TIME_ZONE) {
     if (b.date === null) return -1;
     return newestFirst(a.date, b.date);
   });
+}
+
+/** 결과 화면에서 손님(로그인 없이 한 코스)을 고를 때 쓰는 값 */
+export const GUEST = 'guest';
+
+/**
+ * 날짜별 기록(groupByDay 결과)을 한 분의 코스만 남긴다 (#82).
+ * 코스 밖에서 하나만 한 활동은 로그인을 하지 않으므로 사용자를 고르면 빠진다.
+ * @param days  groupByDay() 결과
+ * @param user  null·undefined = 모든 분, GUEST = 손님(who 'guest'), 그 밖은 userId
+ *              로그인 기능 전 코스(who 'unknown')는 "모든 분"에서만 보인다
+ */
+export function filterDaysByUser(days, user) {
+  if (user === null || user === undefined) return days;
+  const want = user === GUEST ? null : user;
+  return days
+    .map((day) => ({
+      ...day,
+      courses: day.courses.filter((c) => (want === null ? c.who === WHO.guest : c.userId === want)),
+      singles: [],
+    }))
+    .filter((day) => day.courses.length > 0);
 }
 
 /**

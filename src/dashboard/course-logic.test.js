@@ -8,6 +8,10 @@ import {
   localDate,
   weightedReaction,
   courseOf,
+  courseUser,
+  WHO,
+  filterDaysByUser,
+  GUEST,
   summarizeCourse,
   groupCourses,
   groupByDay,
@@ -59,6 +63,10 @@ describe('tagRecord', () => {
     const t = tagRecord(r, { id: 'C1', order: 2, of: 4 });
     expect(t.detail).toEqual({ difficulty: 'easy', course: { id: 'C1', order: 2, of: 4 } });
     expect(r.detail).toEqual({ difficulty: 'easy' }); // 원본은 그대로
+  });
+  it('userId 를 넘기면 detail.course 에 함께 붙인다 (손님은 null, #82)', () => {
+    expect(tagRecord({ program: 'x' }, { id: 'C1', order: 1, of: 4, userId: 'u-1' }).detail.course).toEqual({ id: 'C1', order: 1, of: 4, userId: 'u-1' });
+    expect(tagRecord({ program: 'x' }, { id: 'C1', order: 1, of: 4, userId: null }).detail.course.userId).toBeNull();
   });
   it('detail 이 없어도 된다', () => {
     expect(tagRecord({ program: 'x' }, { id: 'C1', order: 1, of: 4 }).detail).toEqual({ course: { id: 'C1', order: 1, of: 4 } });
@@ -273,5 +281,55 @@ describe('groupByDay (결과 화면 날짜별 기록)', () => {
 
   it('기록이 없으면 빈 목록', () => {
     expect(groupByDay([], [])).toEqual([]);
+  });
+});
+
+describe('코스 사용자 (#82)', () => {
+  const id = '2026-11-16T05:00:00.000Z';
+  it('요약에 진행 정보의 userId 를 먼저, 없으면 기록의 userId', () => {
+    const tagged = [rec('step4-coach', { course: { id, order: 1, of: 4, userId: 'u-b' } })];
+    expect(summarizeCourse({ id, userId: 'u-a', plan: PLAN, skipped: [] }, tagged)).toMatchObject({ userId: 'u-a', who: WHO.user });
+    expect(summarizeCourse({ id, plan: PLAN, skipped: [] }, tagged)).toMatchObject({ userId: 'u-b', who: WHO.user });
+  });
+
+  it('손님(userId 키가 있고 null)과 로그인 기능 전 코스(키 없음)를 나눈다', () => {
+    expect(courseUser({ id, userId: null })).toEqual({ userId: null, who: WHO.guest });
+    expect(courseUser({ id })).toEqual({ userId: null, who: WHO.unknown });
+    // 진행 정보에 키가 없어도 기록에 userId: null 이 있으면 손님
+    const guestRec = [rec('step4-coach', { course: { id, order: 1, of: 4, userId: null } })];
+    expect(courseUser({ id }, guestRec)).toEqual({ userId: null, who: WHO.guest });
+    // 예전 기록 (키 없음)
+    const oldRec = [rec('step4-coach', { course: { id, order: 1, of: 4 } })];
+    expect(courseUser({ id }, oldRec)).toEqual({ userId: null, who: WHO.unknown });
+  });
+
+  it('진행 정보가 지워진 코스도 기록으로 누가 했는지 찾는다', () => {
+    const records = [
+      rec('step4-coach', { course: { id, order: 1, of: 4, userId: 'u-a' } }),
+      rec('step4-coach', { course: { id: 'G', order: 1, of: 4, userId: null } }),
+      rec('step4-coach', { course: { id: 'OLD', order: 1, of: 4 } }),
+    ];
+    const who = Object.fromEntries(groupCourses(records, []).map((c) => [c.courseId, c.who]));
+    expect(who).toEqual({ [id]: WHO.user, G: WHO.guest, OLD: WHO.unknown });
+  });
+
+  it('날짜별 기록을 한 분의 코스만 남긴다. 코스 밖 활동은 사용자를 고르면 빠진다', () => {
+    const days = [
+      {
+        date: '2026-11-16',
+        courses: [
+          { courseId: 'A', userId: 'u-a', who: 'user' },
+          { courseId: 'B', userId: null, who: 'guest' },
+          { courseId: 'OLD', userId: null, who: 'unknown' },
+        ],
+        singles: [{ program: 'x' }],
+      },
+      { date: '2026-11-15', courses: [{ courseId: 'C', userId: 'u-b', who: 'user' }], singles: [] },
+    ];
+    expect(filterDaysByUser(days, null)).toBe(days);
+    expect(filterDaysByUser(days, 'u-a')).toEqual([{ date: '2026-11-16', courses: [{ courseId: 'A', userId: 'u-a', who: 'user' }], singles: [] }]);
+    // 손님을 고르면 진짜 손님 코스(B)만. 로그인 기능 전 코스(OLD)는 "모든 분"에서만
+    expect(filterDaysByUser(days, GUEST).map((d) => d.courses.map((c) => c.courseId))).toEqual([['B']]);
+    expect(filterDaysByUser(days, 'u-zz')).toEqual([]);
   });
 });
