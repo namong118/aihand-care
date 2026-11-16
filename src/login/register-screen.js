@@ -63,7 +63,7 @@ export function createRegisterScreen(container, { onCancel }) {
         if (e.key === 'Enter') submit();
       });
       set(
-        h('p', { class: 'big-prompt' }, '실명 대신 부르실 호칭을 적어 주세요.'),
+        h('p', { class: 'big-prompt' }, '실명 대신 불러 드릴 호칭을 적어 주세요.'),
         error && message(error, 'retry'),
         h('div', { class: 'row' }, input, button('다음', submit)),
       );
