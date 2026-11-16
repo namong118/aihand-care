@@ -1,7 +1,7 @@
 // 설정 영역: 상단 바 "설정" 또는 홈 제목 아래 "바꾸기"를 누르면 상단 바 바로 아래에 열린다.
 // 보호자·선생님이 활동 전에 난이도와 진행 속도를 맞춘다.
 
-import { h } from '../ui/components.js';
+import { h, button } from '../ui/components.js';
 import { outlineButton } from './statusbar.js';
 
 export const DIFFICULTIES = [
@@ -42,9 +42,10 @@ function choiceRow(title, list, current, onPick) {
 
 /**
  * @param el   설정 영역 자리. 닫혀 있으면 비워서 숨긴다
- * @param opts { open, settings, setSetting(key, value), close() }
+ * @param opts { open, settings, setSetting(key, value), close(), openRegister() }
+ *   openRegister: 사용자 등록 화면(#84)으로. 없으면 버튼을 그리지 않는다
  */
-export function renderSettings(el, { open, settings, setSetting, close }) {
+export function renderSettings(el, { open, settings, setSetting, close, openRegister }) {
   el.innerHTML = '';
   el.hidden = !open;
   if (!open) return;
@@ -60,6 +61,15 @@ export function renderSettings(el, { open, settings, setSetting, close }) {
         { class: 'settings-note' },
         '보호자나 선생님이 활동 전에 맞춰 두는 항목입니다. 로봇 동작 속도도 함께 바뀝니다.',
       ),
+      // 사용자 등록은 선생님이 한다 (#82, 등록 화면 #84). 어르신 화면(홈)에는 두지 않는다
+      openRegister
+        ? h(
+            'div',
+            { class: 'settings-row' },
+            h('span', { class: 'settings-label' }, '사용자'),
+            h('div', { class: 'settings-choices' }, button('사용자 등록하기', openRegister, { variant: 'secondary' })),
+          )
+        : null,
     ),
   );
 }

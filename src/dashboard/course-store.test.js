@@ -11,7 +11,13 @@ describe('createCourseStore', () => {
     store.skip('C1', 2);
     store.skip('C1', 2); // 두 번 눌러도 한 번
     store.end('C1', { finished: true, endedAt: '2026-11-13T05:30:00.000Z' });
-    expect(store.get('C1')).toEqual({ id: 'C1', plan: PLAN, skipped: [2], finished: true, endedAt: '2026-11-13T05:30:00.000Z' });
+    expect(store.get('C1')).toEqual({ id: 'C1', userId: null, plan: PLAN, skipped: [2], finished: true, endedAt: '2026-11-13T05:30:00.000Z' });
+  });
+
+  it('로그인한 분의 userId 를 저장한다 (손님은 null, #82)', () => {
+    const store = createCourseStore({ storage: createMemoryStorage() });
+    store.start({ id: 'C1', plan: PLAN, userId: 'u-2026-11-13T10:00:00.000Z' });
+    expect(store.get('C1').userId).toBe('u-2026-11-13T10:00:00.000Z');
   });
 
   it('그만하기는 finished false', () => {
