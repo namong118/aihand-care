@@ -1,7 +1,9 @@
-# aihand-care
+# 손잇다 (SON:IT) — aihand-care
 
 AIHand 로봇손과 웹캠 손동작 인식을 이용한 고령자 인지·손운동 활동 웹 앱.
 2026 청년 피지컬AI 일경험 프로젝트, 4인 팀. 제출 12/7, 발표 12/10.
+
+앱 이름은 **손잇다**, 영문 **SON:IT** (`docs/decisions.md` 0번). 쌍점은 화면에 보이는 이름에만 쓰고, 파일·주소에는 `sonit`을 쓴다. 저장소·배포 주소·localStorage 키의 `aihand-care`는 바꾸지 않는다.
 
 프로그램 4종: STEP 1 숫자 기억, STEP 2 사고력 가위바위보, STEP 3 색깔손, STEP 4 손운동 코칭.
 
