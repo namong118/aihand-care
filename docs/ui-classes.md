@@ -49,4 +49,4 @@ h('div', { class: 'act-answers', style: { 'grid-template-columns': 'repeat(3, mi
 
 ## 7인치(1280×720)
 
-답 버튼과 건너뛰기는 코스 막대가 있어도 스크롤 없이 첫 화면에 보여야 합니다. 2026-11-16 Mock 화면 기준 맨 아래 버튼 위치: STEP 1 700px, STEP 2 708px, STEP 3 629px, STEP 4 708px.
+답 버튼과 건너뛰기는 코스 막대가 있어도 스크롤 없이 첫 화면에 보여야 합니다. 2026-11-16 Mock 화면 기준 맨 아래 버튼 위치: STEP 1 708px, STEP 2 716px, STEP 3 629px, STEP 4 653px.
