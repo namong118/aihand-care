@@ -180,7 +180,9 @@ p  { margin: 0 0 12px; }
   gap: 16px 24px;
 }
 .topbar-brand { display: flex; align-items: center; gap: 10px; flex-grow: 1; }
+.topbar-logo { width: 36px; height: 36px; border-radius: 8px; }
 .topbar-name { font-size: var(--sz-brand); font-weight: 700; letter-spacing: -0.01em; }
+.topbar-name-en { font-size: 16px; font-weight: 600; color: var(--c-text-pill); letter-spacing: 0.04em; }
 .topbar-status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .topbar-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .icon { display: inline-flex; line-height: 0; }

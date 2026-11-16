@@ -1,4 +1,4 @@
-// 상단 바: 앱 이름, 장치 상태 알약 2개(AIHand, 손 인식)와 연결 버튼, "활동 기록"·"설정" 버튼.
+// 상단 바: 앱 이름(손잇다 SON:IT), 장치 상태 알약 2개(AIHand, 손 인식)와 연결 버튼, "활동 기록"·"설정" 버튼.
 // 웹캠 측정 정보(FPS 등)·WonderCam 상태는 맨 아래 개발자 입력 영역에 보여준다 (devpanel.js).
 // 상태는 색만이 아니라 글자로도 보여준다.
 
@@ -15,7 +15,8 @@ export function svgIcon(markup) {
   return wrap;
 }
 
-const LOGO = `<svg width="30" height="30" viewBox="0 0 30 30" xmlns="${SVG_NS}"><rect x="3" y="9" width="4.5" height="13" rx="2.25" fill="var(--c-accent)"/><rect x="9" y="3" width="4.5" height="19" rx="2.25" fill="var(--c-accent)"/><rect x="15" y="3" width="4.5" height="19" rx="2.25" fill="var(--c-accent)"/><rect x="21" y="12" width="4.5" height="10" rx="2.25" fill="#AFC0EA"/><rect x="2" y="18" width="25" height="10" rx="4" fill="#DCE4F7"/></svg>`;
+// 앱 아이콘 (public/icons/). 배포 주소(/aihand-care/)에서도 맞게 BASE_URL 을 붙인다
+const LOGO_SRC = `${import.meta.env.BASE_URL}icons/sonit-64.png`;
 const ICON_CHART = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="${SVG_NS}"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15l4-4 3 3 5-6"/></svg>`;
 const ICON_GEAR = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="${SVG_NS}"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
 
@@ -90,7 +91,13 @@ export function renderStatusbar(el, { devices, actions = {}, settingsOpen = fals
     h(
       'div',
       { class: 'topbar' },
-      h('div', { class: 'topbar-brand' }, svgIcon(LOGO), h('span', { class: 'topbar-name' }, 'aihand-care')),
+      h(
+        'div',
+        { class: 'topbar-brand' },
+        h('img', { class: 'topbar-logo', src: LOGO_SRC, alt: '', width: 36, height: 36 }),
+        h('span', { class: 'topbar-name' }, '손잇다'),
+        h('span', { class: 'topbar-name-en', lang: 'en' }, 'SON:IT'),
+      ),
       h(
         'div',
         { class: 'topbar-status', role: 'status', 'aria-label': '장치 상태' },
