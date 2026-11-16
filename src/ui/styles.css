@@ -1,40 +1,43 @@
 /* 고령자 UX 기본값: 본문 24px 이상, 버튼 최소 높이 64px, 고대비.
    색만으로 정보를 전달하지 않는다 (✔, ○, ↻ 같은 글자 표시를 함께 쓴다).
-   홈·상단 바·설정·개발자 입력의 색과 크기는 시안(Main.dc.html) 값이며 아래 --c-*, --step*, --sz-* 변수에 모았다. */
+   색과 크기는 디자인 시안 v11(파스텔, 2026-11-16 확정) 값이며 아래 --c-*, --step*, --sz-* 변수에 모았다.
+   원칙: 연회색 바탕 위 흰 면으로 나눈다(테두리·그림자·그라데이션 없음). 진한 색은 아이콘 남색 하나(주 버튼·선택). */
 
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap');
 
 :root {
   /* ---- 시안 색 ---- */
-  --c-page: #F3F5F8;        /* 페이지 배경 */
-  --c-text: #17202E;        /* 본문 글자 */
-  --c-text-sub: #4A5464;    /* 카드 설명, 회색 알약 글자 */
-  --c-text-muted: #5A6474;  /* 안내 한 줄 */
-  --c-text-pill: #39414F;   /* 설정값 알약 글자 */
-  --c-surface: #FFFFFF;     /* 카드·상단 바 배경 */
-  --c-line: #E1E5EB;        /* 카드·상단 바 테두리 */
-  --c-line-strong: #D5DAE2; /* 버튼·설정 테두리 */
-  --c-chip: #EEF0F3;        /* 회색 알약 */
-  /* 강조색 3개. 앱 아이콘 색이 정해지면 이 3개 값만 바꾼다 (흰 글자와 대비 4.5:1 이상) */
-  --c-accent: #2F5BD3;        /* 주요 버튼, 선택된 버튼, 글자 버튼 */
-  --c-accent-strong: #1E3F99; /* 강조 글자, 주요 버튼 누를 때 */
-  --c-accent-soft: #EEF2FC;   /* 연한 배경: 열린 "설정" 버튼, 안내 상자 */
-  --c-ok-bg: #E7F5EE;       /* AIHand 연결됨 */
-  --c-ok-fg: #135C3B;
-  --c-ok-dot: #1F9D61;
-  --c-dev-line: #C4CAD4;    /* 개발자 입력 점선 */
-  --c-dev-bg: #FAFBFC;
+  --c-page: #F3F5F9;        /* 페이지 배경 (연회색) */
+  --c-text: #1B2B4F;        /* 본문 글자 (아이콘 남색 계열) */
+  --c-text-sub: #3B4560;    /* 카드 설명, 회색 알약 글자 */
+  --c-text-muted: #636D88;  /* 안내 한 줄, 날짜 */
+  --c-text-pill: #3B4560;   /* 설정값 알약 글자 */
+  --c-surface: #FFFFFF;     /* 카드·패널 (테두리 없이 흰 면) */
+  --c-line: #E4E8F0;        /* 흰 바탕 위 구분선, 테두리 버튼 */
+  --c-line-strong: #DCE1EA; /* 버튼·입력 테두리 */
+  --c-chip: #EDF0F6;        /* 회색 알약, 웹캠 자리 */
+  /* 강조색 3개: 앱 아이콘 남색 (흰 글자와 대비 4.5:1 이상) */
+  --c-accent: #1E3A75;        /* 주 버튼, 선택된 버튼, 글자 버튼 */
+  --c-accent-strong: #14274F; /* 주 버튼 누를 때 */
+  --c-accent-soft: #DFE8FB;   /* 연한 배경: 열린 "설정" 버튼, 안내 상자 */
+  --c-ok-bg: #D7EFE3;       /* 잘 됐어요 안내 */
+  --c-ok-fg: #1D6B4C;
+  --c-ok-dot: #3BB273;      /* 연결됨 점 */
+  --c-dev-line: #C9CFDA;    /* 개발자 입력 점선 */
+  --c-dev-bg: #F8F9FC;
 
-  /* STEP 별 색: 알약 배경 / 알약 글자 / 버튼 (step1-soft 는 STEP 1 그림의 접힌 손가락) */
-  --step1-bg: #E6ECFB; --step1-fg: #1E3F99; --step1-btn: #2F5BD3; --step1-soft: #C9D5F5;
-  --step2-bg: #FBEBDD; --step2-fg: #7A3A05; --step2-btn: #B85A0C;
-  --step3-bg: #DDF2EC; --step3-fg: #0B5547; --step3-btn: #0F7A66;
-  --step4-bg: #ECE5FA; --step4-fg: #44268F; --step4-btn: #6A42C2;
+  /* STEP 별 색 (파스텔 면 / 같은 계열 진한 글자·그림 / 진한 버튼). 코스 순서 색:
+     손운동(STEP 4) 하늘, 가위바위보(STEP 2) 버터, 숫자 기억(STEP 1) 민트, 색깔손(STEP 3) 라일락.
+     글자색은 바탕과 대비 5:1 이상. step1-soft 는 접힌 손가락처럼 옅은 그림용 */
+  --step1-bg: #D7EFE3; --step1-fg: #1D6B4C; --step1-btn: #1D6B4C; --step1-soft: #A9D9C2;
+  --step2-bg: #FAEFCC; --step2-fg: #7A5200; --step2-btn: #7A5200;
+  --step3-bg: #E9E2F9; --step3-fg: #5B3FA6; --step3-btn: #5B3FA6;
+  --step4-bg: #DFE8FB; --step4-fg: #2D4E9E; --step4-btn: #2D4E9E;
 
   /* ---- 시안 크기 ---- */
   --sz-page-max: 1200px;
   --sz-page-pad-x: 40px;
-  --sz-brand: 22px;
+  --sz-brand: 20px;
   --sz-pill: 16px;
   --sz-topbar-btn: 17px;
   --sz-hero: 44px;
@@ -49,10 +52,10 @@
   --h-choice: 52px;         /* 설정 선택 버튼 높이 */
   --h-start: 64px;          /* 시작하기 버튼 높이 */
   --h-min: 44px;            /* 모든 버튼 최소 높이 */
-  --r-card: 24px;
-  --r-panel: 20px;
+  --r-card: 28px;
+  --r-panel: 24px;
   --r-btn: 12px;
-  --r-start: 16px;
+  --r-start: 20px;
   --gap-cards: 24px;
   --font-main: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans CJK KR', sans-serif; /* Noto: 라즈베리파이 오프라인 (fonts-noto-cjk) */
 
@@ -67,8 +70,8 @@
   --primary-fg: #FFFFFF;
   --good: var(--c-ok-fg);
   --good-bg: var(--c-ok-bg);
-  --retry: #7A3A05;
-  --retry-bg: #FBEBDD;
+  --retry: var(--step2-fg);
+  --retry-bg: var(--step2-bg);
   --info-bg: var(--c-accent-soft);
   --focus: #ff9e00;
   --robot-up: #ffd8a8;
@@ -95,6 +98,7 @@ body {
 button { font-family: inherit; }
 [hidden] { display: none !important; }
 
+h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
 h1 { font-size: 40px; margin: 0 0 16px; }
 h2 { font-size: 30px; margin: 0 0 12px; }
 h3 { font-size: 26px; margin: 0 0 8px; }
@@ -104,6 +108,12 @@ p  { margin: 0 0 12px; }
   outline: 5px solid var(--focus);
   outline-offset: 3px;
 }
+
+/* STEP 색 묶음: step1~step4 클래스가 붙은 곳 안에서 --step-bg/-fg/-btn 으로 쓴다 */
+.step1 { --step-bg: var(--step1-bg); --step-fg: var(--step1-fg); --step-btn: var(--step1-btn); }
+.step2 { --step-bg: var(--step2-bg); --step-fg: var(--step2-fg); --step-btn: var(--step2-btn); }
+.step3 { --step-bg: var(--step3-bg); --step-fg: var(--step3-fg); --step-btn: var(--step3-btn); }
+.step4 { --step-bg: var(--step4-bg); --step-fg: var(--step4-fg); --step-btn: var(--step4-btn); }
 
 /* ---------- 전체 배치 ---------- */
 /* 가운데 최대 1200px. 활동 화면에서 로봇이 Mock 이면 오른쪽에 가상 로봇손 (.with-side) */
@@ -119,7 +129,7 @@ p  { margin: 0 0 12px; }
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 24px;
-  padding-top: 48px;
+  padding-top: 12px;
   padding-bottom: 32px;
   align-items: start;
 }
@@ -132,7 +142,7 @@ p  { margin: 0 0 12px; }
 .dev-wrap { padding-bottom: 40px; }
 @media (max-width: 640px) {
   :root { --sz-page-pad-x: 16px; --sz-hero: 34px; }
-  .layout { padding-top: 28px; }
+  .layout { padding-top: 8px; }
 }
 
 /* ---------- 버튼 (프로그램 화면) ---------- */
@@ -141,9 +151,9 @@ p  { margin: 0 0 12px; }
   padding: 12px 28px;
   font: inherit;
   font-size: 26px;
-  font-weight: 700;
-  border: 2px solid var(--c-line-strong);
-  border-radius: 16px;
+  font-weight: 600;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-start);
   cursor: pointer;
   background: var(--c-surface);
   color: var(--c-text);
@@ -166,10 +176,7 @@ p  { margin: 0 0 12px; }
 .row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 12px 0; }
 
 /* ---------- 상단 바 ---------- */
-#statusbar {
-  background: var(--c-surface);
-  border-bottom: 1px solid var(--c-line);
-}
+#statusbar { background: transparent; }
 .topbar {
   max-width: var(--sz-page-max);
   margin: 0 auto;
@@ -180,9 +187,9 @@ p  { margin: 0 0 12px; }
   gap: 16px 24px;
 }
 .topbar-brand { display: flex; align-items: center; gap: 10px; flex-grow: 1; }
-.topbar-logo { width: 36px; height: 36px; border-radius: 8px; }
+.topbar-logo { width: 32px; height: 32px; border-radius: 8px; }
 .topbar-name { font-size: var(--sz-brand); font-weight: 700; letter-spacing: -0.01em; }
-.topbar-name-en { font-size: 16px; font-weight: 600; color: var(--c-text-pill); letter-spacing: 0.04em; }
+.topbar-name-en { font-size: 13px; font-weight: 500; color: var(--c-text-muted); letter-spacing: 0.12em; }
 .topbar-status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .topbar-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .icon { display: inline-flex; line-height: 0; }
@@ -199,7 +206,7 @@ p  { margin: 0 0 12px; }
   font-size: var(--sz-pill);
   line-height: 1.4;
 }
-.pill-ok { background: var(--c-ok-bg); color: var(--c-ok-fg); font-weight: 600; }
+.pill-ok { background: var(--c-surface); border: 1px solid var(--c-line); color: var(--c-text-sub); font-weight: 500; }
 .pill-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-ok-dot); flex: none; }
 .pill-outline {
   padding: 6px 14px;
@@ -246,7 +253,7 @@ p  { margin: 0 0 12px; }
 /* ---------- 설정 영역 ---------- */
 .settings-panel {
   background: var(--c-surface);
-  border: 1px solid var(--c-line-strong);
+  border: 0;
   border-radius: var(--r-panel);
   padding: 28px 32px;
   display: flex;
@@ -262,7 +269,7 @@ p  { margin: 0 0 12px; }
   min-height: var(--h-choice);
   padding: 0 22px;
   border-radius: var(--r-btn);
-  border: 2px solid var(--c-line-strong);
+  border: 1px solid var(--c-line-strong);
   background: var(--c-surface);
   color: var(--c-text);
   font-size: var(--sz-settings-label);
@@ -275,34 +282,97 @@ p  { margin: 0 0 12px; }
   .settings-panel { padding: 20px; }
 }
 
-/* ---------- 홈 ---------- */
-.home { display: flex; flex-direction: column; gap: 32px; }
-.home-hero { display: flex; flex-direction: column; gap: 14px; }
-.home-hero h1 { margin: 0; font-size: var(--sz-hero); line-height: 1.25; font-weight: 700; letter-spacing: -0.02em; }
-.home-current { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* ---------- 홈 (시안 v11 "홈") ---------- */
+.home { display: flex; flex-direction: column; gap: 28px; }
+.home-hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px 32px; }
+.home-greet { display: flex; flex-direction: column; gap: 8px; }
+.home-date { margin: 0; font-size: 19px; color: var(--c-text-muted); }
+.home-greet h1 { margin: 0; font-size: 52px; line-height: 1.15; letter-spacing: -0.03em; }
+.home-cta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.btn-main {
+  min-height: 76px;
+  padding: 0 40px;
+  border: 0;
+  border-radius: var(--r-start);
+  background: var(--c-accent);
+  color: #FFFFFF;
+  font-size: 26px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: pointer;
+}
+.btn-main:hover { background: var(--c-accent-strong); }
+.home-course {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 16px;
+}
+.home-course-card {
+  border-radius: var(--r-card);
+  background: var(--step-bg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.home-course-head { display: flex; align-items: center; justify-content: space-between; }
+.home-art {
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  background: var(--c-surface);
+  color: var(--step-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.home-art-text { font-size: 22px; font-weight: 700; }
+.home-course-order { font-size: 16px; font-weight: 600; color: var(--step-fg); }
+.home-course-text { display: flex; flex-direction: column; gap: 4px; }
+.home-course-name { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.3; }
+.home-course-desc { font-size: 17px; line-height: 1.45; color: var(--c-text-sub); }
+.home-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.home-foot-label { font-size: 17px; color: var(--c-text-muted); }
+.home-singles { display: flex; flex-wrap: wrap; gap: 10px; }
+.home-current { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-left: auto; font-size: 16px; color: var(--c-text-muted); }
+.chip-button {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--c-line);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.chip-button:hover { background: var(--c-accent-soft); }
+@media (max-width: 640px) {
+  .home-greet h1 { font-size: 36px; }
+  .home-cta { align-items: stretch; width: 100%; }
+  .home-current { margin-left: 0; }
+}
+/* 활동 카드 (STEP 4 루틴 고르기가 씀: home-grid, home-card stepN). 흰 면 + STEP 색 알약·버튼 */
 .home-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
   gap: var(--gap-cards);
 }
 .home-card {
-  --step-bg: var(--step1-bg);
-  --step-fg: var(--step1-fg);
-  --step-btn: var(--step1-btn);
   background: var(--c-surface);
-  border: 1px solid var(--c-line);
+  border: 0;
   border-radius: var(--r-card);
   padding: 28px;
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
-.home-card.step2 { --step-bg: var(--step2-bg); --step-fg: var(--step2-fg); --step-btn: var(--step2-btn); }
-.home-card.step3 { --step-bg: var(--step3-bg); --step-fg: var(--step3-fg); --step-btn: var(--step3-btn); }
-.home-card.step4 { --step-bg: var(--step4-bg); --step-fg: var(--step4-fg); --step-btn: var(--step4-btn); }
-.home-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.home-card-title { display: flex; flex-direction: column; gap: 10px; }
-.home-card-title h2 { margin: 0; font-size: var(--sz-card-title); font-weight: 700; line-height: 1.3; }
 .step-pill {
   align-self: flex-start;
   padding: 4px 12px;
@@ -310,44 +380,9 @@ p  { margin: 0 0 12px; }
   background: var(--step-bg);
   color: var(--step-fg);
   font-size: var(--sz-step-pill);
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
 }
-.home-card-desc { margin: 0; font-size: var(--sz-card-desc); line-height: 1.6; color: var(--c-text-sub); flex-grow: 1; }
-.home-start {
-  min-height: var(--h-start);
-  border-radius: var(--r-start);
-  border: 0;
-  background: var(--step-btn);
-  color: #FFFFFF;
-  font-size: var(--sz-start);
-  font-weight: 700;
-  cursor: pointer;
-}
-.home-start:hover { filter: brightness(1.08); }
-
-/* 카드 그림 */
-.art-tiles { display: flex; align-items: center; gap: 8px; flex: none; }
-.art-tile {
-  width: 52px;
-  height: 64px;
-  border-radius: 10px;
-  background: var(--step1-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.art-tile-on { background: var(--step1-btn); }
-@media (max-width: 640px) {
-  .home-card { padding: 24px 20px; }
-  .art-tiles { gap: 6px; }
-  .art-tile { width: 40px; height: 52px; }
-  .art-tile svg { width: 32px; height: 28px; }
-}
-.art-stroop { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
-.art-word { font-size: 30px; font-weight: 700; color: #2F5BD3; line-height: 1.2; }
-.art-swatches { display: flex; gap: 6px; }
-.art-swatches span { width: 20px; height: 20px; border-radius: 5px; }
 
 /* ---------- 개발자 입력 (Mock) ---------- */
 .dev-panel { border: 1px dashed var(--c-dev-line); border-radius: 16px; background: var(--c-dev-bg); }
@@ -393,16 +428,16 @@ p  { margin: 0 0 12px; }
 .webcam-video { display: block; width: 100%; height: auto; border-radius: 10px; background: #000; transform: scaleX(-1); }
 
 /* ---------- 안내 문구 ---------- */
-/* 연한 배경 상자 + 앞 기호(ℹ ○ ↻) + 글자. 테두리 대신 왼쪽 띠로 종류를 나눈다 */
-.msg { padding: 16px 22px; border-radius: 16px; border: 0; border-left: 8px solid var(--c-accent); font-size: 28px; font-weight: 600; background: var(--c-accent-soft); color: var(--c-text); }
-.msg-info { background: var(--c-accent-soft); border-left-color: var(--c-accent); }
-.msg-good { background: var(--c-ok-bg); color: var(--c-ok-fg); border-left-color: var(--c-ok-dot); }
-.msg-retry { background: var(--retry-bg); color: var(--retry); border-left-color: var(--step2-btn); }
+/* 연한 배경 상자 + 앞 기호(ℹ ○ ↻) + 글자. 종류는 바탕색과 기호로 나눈다 (테두리·띠 없음) */
+.msg { padding: 18px 24px; border-radius: 18px; border: 0; font-size: 28px; font-weight: 600; background: var(--c-accent-soft); color: var(--c-text); }
+.msg-info { background: var(--c-accent-soft); color: var(--c-accent); }
+.msg-good { background: var(--c-ok-bg); color: var(--c-ok-fg); }
+.msg-retry { background: var(--retry-bg); color: var(--retry); }
 
 /* ---------- 카드 (결과 화면 등) ---------- */
 .card {
   background: var(--c-surface);
-  border: 1px solid var(--c-line);
+  border: 0;
   border-radius: var(--r-panel);
   padding: 20px 24px;
 }
@@ -418,7 +453,7 @@ input[type='text'] {
   min-height: 64px;
   font: inherit;
   padding: 8px 16px;
-  border: 2px solid var(--c-line-strong);
+  border: 1px solid var(--c-line-strong);
   border-radius: 12px;
   background: var(--c-surface);
   color: var(--c-text);
@@ -429,13 +464,9 @@ input[type='text'] {
 .program-bar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 20px; }
 .program-bar h1 { margin: 0; flex: 1; font-size: 32px; line-height: 1.3; display: flex; align-items: center; gap: 12px; }
 .program-bar .step-pill { font-size: 18px; align-self: center; }
-.program-bar.step1 { --step-bg: var(--step1-bg); --step-fg: var(--step1-fg); }
-.program-bar.step2 { --step-bg: var(--step2-bg); --step-fg: var(--step2-fg); }
-.program-bar.step3 { --step-bg: var(--step3-bg); --step-fg: var(--step3-fg); }
-.program-bar.step4 { --step-bg: var(--step4-bg); --step-fg: var(--step4-fg); }
 .program-body { display: flex; flex-direction: column; gap: 16px; }
 
-.big-prompt { font-size: 40px; font-weight: 800; text-align: center; margin: 8px 0; }
+.big-prompt { font-size: 40px; font-weight: 700; text-align: center; margin: 8px 0; }
 
 /* STEP 3 색 글자 무대: 노랑도 잘 보이도록 어두운 배경 */
 .stroop-stage {
@@ -464,7 +495,7 @@ input[type='text'] {
 }
 
 /* ---------- 표 ---------- */
-.table-wrap { overflow-x: auto; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; }
+.table-wrap { overflow-x: auto; background: var(--c-surface); border: 0; border-radius: var(--r-panel); }
 table { border-collapse: collapse; width: 100%; font-size: 22px; }
 th, td { border-bottom: 1px solid var(--c-line); padding: 10px 14px; text-align: left; }
 tr:last-child td { border-bottom: 0; }
@@ -473,11 +504,11 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
 /* ---------- 결과 화면 (#8) ---------- */
 .result-tabs { margin: 16px 0 20px; }
 .result-day { margin-bottom: 28px; }
-.result-day h3 { font-size: 26px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--c-line-strong); }
+.result-day h3 { font-size: 26px; margin: 0 0 12px; }
 .result-day h4 { font-size: 22px; margin: 16px 0 8px; }
 .result-course {
-  border: 1px solid var(--c-line);
-  border-radius: 18px;
+  border: 0;
+  border-radius: var(--r-panel);
   background: var(--c-surface);
   margin-bottom: 12px;
 }
@@ -495,7 +526,7 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
 .result-course[open] > summary::before { content: '▼'; }
 .result-course > summary::-webkit-details-marker { display: none; }
 .result-course > summary { list-style: none; }
-.result-course-title { font-weight: 700; }
+.result-course-title { font-weight: 600; }
 .result-course-meta { color: var(--c-text-sub); }
 .result-course .table-wrap { margin: 0 16px 16px; }
 .result-note { font-size: 22px; color: var(--c-text-sub); margin: 0 0 16px; }
@@ -520,23 +551,6 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
 .color-btn { border-left: 18px solid var(--card-color); }
 
 /* ---------- 시연 코스 (#59) ---------- */
-/* 홈: 코스 시작 띠 (아래 STEP 카드보다 먼저 보이게) */
-.course-start {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px 24px;
-  background: var(--c-surface);
-  border: 2px solid var(--c-accent);
-  border-radius: var(--r-card);
-  padding: 24px 28px;
-  margin-bottom: var(--gap-cards);
-}
-.course-start-text h2 { margin: 0 0 4px; font-size: var(--sz-card-title); }
-.course-start-text p { margin: 0; font-size: var(--sz-card-desc); }
-.course-start-btn { --step-btn: var(--c-accent); padding: 0 32px; }
-
 /* 코스 화면 공통 */
 .course { max-width: 960px; }
 .course h1 { margin: 0 0 12px; }
@@ -547,12 +561,12 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
   gap: 16px;
   padding: 8px 20px;
   background: var(--c-surface);
-  border: 1px solid var(--c-line);
-  border-radius: 16px;
+  border: 0;
+  border-radius: 18px;
   font-size: 24px;
 }
-.course-order { font-weight: 700; min-width: 5.5em; }
-.course-name { flex: 1; font-weight: 700; }
+.course-order { font-weight: 600; min-width: 5.5em; color: var(--c-text-muted); }
+.course-name { flex: 1; font-weight: 600; }
 .course-input { padding: 4px 14px; border-radius: 999px; background: var(--c-chip); font-size: 22px; }
 
 /* 활동 사이 안내: 왼쪽 안내 + 오른쪽 "오늘의 활동" 목록 */
@@ -565,8 +579,8 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
 }
 .course-step-main { display: flex; flex-direction: column; gap: 20px; }
 .course-step-main .row { margin: 8px 0 0; }
-.course-step-no { font-size: 24px; font-weight: 600; color: var(--c-accent-strong); margin: 0; }
-.course-step-title { font-size: 56px; line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
+.course-step-no { font-size: 22px; font-weight: 600; color: var(--step-fg, var(--c-accent)); margin: 0; }
+.course-step-title { font-size: 60px; line-height: 1.1; letter-spacing: -0.03em; margin: 0; }
 .course-step-desc { font-size: 26px; line-height: 1.5; color: var(--c-text-pill); margin: 0; }
 .course-input-box {
   display: flex;
@@ -574,17 +588,18 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
   gap: 16px;
   padding: 18px 22px;
   border-radius: 18px;
-  background: var(--c-chip);
+  background: var(--step-bg, var(--c-chip));
   color: var(--c-text);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 500;
 }
-.course-input-box.is-changed { background: var(--retry-bg); color: var(--retry); }
+.course-input-box .course-input-icon { color: var(--step-fg, var(--c-text)); }
+.course-input-box.is-changed { font-weight: 600; }
 .course-input-icon { display: inline-flex; flex: none; }
 
 .course-progress {
   background: var(--c-surface);
-  border: 1px solid var(--c-line);
+  border: 0;
   border-radius: var(--r-card);
   padding: 28px;
 }
@@ -596,18 +611,18 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
   gap: 14px;
   min-height: 64px;
   padding: 0 16px;
-  border-radius: 14px;
-  border: 1px solid var(--c-line);
+  border-radius: 16px;
+  border: 0;
   font-size: 22px;
   color: var(--c-text-sub);
 }
 .course-progress-item.is-done,
-.course-progress-item.is-skipped { background: var(--c-page); border-color: var(--c-page); color: var(--c-text); }
-.course-progress-item.is-now { border: 2px solid var(--c-accent); background: var(--c-accent-soft); color: var(--c-text); font-weight: 700; }
+.course-progress-item.is-skipped { background: var(--c-page); color: var(--c-text); }
+.course-progress-item.is-now { background: var(--step-bg, var(--c-accent-soft)); color: var(--c-text); font-weight: 600; }
 .course-progress-name { flex: 1; }
 .course-progress-state { font-size: 18px; font-weight: 700; }
-.is-done .course-progress-state { color: var(--c-ok-fg); }
-.is-now .course-progress-state { color: var(--c-accent-strong); }
+.is-done .course-progress-state { color: var(--c-text-muted); }
+.is-now .course-progress-state { color: var(--step-fg, var(--c-accent)); }
 .course-mark {
   width: 36px;
   height: 36px;
@@ -620,9 +635,9 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
   font-weight: 700;
   border: 2px solid var(--c-line-strong);
 }
-.is-done .course-mark { background: var(--c-ok-dot); border-color: var(--c-ok-dot); color: #FFFFFF; }
-.is-skipped .course-mark { background: var(--c-chip); color: var(--c-text-sub); }
-.is-now .course-mark { background: var(--c-accent); border-color: var(--c-accent); color: #FFFFFF; }
+.is-done .course-mark { background: var(--step-bg, var(--c-chip)); border-color: transparent; color: var(--step-fg, var(--c-text)); }
+.is-skipped .course-mark { background: var(--c-chip); border-color: transparent; color: var(--c-text-sub); }
+.is-now .course-mark { background: var(--c-surface); border-color: transparent; color: var(--step-fg, var(--c-accent)); }
 @media (max-width: 1000px) {
   .course-step { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .course-step-title { font-size: 44px; }
@@ -637,16 +652,16 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
   min-height: 40px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid var(--c-line-strong);
+  border: 1px solid var(--c-line);
   background: var(--c-surface);
-  color: var(--c-text-sub);
+  color: var(--c-text-muted);
   font-size: 18px;
   white-space: nowrap;
 }
 .course-chip.is-done,
-.course-chip.is-skipped { background: var(--c-chip); border-color: var(--c-chip); }
-.course-chip.is-done { color: var(--c-ok-fg); font-weight: 600; }
-.course-chip.is-now { background: var(--c-accent); border-color: var(--c-accent); color: #FFFFFF; font-weight: 700; }
+.course-chip.is-skipped { background: transparent; border-color: transparent; }
+.course-chip.is-done { color: var(--step-fg, var(--c-text-sub)); font-weight: 500; }
+.course-chip.is-now { background: var(--step-bg, var(--c-accent)); border-color: transparent; color: var(--step-fg, #FFFFFF); font-weight: 600; }
 .course-bar-title { margin: 0; font-size: 26px; font-weight: 700; flex: 1 1 100%; }
 .course-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .course-ask { font-size: 26px; font-weight: 700; }

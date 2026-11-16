@@ -51,6 +51,12 @@ export function whoPill(who) {
   return h('span', { class: 'pill course-who', 'aria-label': `지금 하시는 분: ${who}` }, who);
 }
 
+/** STEP 색 클래스 ("step1"~"step4"). styles.css 의 --stepN-* 색을 쓴다 */
+function stepClass(id) {
+  const step = findProgramInfo(id)?.step;
+  return step ? ` step${step}` : '';
+}
+
 export function programTitle(id) {
   return findProgramInfo(id)?.title ?? id;
 }
@@ -111,7 +117,7 @@ export function renderStepIntro(container, { info, progress, who, onStart, onSto
   container.append(
     h(
       'div',
-      { class: 'course course-step' },
+      { class: `course course-step${stepClass(info.program)}` },
       h(
         'section',
         { class: 'course-step-main' },
@@ -143,7 +149,7 @@ function progressList(progress) {
       progress.map((item) =>
         h(
           'li',
-          { class: `course-progress-item is-${item.state}`, 'aria-current': item.state === 'now' ? 'step' : null },
+          { class: `course-progress-item is-${item.state}${stepClass(item.program)}`, 'aria-current': item.state === 'now' ? 'step' : null },
           h('span', { class: 'course-mark', 'aria-hidden': 'true' }, stateMark(item)),
           h('span', { class: 'course-progress-name' }, programTitle(item.program)),
           STATE_TEXT[item.state] ? h('span', { class: 'course-progress-state' }, STATE_TEXT[item.state]) : null,
@@ -170,7 +176,7 @@ export function createCourseBar({ info, progress, who, onNext, onSkip, onStop })
         progress.map((item) =>
           h(
             'li',
-            { class: `course-chip is-${item.state}`, 'aria-current': item.state === 'now' ? 'step' : null },
+            { class: `course-chip is-${item.state}${stepClass(item.program)}`, 'aria-current': item.state === 'now' ? 'step' : null },
             `${CHIP_MARK[item.state]}${item.order} ${programTitle(item.program)}`,
             STATE_TEXT[item.state] ? ` · ${STATE_TEXT[item.state]}` : '',
           ),
