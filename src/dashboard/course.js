@@ -42,6 +42,15 @@ const INPUT_CHANGED_TEXT = {
   card: '이번에는 손 대신 카드를 보여 주세요. 로봇 앞, 같은 자리에 들어 주세요.',
 };
 
+/**
+ * 지금 코스를 하는 분 알약 ("봄날 어르신" 또는 "손님"). who 가 없으면 그리지 않는다 (#82)
+ * 호칭만 보여 준다. 실명은 받지 않는다
+ */
+export function whoPill(who) {
+  if (!who) return null;
+  return h('span', { class: 'pill course-who', 'aria-label': `지금 하시는 분: ${who}` }, who);
+}
+
 export function programTitle(id) {
   return findProgramInfo(id)?.title ?? id;
 }
@@ -55,15 +64,17 @@ export function stepLabel(info) {
  * 코스 시작 화면.
  * @param o.plan        [{ program, input }]
  * @param o.deviceNote  장치 상태 한 줄 (main.js 가 만든다)
+ * @param o.who         지금 하시는 분 호칭 또는 "손님" (로그인 결과, #82)
  * @param o.onStart     "시작하기"
  * @param o.onHome      "← 홈으로"
  */
-export function renderCourseIntro(container, { plan, deviceNote, onStart, onHome }) {
+export function renderCourseIntro(container, { plan, deviceNote, who, onStart, onHome }) {
   container.innerHTML = '';
   container.append(
     h(
       'div',
       { class: 'course' },
+      whoPill(who),
       h('h1', {}, `오늘의 활동 ${plan.length}가지`),
       h('p', {}, '차례대로 이어서 해 볼까요? 하나가 끝나면 다음 활동으로 넘어가요.'),
       h(
@@ -90,10 +101,11 @@ export function renderCourseIntro(container, { plan, deviceNote, onStart, onHome
  * 왼쪽: 몇 번째 활동인지, 활동 이름과 설명, 손·카드 안내. 오른쪽: 오늘의 활동 목록.
  * @param o.info     stepInfo() 결과
  * @param o.progress courseProgress() 결과
+ * @param o.who      지금 하시는 분 (#82)
  * @param o.onStart  "시작하기"
  * @param o.onStop   "코스 그만하기"
  */
-export function renderStepIntro(container, { info, progress, onStart, onStop }) {
+export function renderStepIntro(container, { info, progress, who, onStart, onStop }) {
   const desc = findProgramInfo(info.program)?.desc;
   container.innerHTML = '';
   container.append(
@@ -103,7 +115,7 @@ export function renderStepIntro(container, { info, progress, onStart, onStop }) 
       h(
         'section',
         { class: 'course-step-main' },
-        h('p', { class: 'course-step-no' }, `${info.of}개 활동 중 ${info.order}번째`),
+        h('div', { class: 'course-step-head' }, h('p', { class: 'course-step-no' }, `${info.of}개 활동 중 ${info.order}번째`), whoPill(who)),
         h('h1', { class: 'course-step-title' }, programTitle(info.program)),
         desc ? h('p', { class: 'course-step-desc' }, desc) : null,
         h(
@@ -148,7 +160,7 @@ function progressList(progress) {
  * 건너뛰기·그만하기는 한 번 더 묻는다 (브라우저 확인 창 대신 막대 안에서).
  * @returns { el, setFinished() }
  */
-export function createCourseBar({ info, progress, onNext, onSkip, onStop }) {
+export function createCourseBar({ info, progress, who, onNext, onSkip, onStop }) {
   // 제목은 화면 읽기 프로그램용으로 두고, 눈에는 진행 알약으로 보여 준다
   const label = h('h1', { class: 'sr-only' }, stepLabel(info));
   const chips = progress
@@ -166,7 +178,8 @@ export function createCourseBar({ info, progress, onNext, onSkip, onStop }) {
       )
     : h('p', { class: 'course-bar-title', 'aria-hidden': 'true' }, stepLabel(info));
   const actions = h('div', { class: 'course-actions' });
-  const el = h('div', { class: 'program-bar course-bar' }, label, chips, actions);
+  // 지금 하시는 분은 버튼 줄 오른쪽 끝에 (#82)
+  const el = h('div', { class: 'program-bar course-bar' }, label, chips, actions, whoPill(who));
   let finished = false;
 
   function normal() {
@@ -216,16 +229,18 @@ function dateText(date) {
 /**
  * 코스 요약 화면.
  * @param o.summary    summarizeCourse() 결과
+ * @param o.who        지금 하시는 분 (#82)
  * @param o.onHome     "처음으로"
  * @param o.onResults  "활동 기록 보기"
  */
-export function renderCourseSummary(container, { summary, onHome, onResults }) {
+export function renderCourseSummary(container, { summary, who, onHome, onResults }) {
   const playedAll = summary.activities.every((a) => a.status === 'played');
   container.innerHTML = '';
   container.append(
     h(
       'div',
       { class: 'course' },
+      whoPill(who),
       h('h1', {}, '오늘의 활동 기록'),
       h('p', {}, dateText(summary.date)),
       message(

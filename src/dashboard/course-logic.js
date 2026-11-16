@@ -41,10 +41,22 @@ export function newCourseId(now = new Date()) {
 /**
  * 기록에 코스 정보를 붙인다. 원래 기록과 detail 은 바꾸지 않고 새 객체를 돌려준다.
  * @param record  프로그램이 ctx.log.record 에 넘긴 값
- * @param course  { id, order, of }
+ * @param course  { id, order, of, userId }
+ *   userId: 코스 시작 때 로그인한 사용자 (#82). 손님이면 null. 넘기지 않으면 붙이지 않는다 (예전 기록과 같은 모양)
  */
-export function tagRecord(record, { id, order, of }) {
-  return { ...record, detail: { ...(record.detail ?? {}), course: { id, order, of } } };
+export function tagRecord(record, { id, order, of, userId }) {
+  const course = userId === undefined ? { id, order, of } : { id, order, of, userId };
+  return { ...record, detail: { ...(record.detail ?? {}), course } };
+}
+
+/**
+ * 코스 사용자 ID. 진행 정보(meta.userId)를 먼저 보고, 없으면 기록의 detail.course.userId.
+ * 로그인 전에 만든 코스·손님 코스는 null
+ */
+export function courseUserId(meta, records = []) {
+  if (typeof meta?.userId === 'string') return meta.userId;
+  const tagged = records.map(courseOf).find((c) => c?.id === meta?.id && typeof c.userId === 'string');
+  return tagged?.userId ?? null;
 }
 
 /**
@@ -142,6 +154,7 @@ export function summarizeCourse(meta, records, timeZone = TIME_ZONE) {
   return {
     version: SUMMARY_VERSION,
     courseId: meta.id,
+    userId: courseUserId(meta, mine), // 손님·로그인 전 코스는 null (#82)
     date: localDate(meta.id, timeZone),
     startedAt: meta.id,
     endedAt: meta.endedAt ?? ends[ends.length - 1] ?? null,
@@ -205,6 +218,23 @@ export function groupByDay(records, metas = [], timeZone = TIME_ZONE) {
     if (b.date === null) return -1;
     return newestFirst(a.date, b.date);
   });
+}
+
+/** 결과 화면에서 손님(로그인 없이 한 코스)을 고를 때 쓰는 값 */
+export const GUEST = 'guest';
+
+/**
+ * 날짜별 기록(groupByDay 결과)을 한 분의 코스만 남긴다 (#82).
+ * 코스 밖에서 하나만 한 활동은 로그인을 하지 않으므로 사용자를 고르면 빠진다.
+ * @param days  groupByDay() 결과
+ * @param user  null·undefined = 모든 분, GUEST = 손님(userId 가 null 인 코스, 로그인 기능 전 코스 포함), 그 밖은 userId
+ */
+export function filterDaysByUser(days, user) {
+  if (user === null || user === undefined) return days;
+  const want = user === GUEST ? null : user;
+  return days
+    .map((day) => ({ ...day, courses: day.courses.filter((c) => (c.userId ?? null) === want), singles: [] }))
+    .filter((day) => day.courses.length > 0);
 }
 
 /**

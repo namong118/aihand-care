@@ -8,6 +8,9 @@ import {
   localDate,
   weightedReaction,
   courseOf,
+  courseUserId,
+  filterDaysByUser,
+  GUEST,
   summarizeCourse,
   groupCourses,
   groupByDay,
@@ -59,6 +62,10 @@ describe('tagRecord', () => {
     const t = tagRecord(r, { id: 'C1', order: 2, of: 4 });
     expect(t.detail).toEqual({ difficulty: 'easy', course: { id: 'C1', order: 2, of: 4 } });
     expect(r.detail).toEqual({ difficulty: 'easy' }); // 원본은 그대로
+  });
+  it('userId 를 넘기면 detail.course 에 함께 붙인다 (손님은 null, #82)', () => {
+    expect(tagRecord({ program: 'x' }, { id: 'C1', order: 1, of: 4, userId: 'u-1' }).detail.course).toEqual({ id: 'C1', order: 1, of: 4, userId: 'u-1' });
+    expect(tagRecord({ program: 'x' }, { id: 'C1', order: 1, of: 4, userId: null }).detail.course.userId).toBeNull();
   });
   it('detail 이 없어도 된다', () => {
     expect(tagRecord({ program: 'x' }, { id: 'C1', order: 1, of: 4 }).detail).toEqual({ course: { id: 'C1', order: 1, of: 4 } });
@@ -273,5 +280,32 @@ describe('groupByDay (결과 화면 날짜별 기록)', () => {
 
   it('기록이 없으면 빈 목록', () => {
     expect(groupByDay([], [])).toEqual([]);
+  });
+});
+
+describe('코스 사용자 (#82)', () => {
+  const id = '2026-11-16T05:00:00.000Z';
+  it('요약에 진행 정보의 userId, 없으면 기록의 userId, 둘 다 없으면 null', () => {
+    const tagged = [rec('step4-coach', { course: { id, order: 1, of: 4, userId: 'u-b' } })];
+    expect(summarizeCourse({ id, userId: 'u-a', plan: PLAN, skipped: [] }, tagged).userId).toBe('u-a');
+    expect(summarizeCourse({ id, plan: PLAN, skipped: [] }, tagged).userId).toBe('u-b');
+    expect(summarizeCourse({ id, userId: null, plan: PLAN, skipped: [] }, []).userId).toBeNull();
+    expect(courseUserId({ id }, [])).toBeNull();
+  });
+
+  it('진행 정보가 지워진 코스도 기록으로 사용자를 찾는다', () => {
+    const records = [rec('step4-coach', { course: { id, order: 1, of: 4, userId: 'u-a' } })];
+    expect(groupCourses(records, [])[0].userId).toBe('u-a');
+  });
+
+  it('날짜별 기록을 한 분의 코스만 남긴다. 코스 밖 활동은 사용자를 고르면 빠진다', () => {
+    const days = [
+      { date: '2026-11-16', courses: [{ courseId: 'A', userId: 'u-a' }, { courseId: 'B', userId: null }], singles: [{ program: 'x' }] },
+      { date: '2026-11-15', courses: [{ courseId: 'C', userId: 'u-b' }], singles: [] },
+    ];
+    expect(filterDaysByUser(days, null)).toBe(days);
+    expect(filterDaysByUser(days, 'u-a')).toEqual([{ date: '2026-11-16', courses: [{ courseId: 'A', userId: 'u-a' }], singles: [] }]);
+    expect(filterDaysByUser(days, GUEST).map((d) => d.courses.map((c) => c.courseId))).toEqual([['B']]);
+    expect(filterDaysByUser(days, 'u-zz')).toEqual([]);
   });
 });

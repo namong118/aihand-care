@@ -6,7 +6,7 @@
 import { h, button, seconds } from '../ui/components.js';
 import { summarize, downloadCSV } from '../core/log.js';
 import { CATALOG, findProgramInfo } from './catalog.js';
-import { groupByDay, reactionTrend, TIME_ZONE } from './course-logic.js';
+import { groupByDay, filterDaysByUser, reactionTrend, GUEST, TIME_ZONE } from './course-logic.js';
 import { activityText } from './course.js';
 
 /** 위쪽 탭: 보는 방법 */
@@ -98,8 +98,15 @@ function empty() {
 
 // ---- 날짜별 기록 ----
 
-/** 코스 한 번: 접힌 줄(시각·마침 여부·한 활동 수) → 펼치면 활동별 기록 */
-function courseBlock(summary, open) {
+/** 코스를 한 분의 호칭. 손님·로그인 전 코스는 null, 등록이 지워진 분은 따로 (#82) */
+function whoOf(summary, names) {
+  if (!summary.userId) return null;
+  return names.get(summary.userId) ?? '등록이 지워진 분';
+}
+
+/** 코스 한 번: 접힌 줄(시각·하신 분·마침 여부·한 활동 수) → 펼치면 활동별 기록 */
+function courseBlock(summary, open, names = new Map()) {
+  const who = whoOf(summary, names);
   const played = summary.activities.filter((a) => a.status === 'played').length;
   const end = summary.finished ? '끝까지 함' : '중간에 마침';
   return h(
@@ -108,7 +115,7 @@ function courseBlock(summary, open) {
     h(
       'summary',
       {},
-      h('span', { class: 'result-course-title' }, `코스 · ${timeText(summary.startedAt)} 시작`),
+      h('span', { class: 'result-course-title' }, `코스 · ${timeText(summary.startedAt)} 시작${who ? ` · ${who}` : ''}`),
       h('span', { class: 'result-course-meta' }, `활동 ${summary.activities.length}개 중 ${played}개 함 · ${end}`),
     ),
     table(
@@ -149,19 +156,41 @@ function singlesBlock(records) {
   );
 }
 
-function daysView(records, courses) {
-  const days = groupByDay(records, courses);
-  if (days.length === 0) return [empty()];
-  return days.map((day, i) =>
-    h(
-      'section',
-      { class: 'result-day' },
-      h('h3', {}, dateText(day.date)),
-      // 가장 최근 코스 하나만 펼쳐 둔다 (7인치 화면에서 한눈에)
-      day.courses.map((c, j) => courseBlock(c, i === 0 && j === 0)),
-      day.singles.length > 0 ? singlesBlock(day.singles) : null,
-    ),
+/**
+ * 사용자 고르기 (#82): 모든 분 / 등록된 분 호칭 / 손님. 등록된 분이 없으면 그리지 않는다.
+ * 같은 "활동 기록"을 사람별로 나눠 보는 것뿐이다. 사람끼리 비교하는 표·순위는 만들지 않는다
+ */
+function userRow(users, filter, onFilter) {
+  if (users.length === 0) return null;
+  const pick = (user) => onFilter({ ...filter, user });
+  const now = filter.user ?? null;
+  return h(
+    'div',
+    { class: 'row', role: 'group', 'aria-label': '하신 분 고르기' },
+    button('모든 분', () => pick(null), { variant: 'choice', pressed: now === null }),
+    users.map((u) => button(u.displayName, () => pick(u.userId), { variant: 'choice', pressed: now === u.userId })),
+    button('손님', () => pick(GUEST), { variant: 'choice', pressed: now === GUEST }),
   );
+}
+
+function daysView(records, courses, users, filter, onFilter) {
+  const names = new Map(users.map((u) => [u.userId, u.displayName]));
+  const days = filterDaysByUser(groupByDay(records, courses), filter.user ?? null);
+  const head = userRow(users, filter, onFilter);
+  if (days.length === 0) return [head, empty()];
+  return [
+    head,
+    ...days.map((day, i) =>
+      h(
+        'section',
+        { class: 'result-day' },
+        h('h3', {}, dateText(day.date)),
+        // 가장 최근 코스 하나만 펼쳐 둔다 (7인치 화면에서 한눈에)
+        day.courses.map((c, j) => courseBlock(c, i === 0 && j === 0, names)),
+        day.singles.length > 0 ? singlesBlock(day.singles) : null,
+      ),
+    ),
+  ];
 }
 
 // ---- 활동별 모아 보기 ----
@@ -283,12 +312,14 @@ function roundsView(all, filter, onFilter) {
  * @param container
  * @param opts.log       core/log (list)
  * @param opts.courses   코스 진행 정보 목록 (course-store list()). 없으면 기록만으로 코스를 묶는다
- * @param opts.filter    { view: 'days' | 'programs' | 'reaction' | 'rounds', program }
+ * @param opts.users     등록된 분 목록 [{ userId, displayName }] (#82). 날짜별 기록에서 사람별로 고를 때
+ * @param opts.filter    { view: 'days' | 'programs' | 'reaction' | 'rounds', program, user }
+ *                       user: 날짜별 기록에서 고른 분 (null = 모든 분, 'guest' = 손님, 그 밖은 userId)
  *                       program 만 주면(활동 화면의 "기록 보기") 회차별 기록을 그 활동으로 연다
  * @param opts.onFilter  (filter) => 다시 그리기
  * @param opts.onHome
  */
-export function renderResults(container, { log, courses = [], filter = {}, onFilter, onHome }) {
+export function renderResults(container, { log, courses = [], users = [], filter = {}, onFilter, onHome }) {
   container.innerHTML = '';
   const all = log.list(); // 날짜순 (오래된 것부터)
   const view = VIEWS.some((v) => v.id === filter.view) ? filter.view : filter.program ? 'rounds' : 'days';
@@ -306,7 +337,7 @@ export function renderResults(container, { log, courses = [], filter = {}, onFil
   if (view === 'programs') body = programsView(all);
   else if (view === 'reaction') body = reactionView(all);
   else if (view === 'rounds') body = roundsView(all, current, onFilter);
-  else body = daysView(all, courses);
+  else body = daysView(all, courses, users, current, onFilter);
 
   container.append(bar, tabs, h('section', { class: 'section results', 'aria-label': VIEWS.find((v) => v.id === view).label }, body));
 }

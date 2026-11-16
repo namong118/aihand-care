@@ -649,6 +649,11 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
 .course-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .course-ask { font-size: 26px; font-weight: 700; }
 
+/* 지금 코스를 하는 분 (호칭 또는 손님, #82). 코스 막대에서는 버튼 줄 오른쪽 끝 */
+.course-who { align-self: flex-start; font-size: 20px; font-weight: 600; color: var(--c-text-pill); }
+.course-bar .course-who { align-self: center; margin-left: auto; }
+.course-step-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
 /* 화면에는 안 보이고 화면 읽기 프로그램만 읽는 글자 */
 .sr-only {
   position: absolute;
