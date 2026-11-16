@@ -135,7 +135,7 @@ export function createScreen(container, poses) {
         h(
           'div',
           { class: 'act-card' },
-          h('p', { class: 'act-question' }, routine.title),
+          h('p', { class: 'act-question', style: { 'font-size': '40px' } }, routine.title),
           h('p', { class: 'act-text' }, routine.description),
           h('p', { class: 'act-text' }, '로봇을 보면서 같은 손모양을 함께 만들어 주세요. 힘들면 건너뛰어도 괜찮아요.'),
         ),
@@ -179,7 +179,7 @@ export function createScreen(container, poses) {
           h(
             'div',
             { style: { display: 'flex', 'flex-direction': 'column', gap: '6px', flex: '1 1 300px', 'min-width': '0' } },
-            h('p', { class: 'act-question', style: { 'font-size': '48px' } }, sayOf(step)),
+            h('p', { class: 'act-question', style: { 'font-size': '36px', 'line-height': '1.3' } }, sayOf(step)),
             h('p', { class: 'act-text' }, `손모양: ${labelOf(step.pose)} — 로봇처럼 ${holdSec}초 동안 해 주세요.`),
           ),
           countText,

@@ -546,7 +546,7 @@ input[type='text'] {
 /* 아래 줄: 안내 한 줄 + 작은 버튼 (건너뛰기 등) */
 .act-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
 .act-foot-text { flex: 1 1 320px; margin: 0; font-size: 19px; color: var(--c-text-sub); }
-.act-foot .btn { min-height: 56px; font-size: 20px; padding: 0 22px; }
+.act-foot .btn { min-height: 64px; font-size: 22px; padding: 0 24px; }
 .act-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .act-list li {
   display: flex;
