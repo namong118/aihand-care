@@ -141,7 +141,9 @@ function showHome() {
   setScreen('home');
   renderHome(appEl, {
     settings,
+    plan: coursePlan.map((s) => s.program),
     openSettings: () => toggleSettings(true),
+    openResults: () => showResults(),
     startProgram: (id) => showProgram(id),
     startCourse: showLogin,
   });

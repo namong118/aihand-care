@@ -1,91 +1,58 @@
-// 홈 화면: 제목, 지금 설정(난이도·속도) 알약과 "바꾸기", STEP 1~4 활동 카드.
+// 홈 화면 (디자인 시안 v11 "홈"): 날짜·인사말과 "오늘의 활동 시작하기", 코스 순서대로 활동 카드 4장,
+// 아래 줄에 "하나만 해 보기"와 지금 설정(난이도·속도) + "바꾸기".
 // 설정 영역 자체는 settings.js, 상단 바는 statusbar.js.
+// 로그인은 코스를 시작할 때 하므로 홈에서는 호칭을 부르지 않는다.
 
 import { h } from '../ui/components.js';
-import { CATALOG } from './catalog.js';
+import { findProgramInfo } from './catalog.js';
+import { TIME_ZONE } from './course-logic.js';
 import { DIFFICULTIES, SPEEDS, labelOf } from './settings.js';
 import { svgIcon } from './statusbar.js';
 
 const NS = 'http://www.w3.org/2000/svg';
+const svg = (inner) =>
+  `<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" xmlns="${NS}">${inner}</svg>`;
 
-/** 손 그림: code 는 [엄지,검지,중지,약지,새끼] 1=펴짐. 펴진 손가락은 길고 진하게 */
-function handSvg(code, { up, down, palm, width = 84, height = 72 }) {
-  const xs = [6, 20, 34, 48, 62];
-  const openTop = [20, 6, 4, 6, 12]; // 시안의 손가락 길이 (엄지·새끼는 짧게)
-  const fingers = [...code]
-    .map((bit, i) => {
-      const open = bit === '1';
-      const top = open ? openTop[i] : 38;
-      return `<rect x="${xs[i]}" y="${top}" width="11" height="${54 - top}" rx="5.5" fill="${open ? up : down}"/>`;
-    })
-    .join('');
-  return `<svg width="${width}" height="${height}" viewBox="0 0 84 72" xmlns="${NS}">${fingers}<rect x="3" y="48" width="74" height="22" rx="8" fill="${palm}"/></svg>`;
-}
+/** 활동 그림 (이모지 대신 SVG). STEP 1 은 글자 "123" */
+const ART = {
+  1: null,
+  // 가위 (검지·중지)
+  2: svg('<path d="M9 12V4.5a1.5 1.5 0 0 1 3 0V12"/><path d="M12 12V5.5a1.5 1.5 0 0 1 3 0V13"/><path d="M9 12l-1.5-1a1.5 1.5 0 0 0-2 2.2L8 17a5 5 0 0 0 4 2h1a5 5 0 0 0 5-5v-2a1.5 1.5 0 0 0-3 0"/>'),
+  // 팔레트
+  3: svg('<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1.1"/><circle cx="10" cy="7.5" r="1.1"/><circle cx="14.5" cy="7.5" r="1.1"/>'),
+  // 펼친 손
+  4: svg('<path d="M7 11V6.5a1.5 1.5 0 0 1 3 0V11"/><path d="M10 10V4.5a1.5 1.5 0 0 1 3 0V10"/><path d="M13 10V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M16 12V8.5a1.5 1.5 0 0 1 3 0V14a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L4.5 14a1.5 1.5 0 0 1 2.5-1.6L8 14"/>'),
+};
 
-/** 카드 오른쪽 위 그림. 이모지 대신 SVG·HTML 도형 */
 function art(step) {
-  if (step === 1) {
-    // STEP 1: 로봇이 손가락으로 숫자를 차례로 보여준다 → 손모양 타일 3개 (숫자 2·1·5, 마지막이 지금 차례)
-    const tile = (code, last) =>
-      h(
-        'span',
-        { class: `art-tile${last ? ' art-tile-on' : ''}` },
-        svgIcon(
-          handSvg(code, {
-            up: last ? '#FFFFFF' : 'var(--step1-fg)',
-            down: last ? 'rgba(255,255,255,0.45)' : 'var(--step1-soft)',
-            palm: last ? 'rgba(255,255,255,0.3)' : 'var(--step1-soft)',
-            width: 40,
-            height: 34,
-          }),
-        ),
-      );
-    return h('div', { class: 'art art-tiles', 'aria-hidden': 'true' }, tile('01100', false), tile('01000', false), tile('11111', true));
-  }
-  if (step === 2) {
-    return svgIcon(handSvg('01100', { up: 'var(--step2-btn)', down: '#F3C9A6', palm: 'var(--step2-bg)' }));
-  }
-  if (step === 3) {
-    return h(
-      'div',
-      { class: 'art art-stroop', 'aria-hidden': 'true' },
-      h('span', { class: 'art-word' }, '빨강'),
-      h(
-        'div',
-        { class: 'art-swatches' },
-        ['#D64545', '#2F5BD3', '#E8A317', '#2B9466'].map((c) => h('span', { style: { background: c } })),
-      ),
-    );
-  }
-  return svgIcon(handSvg('11111', { up: 'var(--step4-btn)', down: 'var(--step4-btn)', palm: 'var(--step4-bg)' }));
+  if (!ART[step]) return h('span', { class: 'home-art home-art-text', 'aria-hidden': 'true' }, '123');
+  const el = svgIcon(ART[step]);
+  el.classList.add('home-art');
+  return el;
 }
 
-function card(p, onStart) {
+/** "11월 16일 월요일" (한국 시각) */
+function todayText(now = new Date()) {
+  return new Intl.DateTimeFormat('ko-KR', { timeZone: TIME_ZONE, month: 'long', day: 'numeric', weekday: 'long' }).format(now);
+}
+
+/** 코스 카드 하나 (눌러서 시작하지 않는다. 시작은 위쪽 버튼 하나) */
+function courseCard(p, order) {
   return h(
-    'article',
-    { class: `home-card step${p.step}` },
-    h(
-      'div',
-      { class: 'home-card-head' },
-      h(
-        'div',
-        { class: 'home-card-title' },
-        h('span', { class: 'step-pill' }, `STEP ${p.step} · ${p.tag}`),
-        h('h2', {}, p.title),
-      ),
-      art(p.step),
-    ),
-    h('p', { class: 'home-card-desc' }, p.desc),
-    h('button', { type: 'button', class: 'home-start', onClick: () => onStart(p.id) }, '시작하기'),
+    'li',
+    { class: `home-course-card step${p.step}` },
+    h('div', { class: 'home-course-head' }, art(p.step), h('span', { class: 'home-course-order' }, `${order}번째`)),
+    h('div', { class: 'home-course-text' }, h('span', { class: 'home-course-name' }, p.name), h('span', { class: 'home-course-desc' }, p.short)),
   );
 }
 
 /**
  * @param container  그릴 자리
- * @param app        { settings, openSettings(), startProgram(id), startCourse() }
+ * @param app        { settings, plan: [programId...], openSettings(), openResults(), startProgram(id), startCourse() }
  */
 export function renderHome(container, app) {
   const { settings } = app;
+  const plan = (app.plan ?? []).map(findProgramInfo).filter(Boolean);
   container.innerHTML = '';
   container.append(
     h(
@@ -94,28 +61,43 @@ export function renderHome(container, app) {
       h(
         'div',
         { class: 'home-hero' },
-        h('h1', {}, '오늘은 어떤 놀이를 해 볼까요?'),
+        h(
+          'div',
+          { class: 'home-greet' },
+          h('p', { class: 'home-date' }, todayText()),
+          h('h1', {}, '안녕하세요,', h('br'), '오늘도 손 인사 나눠요'),
+        ),
+        h(
+          'div',
+          { class: 'home-cta' },
+          h(
+            'button',
+            { type: 'button', class: 'btn-main', onClick: app.startCourse },
+            '오늘의 활동 시작하기',
+            svgIcon(`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="${NS}"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`),
+          ),
+          app.openResults ? h('button', { type: 'button', class: 'link-button', onClick: app.openResults }, '지난 기록 보기') : null,
+        ),
+      ),
+      // 시연 코스 순서 (src/data/course.json, #59)
+      h('ol', { class: 'home-course', 'aria-label': `오늘의 활동 ${plan.length}가지, 차례대로` }, plan.map((p, i) => courseCard(p, i + 1))),
+      h(
+        'div',
+        { class: 'home-foot' },
+        h('span', { class: 'home-foot-label' }, '하나만 해 보기'),
+        h(
+          'div',
+          { class: 'home-singles' },
+          // 하나씩 할 때는 로그인 없이 바로 (docs/decisions.md 4-1)
+          plan.map((p) => h('button', { type: 'button', class: 'chip-button', onClick: () => app.startProgram(p.id) }, p.name)),
+        ),
         h(
           'div',
           { class: 'home-current' },
-          h('span', { class: 'pill pill-outline' }, `난이도 · ${labelOf(DIFFICULTIES, settings.difficulty)}`),
-          h('span', { class: 'pill pill-outline' }, `속도 · ${labelOf(SPEEDS, settings.speed)}`),
+          h('span', {}, `난이도 ${labelOf(DIFFICULTIES, settings.difficulty)} · 속도 ${labelOf(SPEEDS, settings.speed)}`),
           h('button', { type: 'button', class: 'link-button', onClick: app.openSettings }, '바꾸기'),
         ),
       ),
-      // 시연 코스: 네 활동을 순서대로 이어서 (#59). 아래 카드는 하나씩 따로 할 때
-      h(
-        'section',
-        { class: 'course-start' },
-        h(
-          'div',
-          { class: 'course-start-text' },
-          h('h2', {}, '활동 4가지 이어서 하기'),
-          h('p', {}, '손운동부터 색깔손까지 차례대로 해요.'),
-        ),
-        h('button', { type: 'button', class: 'home-start course-start-btn', onClick: app.startCourse }, '코스 시작하기'),
-      ),
-      h('div', { class: 'home-grid' }, CATALOG.map((p) => card(p, app.startProgram))),
     ),
   );
 }
