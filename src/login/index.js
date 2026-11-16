@@ -20,8 +20,8 @@ import { createRegisterScreen } from './register-screen.js';
 
 /** 얼굴 확정 상태를 확인하는 간격 (onFace 는 번호가 바뀔 때만 오므로 타이머로도 본다) */
 const CHECK_MS = 100;
-/** 이만큼 지나도 얼굴을 확정하지 못하면 호칭 버튼으로 [검증 필요] 실물 테스트(#85) 때 조정 */
-export const FACE_GIVE_UP_MS = 15000;
+/** 이만큼 지나도 얼굴을 확정하지 못하면 호칭 버튼으로 (#76: 어르신이 계속 기다리지 않게 5초). 실물 테스트(#85) 때 조정 */
+export const FACE_GIVE_UP_MS = 5000;
 
 let session = null; // 지금 화면의 실행 상태. unmount 하면 alive = false
 

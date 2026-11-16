@@ -63,7 +63,7 @@ export function createRegisterScreen(container, { onCancel }) {
         if (e.key === 'Enter') submit();
       });
       set(
-        h('p', { class: 'big-prompt' }, '실명 대신 부르실 호칭을 적어 주세요.'),
+        h('p', { class: 'big-prompt' }, '실명 대신 불러 드릴 호칭을 적어 주세요.'),
         error && message(error, 'retry'),
         h('div', { class: 'row' }, input, button('다음', submit)),
       );
@@ -78,9 +78,11 @@ export function createRegisterScreen(container, { onCancel }) {
     learnByCamera(freeIds, onPick, onNameOnly, seen = null) {
       set(
         h('p', { class: 'big-prompt' }, '카메라에서 얼굴을 학습해 주세요.'),
-        h('p', {}, '1. 로봇 카메라 메뉴에서 얼굴 인식(Face Recognition)을 고르세요.'),
-        h('p', {}, '2. 얼굴을 네모 안에 맞추고 레버로 학습하세요.'),
-        h('p', {}, '3. 카메라 화면에 나온 번호를 아래에서 골라 주세요.'),
+        h('p', {}, '1. 카메라 화면이 얼굴 인식인지 확인하세요.'),
+        h('p', {}, '2. Function 레버를 왼쪽으로 밀고, "+"를 얼굴 가운데에 맞추세요.'),
+        h('p', {}, '3. 다시 왼쪽으로 민 다음, 아래로 눌러 OK 하세요.'),
+        h('p', {}, '4. 카메라 화면에 나온 번호를 아래에서 골라 주세요.'),
+        h('p', {}, 'Navigation 레버를 밀면 카메라 메뉴가 바뀌어요. 다음 번호로 넘길 때만 오른쪽으로 미세요.'),
         seen !== null && message(`지금 카메라가 ${seen}번 얼굴을 보고 있어요.`, 'info'),
         freeIds.length > 0
           ? h(
