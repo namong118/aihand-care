@@ -52,7 +52,7 @@ function shortTime(iso) {
 
 function programName(id) {
   const info = findProgramInfo(id);
-  return info ? `STEP ${info.step} ${info.title}` : (id ?? '-');
+  return info ? info.title : (id ?? '-');
 }
 
 function programTitle(id) {
@@ -207,7 +207,7 @@ function programsView(records) {
         return h(
           'tr',
           {},
-          h('th', { scope: 'row' }, `STEP ${p.step} ${p.title}`),
+          h('th', { scope: 'row' }, p.title),
           h('td', {}, s ? `${s.count}회` : '0회'),
           h('td', {}, s ? `${s.done} / ${s.total}` : '-'),
           h('td', {}, s ? s.skipped : '-'),
@@ -271,7 +271,7 @@ function roundsView(all, filter, onFilter) {
     { class: 'row', role: 'group', 'aria-label': '활동 고르기' },
     button('전체', () => onFilter({ ...filter, program: null }), { variant: 'choice', pressed: !filter.program }),
     CATALOG.map((p) =>
-      button(`STEP ${p.step}`, () => onFilter({ ...filter, program: p.id }), {
+      button(p.name, () => onFilter({ ...filter, program: p.id }), {
         variant: 'choice',
         pressed: filter.program === p.id,
       }),
