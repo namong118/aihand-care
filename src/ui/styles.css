@@ -77,7 +77,7 @@
   --robot-up: #ffd8a8;
   --robot-down: #c9a27a;
   --robot-palm: #ffe4c4;
-  --stage: #1d1d1d;
+  --stage: #18233F;          /* STEP 3 글자 무대 (아이콘 남색 계열의 어두운 바탕) */
 
   font-size: 24px;
   line-height: 1.5;
@@ -429,7 +429,7 @@ p  { margin: 0 0 12px; }
 
 /* ---------- 안내 문구 ---------- */
 /* 연한 배경 상자 + 앞 기호(ℹ ○ ↻) + 글자. 종류는 바탕색과 기호로 나눈다 (테두리·띠 없음) */
-.msg { padding: 18px 24px; border-radius: 18px; border: 0; font-size: 28px; font-weight: 600; background: var(--c-accent-soft); color: var(--c-text); }
+.msg { margin: 0; padding: 16px 22px; border-radius: 18px; border: 0; font-size: 24px; font-weight: 500; background: var(--c-accent-soft); color: var(--c-text); }
 .msg-info { background: var(--c-accent-soft); color: var(--c-accent); }
 .msg-good { background: var(--c-ok-bg); color: var(--c-ok-fg); }
 .msg-retry { background: var(--retry-bg); color: var(--retry); }
@@ -466,31 +466,130 @@ input[type='text'] {
 .program-bar .step-pill { font-size: 18px; align-self: center; }
 .program-body { display: flex; flex-direction: column; gap: 16px; }
 
+/* ---------- 활동 화면 공통 (시안 v11 "활동 화면", #33) ----------
+   program-body 에 stepN 클래스가 붙어 있어 --step-bg/-fg 로 그 활동 색을 쓴다 (main.js).
+   사용법: docs/ui-classes.md */
+.act-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.act-progress {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--step-bg, var(--c-chip));
+  color: var(--step-fg, var(--c-text));
+  font-size: 18px;
+  font-weight: 600;
+}
+.act-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--c-surface);
+  color: var(--c-text-sub);
+  font-size: 18px;
+}
+.act-card {
+  background: var(--c-surface);
+  border-radius: var(--r-card);
+  padding: 26px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.act-card > p { margin: 0; }
+.act-card-row { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 20px 32px; }
+.act-label { font-size: 18px; color: var(--c-text-muted); margin: 0; }
+.act-question { margin: 0; font-size: 60px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.15; }
+.act-text { margin: 0; font-size: 24px; line-height: 1.5; color: var(--c-text-sub); }
+.act-prompt { margin: 0; padding: 24px 0; text-align: center; font-size: 48px; font-weight: 600; letter-spacing: -0.02em; }
+/* 그림 칸: 활동 색 파스텔 바탕 + 같은 계열 진한 그림 */
+.act-art {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--step-bg, var(--c-chip));
+  color: var(--step-fg, var(--c-text));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 700;
+}
+.act-art-lg { width: 104px; height: 104px; border-radius: 30px; }
+.act-answers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 14px;
+}
+.act-answer {
+  min-height: 104px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 26px;
+  background: var(--c-surface);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 30px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  cursor: pointer;
+}
+.act-answer:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--step-fg, var(--c-accent)); }
+.act-answer:disabled { opacity: 0.45; cursor: not-allowed; }
+/* 아래 줄: 안내 한 줄 + 작은 버튼 (건너뛰기 등) */
+.act-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.act-foot-text { flex: 1 1 320px; margin: 0; font-size: 19px; color: var(--c-text-sub); }
+.act-foot .btn { min-height: 56px; font-size: 20px; padding: 0 22px; }
+.act-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.act-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: var(--c-page);
+  font-size: 22px;
+}
+.act-list-no { min-width: 4.2em; font-weight: 600; color: var(--step-fg, var(--c-text-muted)); }
+.act-list-main { flex: 1 1 200px; }
+.act-list-state { color: var(--c-text-sub); }
+.program-body > .row,
+.act-card > .row { margin: 0; }
+
 .big-prompt { font-size: 40px; font-weight: 700; text-align: center; margin: 8px 0; }
 
 /* STEP 3 색 글자 무대: 노랑도 잘 보이도록 어두운 배경 */
 .stroop-stage {
   background: var(--stage);
-  border-radius: 16px;
-  padding: 32px;
+  border-radius: var(--r-card);
+  padding: 24px;
   text-align: center;
-  font-size: 120px;
-  font-weight: 900;
+  font-size: 112px;
+  font-weight: 700;
   line-height: 1.2;
 }
 
 /* STEP 4 유지 게이지 (숫자 글자도 함께 표시) */
 .gauge {
-  height: 32px;
+  height: 24px;
   border: 0;
-  border-radius: 16px;
-  background: var(--c-chip);
+  border-radius: 12px;
+  background: var(--step-bg, var(--c-chip));
   overflow: hidden;
 }
 .gauge-fill {
   height: 100%;
   width: 0;
-  background: var(--c-ok-dot);
+  border-radius: 12px;
+  background: var(--step-fg, var(--c-ok-dot));
   transition: width 0.1s linear;
 }
 

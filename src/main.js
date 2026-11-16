@@ -159,7 +159,8 @@ function showProgram(id, step = null) {
   setScreen('program');
   const info = findProgramInfo(id);
   const program = PROGRAMS[id];
-  const body = h('div', { class: 'program-body' });
+  // stepN: 활동 화면 안쪽에서 그 STEP 색(--step-bg/-fg)을 쓸 수 있게 (styles.css "활동 화면 공통")
+  const body = h('div', { class: `program-body${info ? ` step${info.step}` : ''}` });
   let bar;
   if (step) {
     course.bar = createCourseBar({
