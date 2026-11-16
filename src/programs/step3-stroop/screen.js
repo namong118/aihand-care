@@ -1,4 +1,5 @@
 // STEP 3 화면 그리기. 판정은 하지 않고 보여주기만 한다.
+// 모양은 styles.css "활동 화면 공통"(act-*) 클래스 (시안 v11, docs/ui-classes.md)
 
 import { h, button, message } from '../../ui/components.js';
 import { speak } from './voice.js';
@@ -20,9 +21,13 @@ export function createScreen(container, colors) {
   return {
     intro(onStart) {
       set(
-        message('글자를 읽지 말고, 글자의 "색깔"을 봐 주세요.', 'info'),
-        h('p', {}, '글자 색과 같은 색깔 카드를 로봇 카메라(WonderCam)에 보여 주세요. 아래 버튼을 눌러도 돼요.'),
-        h('p', {}, '색깔이 잘 구분되지 않으시면 이 활동은 건너뛰셔도 괜찮아요.'),
+        h(
+          'div',
+          { class: 'act-card' },
+          h('p', { class: 'act-question' }, '글자의 "색깔"을 봐 주세요'),
+          h('p', { class: 'act-text' }, '글자를 읽지 말고, 글자 색과 같은 색깔 카드를 로봇 카메라(WonderCam)에 보여 주세요. 아래 버튼을 눌러도 돼요.'),
+          h('p', { class: 'act-text' }, '색깔이 잘 구분되지 않으시면 이 활동은 건너뛰셔도 괜찮아요.'),
+        ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
     },
@@ -40,11 +45,11 @@ export function createScreen(container, colors) {
       const ink = find(inkColor);
       set(
         h(
-          'p',
-          { 'aria-label': `${count}문제 중 ${index}번째`, style: { 'font-size': '30px', 'font-weight': '700' } },
-          `문제 ${index} / ${count}`,
+          'div',
+          { class: 'act-head' },
+          h('span', { class: 'act-progress', 'aria-label': `${count}문제 중 ${index}번째` }, `문제 ${index} / ${count}`),
+          h('span', { class: 'act-tag' }, '이 글자는 무슨 색깔인가요?'),
         ),
-        h('p', { class: 'big-prompt' }, '이 글자는 무슨 색깔인가요?'),
         h(
           'div',
           { class: 'stroop-stage', style: { color: ink.hex }, 'aria-label': `글자 "${word.label}"` },
@@ -52,16 +57,13 @@ export function createScreen(container, colors) {
         ),
         h(
           'div',
-          { class: 'row', role: 'group', 'aria-label': '색 고르기' },
+          { class: 'act-answers', role: 'group', 'aria-label': '색 고르기', style: { 'grid-template-columns': `repeat(${colors.length}, minmax(0, 1fr))` } },
+          // 색 칸 + 색 이름 글자 (색만으로 알리지 않는다)
           colors.map((c) =>
             h(
               'button',
-              {
-                type: 'button',
-                class: 'btn btn-secondary color-btn',
-                style: { '--card-color': c.hex },
-                onClick: () => onPick(c.color),
-              },
+              { type: 'button', class: 'act-answer', onClick: () => onPick(c.color) },
+              h('span', { class: 'act-art', 'aria-hidden': 'true', style: { background: c.hex, width: '48px', height: '48px', 'border-radius': '14px' } }),
               c.label,
             ),
           ),
@@ -85,7 +87,10 @@ export function createScreen(container, colors) {
         set(message(`잘하셨어요! 글자 색은 ${ink.label}이었어요.`, 'good'));
         speak(`잘하셨어요! 글자 색은 ${ink.label}이었어요.`);
       } else {
-        set(message('다시 해 볼까요?', 'retry'), h('p', {}, `글자 색은 ${ink.label}이었어요.`));
+        set(
+          message('다시 해 볼까요?', 'retry'),
+          h('div', { class: 'act-card' }, h('p', { class: 'act-text' }, `글자 색은 ${ink.label}이었어요.`)),
+        );
         speak(`다시 해 볼까요? 글자 색은 ${ink.label}이었어요.`);
       }
     },
