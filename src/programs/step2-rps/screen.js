@@ -1,8 +1,11 @@
 // STEP 2 화면 그리기. 판정은 하지 않고 보여주기만 한다.
-// 고령자 UX: 큰 글씨, 손 이름은 그림(✊ ✋ ✌️)과 글자를 함께, 결과는 색과 함께 기호·문구로 표시한다.
+// 고령자 UX: 큰 글씨, 손 이름은 그림과 글자를 함께, 결과는 색과 함께 기호·문구로 표시한다.
+// 모양은 styles.css "활동 화면 공통"(act-*) 클래스 (시안 v11 "활동 화면", docs/ui-classes.md)
+// 7인치(1280×720)에서 답 버튼과 건너뛰기가 스크롤 없이 보이게: 로봇 손과 조건을 한 카드에 나란히 (#100)
 
 import { h, button, message } from '../../ui/components.js';
-import { handText } from './logic.js';
+import { handIcon } from '../../ui/icons.js';
+import { handText, HAND_LABELS } from './logic.js';
 
 // 화면 버튼은 익숙한 "가위, 바위, 보" 순서로
 const BUTTON_ORDER = ['V', 'ROCK', 'PAPER'];
@@ -15,14 +18,13 @@ const STATUS_TEXT = {
   skipped: '→ 건너뛰었어요',
 };
 
-const TEXT_28 = { 'font-size': '28px', 'line-height': '1.5' };
-
 export function createScreen(container) {
   container.innerHTML = '';
   const area = h('div', { class: 'program-body' });
   container.append(area);
 
-  let robotBig = null; // 문제 화면의 "로봇이 낸 손" 큰 글자 (어려움에서 숨길 때 바꾼다)
+  let robotArt = null; // 문제 화면의 "로봇이 낸 손" 그림 (어려움에서 숨길 때 바꾼다)
+  let robotName = null; // 그 아래 손 이름
   let handNotice = null; // 문제 화면의 손 인식 안내. 이상이 있을 때만 보인다
 
   function handNoticeBox() {
@@ -35,41 +37,35 @@ export function createScreen(container) {
     area.append(...children.flat().filter(Boolean));
   }
 
+  const card = (...children) => h('div', { class: 'act-card' }, ...children);
+
   function progress(index, total) {
-    return h(
-      'p',
-      { 'aria-label': `${total}문제 중 ${index}번째`, style: { 'font-size': '28px', 'font-weight': '700', margin: '0' } },
-      `문제 ${index} / ${total}`,
-    );
+    return h('span', { class: 'act-progress', 'aria-label': `${total}문제 중 ${index}번째` }, `문제 ${index} / ${total}`);
   }
 
+  /** 로봇이 낸 손: 그림 + 이름 */
   function robotBox(robotHand) {
-    robotBig = h('p', { style: { 'font-size': '64px', 'font-weight': '900', margin: '0' } }, handText(robotHand));
+    robotArt = h('span', { class: 'act-art act-art-lg' }, handIcon(robotHand, 58));
+    robotName = h('span', { style: { 'font-size': '28px', 'font-weight': '600' } }, HAND_LABELS[robotHand]);
     return h(
       'div',
-      {
-        style: {
-          border: '3px solid var(--line)',
-          'border-radius': '16px',
-          padding: '16px',
-          'text-align': 'center',
-          background: 'var(--card)',
-        },
-      },
-      h('p', { style: { 'font-size': '26px', margin: '0 0 4px' } }, '로봇이 낸 손'),
-      robotBig,
+      { style: { display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '6px', width: '150px', flex: 'none' } },
+      h('span', { class: 'act-label' }, '로봇이 낸 손'),
+      robotArt,
+      robotName,
     );
   }
 
   return {
     intro({ total, revealSec }, onStart) {
       set(
-        message('로봇이 가위바위보를 내면, 화면의 말에 맞게 손을 내 주세요.', 'info'),
-        h('p', { style: TEXT_28 }, '예: 로봇이 ✊ 바위를 내고 “이겨주세요”가 나오면 ✋ 보를 내면 돼요.'),
-        h('p', { style: TEXT_28 }, `모두 ${total}문제예요. 서두르지 않아도 돼요. 천천히 생각해서 손을 내 주세요.`),
-        revealSec
-          ? h('p', { style: TEXT_28 }, `어려움: 로봇 손은 ${revealSec}초만 보여 줘요. 잘 기억해 주세요.`)
-          : null,
+        card(
+          h('p', { class: 'act-question' }, '말에 맞게 손을 내 주세요'),
+          h('p', { class: 'act-text' }, '로봇이 가위바위보를 내면, 화면의 말에 맞게 손을 내 주세요.'),
+          h('p', { class: 'act-text' }, '예: 로봇이 바위를 내고 “이겨주세요”가 나오면 보를 내면 돼요.'),
+          h('p', { class: 'act-text' }, `모두 ${total}문제예요. 서두르지 않아도 돼요. 천천히 생각해서 손을 내 주세요.`),
+          revealSec ? h('p', { class: 'act-text' }, `어려움: 로봇 손은 ${revealSec}초만 보여 줘요. 잘 기억해 주세요.`) : null,
+        ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
     },
@@ -77,30 +73,45 @@ export function createScreen(container) {
     /** "가위" → "바위" → "보!" 큰 글자 */
     countdown(word, { index, total }) {
       set(
-        progress(index, total),
-        h(
-          'p',
-          { class: 'big-prompt', 'aria-live': 'assertive', style: { 'font-size': '120px', margin: '40px 0' } },
-          word,
-        ),
+        h('div', { class: 'act-head' }, progress(index, total)),
+        card(h('p', { class: 'act-prompt', 'aria-live': 'assertive', style: { 'font-size': '120px', padding: '40px 0' } }, word)),
       );
     },
 
     /** 문제: 로봇 손, 조건, 화면 버튼(손 인식 대체 입력), 건너뛰기 */
     question({ index, total, robotHand, conditionText, attempt, holdSec }, onAnswer, onSkip) {
       set(
-        progress(index, total),
-        robotBox(robotHand),
-        h('p', { class: 'big-prompt', style: { 'font-size': '48px' } }, `“${conditionText}”`),
-        attempt > 1 ? message('한 번 더 생각해 볼까요?', 'retry') : null,
-        message(`노트북 카메라에 손을 ${holdSec}초 동안 보여 주세요. 어려우면 아래 버튼을 눌러도 돼요.`, 'info'),
+        h('div', { class: 'act-head' }, progress(index, total), attempt > 1 ? h('span', { class: 'act-tag' }, '한 번 더 생각해 보는 중') : null),
+        h(
+          'div',
+          { class: 'act-card act-card-row' },
+          robotBox(robotHand),
+          h(
+            'div',
+            { style: { display: 'flex', 'flex-direction': 'column', gap: '6px', flex: '1 1 300px', 'min-width': '0' } },
+            h('span', { class: 'act-label' }, '이번 말'),
+            h('p', { class: 'act-question' }, `“${conditionText}”`),
+          ),
+        ),
         handNoticeBox(),
         h(
           'div',
-          { class: 'row', role: 'group', 'aria-label': '내 손 고르기' },
-          BUTTON_ORDER.map((hand) => button(handText(hand), () => onAnswer(hand))),
+          { class: 'act-answers', role: 'group', 'aria-label': '내 손 고르기', style: { 'grid-template-columns': 'repeat(3, minmax(0, 1fr))' } },
+          BUTTON_ORDER.map((hand) =>
+            h(
+              'button',
+              { type: 'button', class: 'act-answer', onClick: () => onAnswer(hand) },
+              h('span', { class: 'act-art' }, handIcon(hand)),
+              HAND_LABELS[hand],
+            ),
+          ),
         ),
-        h('div', { class: 'row' }, button('건너뛰기', onSkip, { variant: 'secondary' })),
+        h(
+          'div',
+          { class: 'act-foot' },
+          h('p', { class: 'act-foot-text' }, `카메라 앞에 손을 ${holdSec}초 동안 보여 주세요. 버튼을 눌러도 돼요.`),
+          button('건너뛰기', onSkip, { variant: 'secondary' }),
+        ),
       );
     },
 
@@ -124,13 +135,14 @@ export function createScreen(container) {
 
     /** 어려움: 정해진 시간이 지나면 로봇 손을 가린다 */
     hideRobot() {
-      if (robotBig) robotBig.textContent = '❓ 기억해 보세요';
+      if (robotArt) robotArt.replaceChildren('?');
+      if (robotName) robotName.textContent = '기억해 보세요';
     },
 
     good({ userHand, attempt }) {
       set(
         message(`잘하셨어요! ${handText(userHand)}를 내셨어요.`, 'good'),
-        attempt > 1 ? h('p', { style: TEXT_28 }, '다시 생각해서 해내셨어요.') : null,
+        attempt > 1 ? card(h('p', { class: 'act-text' }, '다시 생각해서 해내셨어요.')) : null,
       );
     },
 
@@ -138,8 +150,7 @@ export function createScreen(container) {
     retry({ userHand, hint }, onAgain) {
       set(
         message('다시 해 볼까요?', 'retry'),
-        h('p', { style: TEXT_28 }, `${handText(userHand)}를 내셨어요.`),
-        h('p', { style: TEXT_28 }, hint),
+        card(h('p', { class: 'act-text' }, `${handText(userHand)}를 내셨어요.`), h('p', { class: 'act-text' }, hint)),
         h('div', { class: 'row' }, button('다시 하기', onAgain)),
       );
     },
@@ -148,8 +159,15 @@ export function createScreen(container) {
     reveal({ text, answer, isLast }, onNext) {
       set(
         message('함께 알아볼까요?', 'info'),
-        h('p', { style: TEXT_28 }, text),
-        h('p', { style: TEXT_28 }, `로봇이 ${handText(answer)}를 보여 드릴게요.`),
+        card(
+          h('p', { class: 'act-text' }, text),
+          h(
+            'div',
+            { style: { display: 'flex', 'align-items': 'center', gap: '16px' } },
+            h('span', { class: 'act-art' }, handIcon(answer)),
+            h('p', { class: 'act-text', style: { color: 'var(--c-text)' } }, `로봇이 ${handText(answer)}를 보여 드릴게요.`),
+          ),
+        ),
         h('div', { class: 'row' }, button(isLast ? '활동 기록 보기' : '다음 문제', onNext)),
       );
     },
@@ -160,16 +178,23 @@ export function createScreen(container) {
      */
     summary({ rows }, onAgain) {
       set(
-        h('h2', { style: { 'font-size': '36px', margin: '0' } }, '오늘의 활동 기록'),
-        h(
-          'ol',
-          { style: { 'font-size': '26px', 'line-height': '1.8', margin: '0', 'padding-left': '1.5em' } },
-          rows.map((r) =>
-            h('li', {}, `로봇 ${handText(r.robotHand)} · “${r.conditionText}” — ${STATUS_TEXT[r.status]}`),
+        message(`${rows.length}문제를 모두 함께 해 주셨어요. 수고하셨어요!`, 'good'),
+        card(
+          h('h2', { style: { 'font-size': '30px', margin: '0' } }, '오늘의 활동 기록'),
+          h(
+            'ol',
+            { class: 'act-list' },
+            rows.map((r, i) =>
+              h(
+                'li',
+                {},
+                h('span', { class: 'act-list-no' }, `${i + 1}번째`),
+                h('span', { class: 'act-list-main' }, `로봇 ${HAND_LABELS[r.robotHand]} · “${r.conditionText}”`),
+                h('span', { class: 'act-list-state' }, STATUS_TEXT[r.status]),
+              ),
+            ),
           ),
         ),
-        message(`${rows.length}문제를 모두 함께 해 주셨어요. 수고하셨어요!`, 'good'),
-        h('p', { style: TEXT_28 }, '위의 "활동 기록 보기"에서 지난 기록도 볼 수 있어요.'),
         h('div', { class: 'row' }, button('한 번 더 하기', onAgain)),
       );
     },

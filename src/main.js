@@ -159,7 +159,8 @@ function showProgram(id, step = null) {
   setScreen('program');
   const info = findProgramInfo(id);
   const program = PROGRAMS[id];
-  const body = h('div', { class: 'program-body' });
+  // stepN: 활동 화면 안쪽에서 그 STEP 색(--step-bg/-fg)을 쓸 수 있게 (styles.css "활동 화면 공통")
+  const body = h('div', { class: `program-body${info ? ` step${info.step}` : ''}` });
   let bar;
   if (step) {
     course.bar = createCourseBar({
@@ -175,8 +176,8 @@ function showProgram(id, step = null) {
     bar = h(
       'div',
       { class: `program-bar${info ? ` step${info.step}` : ''}` },
-      // 7인치(1280×720)에서 한 줄에 들어가게 STEP 번호는 작은 알약으로 (#102)
-      h('h1', {}, info ? [h('span', { class: 'step-pill' }, `STEP ${info.step}`), ` ${info.title}`] : id),
+      // 7인치(1280×720)에서 한 줄에 들어가게 활동 갈래는 작은 알약으로 (#102). STEP 번호는 화면에 쓰지 않는다
+      h('h1', {}, info ? [h('span', { class: 'step-pill' }, info.tag), ` ${info.title}`] : id),
       smallButton(button('← 홈으로', showHome, { variant: 'secondary' })),
       smallButton(button('기록 보기', () => showResults({ program: id }), { variant: 'secondary' })),
     );
