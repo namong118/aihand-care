@@ -1,6 +1,8 @@
 // STEP 4 화면 그리기. 판정은 하지 않고 보여주기만 한다.
+// 모양은 styles.css "활동 화면 공통"(act-*) 클래스 (시안 v11, docs/ui-classes.md)
 
 import { h, button, message } from '../../ui/components.js';
+import { handIcon } from '../../ui/icons.js';
 
 const METHOD_TEXT = {
   detected: '손 인식으로 확인',
@@ -20,16 +22,17 @@ const OLD_HAND_TEXT = '손을 잠깐 내렸다가 다시 해 주세요. 새로 �
 const CHOOSER_COLUMNS =
   'repeat(auto-fit, minmax(min(100%, max(300px, calc((100% - 16px) / 2))), 1fr))';
 
-/** 루틴 카드(버튼) 모양. 홈 카드(home-card)의 색·모서리는 그대로 쓰고, 높이를 줄이고 누를 수 있게 보이게 한다 */
+/** 루틴 카드(버튼) 모양. 홈 코스 카드처럼 STEP 4 파스텔 면 (시안 v11). 테두리 없이 높이를 줄인다 */
 const CHOOSER_CARD_STYLE = {
   'text-align': 'left',
   font: 'inherit',
   color: 'inherit',
   cursor: 'pointer',
   padding: '18px 24px',
-  gap: '8px',
+  gap: '6px',
   'min-height': '64px',
-  border: '2px solid var(--step-btn)',
+  border: '0',
+  background: 'var(--step-bg)',
 };
 
 /** 카드 오른쪽 위 "고르기 ›" 표시 (시작하기 버튼과 같은 색) */
@@ -37,9 +40,9 @@ const CHOOSER_GO_STYLE = {
   flex: 'none',
   background: 'var(--step-btn)',
   color: '#FFFFFF',
-  'font-size': '24px',
-  'font-weight': '700',
-  padding: '6px 18px',
+  'font-size': '20px',
+  'font-weight': '600',
+  padding: '6px 16px',
   'border-radius': 'var(--r-start)',
   'white-space': 'nowrap',
 };
@@ -108,16 +111,16 @@ export function createScreen(container, poses) {
             { style: { display: 'flex', 'align-items': 'flex-start', gap: '12px' } },
             h(
               'span',
-              { style: { flex: '1', 'min-width': '0', 'font-size': '30px', 'font-weight': '700', 'line-height': '1.3' } },
+              { style: { flex: '1', 'min-width': '0', 'font-size': '28px', 'font-weight': '600', 'line-height': '1.3' } },
               `${routine.title} `,
-              h('span', { class: 'step-pill', style: { 'vertical-align': 'middle' } }, `동작 ${stepCount}개`),
+              h('span', { class: 'step-pill', style: { 'vertical-align': 'middle', background: 'var(--c-surface)' } }, `동작 ${stepCount}개`),
             ),
             h('span', { style: CHOOSER_GO_STYLE }, '고르기 ›'),
           ),
-          h('span', { style: { 'font-size': '24px', 'line-height': '1.45', color: 'var(--c-text-sub)' } }, routine.description),
+          h('span', { style: { 'font-size': '20px', 'line-height': '1.45', color: 'var(--c-text-sub)' } }, routine.description),
         );
       set(
-        h('h2', { style: { margin: '0' } }, '어떤 손운동을 해 볼까요? 카드를 눌러 골라 주세요.'),
+        h('h2', { style: { margin: '0', 'font-size': '28px' } }, '어떤 손운동을 해 볼까요? 카드를 눌러 골라 주세요.'),
         h(
           'div',
           { class: 'home-grid', style: { 'grid-template-columns': CHOOSER_COLUMNS, gap: '16px' } },
@@ -129,9 +132,13 @@ export function createScreen(container, poses) {
     /** 루틴 소개. onBack 이 있으면 "다른 손운동 고르기" 버튼도 보여 준다 (루틴이 여러 개일 때) */
     intro(routine, onStart, onBack) {
       set(
-        h('h2', {}, routine.title),
-        message(routine.description, 'info'),
-        h('p', {}, '로봇을 보면서 같은 손모양을 함께 만들어 주세요. 힘들면 건너뛰어도 괜찮아요.'),
+        h(
+          'div',
+          { class: 'act-card' },
+          h('p', { class: 'act-question' }, routine.title),
+          h('p', { class: 'act-text' }, routine.description),
+          h('p', { class: 'act-text' }, '로봇을 보면서 같은 손모양을 함께 만들어 주세요. 힘들면 건너뛰어도 괜찮아요.'),
+        ),
         h(
           'div',
           { class: 'row' },
@@ -152,11 +159,11 @@ export function createScreen(container, poses) {
     step({ index, count, step, rounds, holdMs }, { onDone, onSkip }) {
       const holdSec = (holdMs / 1000).toFixed(1);
       const where = rounds > 1 ? `동작 ${index} / ${count} · 반복 ${step.round} / ${rounds}` : `동작 ${index} / ${count}`;
-      countText = h('p', { class: 'big-prompt', 'aria-live': 'polite' }, '');
+      countText = h('p', { class: 'act-prompt', 'aria-live': 'polite', style: { padding: '0', color: 'var(--step-fg)', 'min-width': '2.5em' } }, '');
       oldNotice = message(OLD_HAND_TEXT, 'info');
       oldNotice.hidden = true;
       gaugeBar = h('div', { class: 'gauge-fill' });
-      gaugeText = h('span', {}, `유지: 0.0 / ${holdSec}초`);
+      gaugeText = h('span', { class: 'act-label' }, `유지: 0.0 / ${holdSec}초`);
       const gauge = h(
         'div',
         { class: 'gauge', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0' },
@@ -164,16 +171,24 @@ export function createScreen(container, poses) {
       );
       area.innerHTML = '';
       area.append(
-        h('p', { class: 'mock-status' }, where),
-        h('p', { class: 'big-prompt' }, sayOf(step)),
-        h('p', {}, `손모양: ${labelOf(step.pose)} — 로봇처럼 ${holdSec}초 동안 해 주세요.`),
-        countText,
-        gauge,
-        gaugeText,
+        h('div', { class: 'act-head' }, h('span', { class: 'act-progress' }, where)),
+        h(
+          'div',
+          { class: 'act-card act-card-row' },
+          h('span', { class: 'act-art act-art-lg' }, handIcon(step.pose, 58)),
+          h(
+            'div',
+            { style: { display: 'flex', 'flex-direction': 'column', gap: '6px', flex: '1 1 300px', 'min-width': '0' } },
+            h('p', { class: 'act-question', style: { 'font-size': '48px' } }, sayOf(step)),
+            h('p', { class: 'act-text' }, `손모양: ${labelOf(step.pose)} — 로봇처럼 ${holdSec}초 동안 해 주세요.`),
+          ),
+          countText,
+        ),
+        h('div', { class: 'act-card', style: { gap: '10px', padding: '20px 32px' } }, gauge, gaugeText),
         oldNotice,
         h(
           'div',
-          { class: 'row' },
+          { class: 'act-foot' },
           button('따라 했어요', onDone),
           button('건너뛰기', onSkip, { variant: 'secondary' }),
         ),
