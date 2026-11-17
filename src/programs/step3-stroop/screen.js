@@ -3,6 +3,7 @@
 
 import { h, button, message } from '../../ui/components.js';
 import { speak } from './voice.js';
+import { startLine, goodLine, retryLine } from './lines.js';
 
 export function createScreen(container, colors) {
   container.innerHTML = '';
@@ -30,6 +31,7 @@ export function createScreen(container, colors) {
         ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
+      speak(startLine());
     },
 
     waiting(text) {
@@ -84,14 +86,16 @@ export function createScreen(container, colors) {
     feedback({ correct, inkColor }) {
       const ink = find(inkColor);
       if (correct) {
-        set(message(`잘하셨어요! 글자 색은 ${ink.label}이었어요.`, 'good'));
-        speak(`잘하셨어요! 글자 색은 ${ink.label}이었어요.`);
+        const line = goodLine(ink.label);
+        set(message(`${line} 글자 색은 ${ink.label}이었어요.`, 'good'));
+        speak(`${line} 글자 색은 ${ink.label}이었어요.`);
       } else {
+        const line = retryLine();
         set(
-          message('다시 해 볼까요?', 'retry'),
+          message(line, 'retry'),
           h('div', { class: 'act-card' }, h('p', { class: 'act-text' }, `글자 색은 ${ink.label}이었어요.`)),
         );
-        speak(`다시 해 볼까요? 글자 색은 ${ink.label}이었어요.`);
+        speak(`${line} 글자 색은 ${ink.label}이었어요.`);
       }
     },
 
