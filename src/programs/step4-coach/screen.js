@@ -31,6 +31,7 @@ const CHOOSER_CARD_STYLE = {
   padding: '18px 24px',
   gap: '6px',
   'min-height': '64px',
+  'justify-content': 'center', // 옆 카드 제목이 2줄이라 카드가 높아져도 내용은 세로 가운데
   border: '0',
   background: 'var(--step-bg)',
 };
@@ -40,7 +41,7 @@ const CHOOSER_GO_STYLE = {
   flex: 'none',
   background: 'var(--step-btn)',
   color: '#FFFFFF',
-  'font-size': '20px',
+  'font-size': '24px', // 고령자 UX 기본값: 글씨 24px 이상 (#101)
   'font-weight': '600',
   padding: '6px 16px',
   'border-radius': 'var(--r-start)',
@@ -92,7 +93,10 @@ export function createScreen(container, poses) {
       // 카드 전체가 버튼 하나다. 시연 화면(1280×720)에 카드 4개가 스크롤 없이 다 보이게
       // 카드 아래 따로 두던 64px 버튼을 없애고, 카드 위쪽 "고르기 ›" 표시로 누를 수 있음을 알린다.
       // 누르는 곳이 카드 전체라서 버튼보다 더 크다.
-      const card = ({ routine, stepCount }) =>
+      // 카드에는 제목과 "고르기 ›"만 둔다 (#101). "동작 N개"(15px)와 설명(20px)은 글씨 24px 기준에 못 미치고
+      // 가상 로봇손 칸이 붙으면 카드가 높아져서 일단 뺐다. 설명은 다음 화면(루틴 소개)에 나온다.
+      // items 의 stepCount 는 다시 넣을 때를 위해 그대로 받는다
+      const card = ({ routine }) =>
         h(
           'button',
           {
@@ -105,25 +109,24 @@ export function createScreen(container, poses) {
               onPick(routine);
             },
           },
-          // 위쪽 줄: 왼쪽 제목·"동작 N개", 오른쪽 "고르기 ›". 카드가 좁으면 제목 쪽만 줄을 바꾼다
+          // 한 줄: 왼쪽 제목, 오른쪽 "고르기 ›". 카드가 좁으면 제목만 줄을 바꾼다
           h(
             'span',
-            { style: { display: 'flex', 'align-items': 'flex-start', gap: '12px' } },
+            { style: { display: 'flex', 'align-items': 'center', gap: '12px' } },
             h(
               'span',
               { style: { flex: '1', 'min-width': '0', 'font-size': '28px', 'font-weight': '600', 'line-height': '1.3' } },
-              `${routine.title} `,
-              h('span', { class: 'step-pill', style: { 'vertical-align': 'middle', background: 'var(--c-surface)' } }, `동작 ${stepCount}개`),
+              routine.title,
             ),
             h('span', { style: CHOOSER_GO_STYLE }, '고르기 ›'),
           ),
-          h('span', { style: { 'font-size': '20px', 'line-height': '1.45', color: 'var(--c-text-sub)' } }, routine.description),
         );
       set(
         h('h2', { style: { margin: '0', 'font-size': '28px' } }, '어떤 손운동을 해 볼까요? 카드를 눌러 골라 주세요.'),
         h(
           'div',
-          { class: 'home-grid', style: { 'grid-template-columns': CHOOSER_COLUMNS, gap: '16px' } },
+          // grid-auto-rows: 1fr → 모든 줄 높이를 가장 높은 줄에 맞춘다 (제목이 2줄인 카드가 있어도 카드 크기가 모두 같게)
+          { class: 'home-grid', style: { 'grid-template-columns': CHOOSER_COLUMNS, 'grid-auto-rows': '1fr', gap: '16px' } },
           items.map(card),
         ),
       );
