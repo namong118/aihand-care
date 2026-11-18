@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createCard } from './index.js';
+import { createCard, CAM_RETRY_WAIT_MS } from './index.js';
 import { createMockCard } from './mock.js';
 import { createRobot } from '../robot/index.js';
 import colors from '../../data/colors.json';
@@ -268,19 +268,78 @@ describe('숫자 카드와 카메라 모드 자동 전환 (펌웨어 F3)', () =>
     expect(camLines(f)).toEqual(['CAM,TAG', 'CAM,NUM', 'CAM,TAG']);
   });
 
-  it('CAM,NUM 이 실패하면(ERR,CAM_MODE) Mock 숫자 입력으로 계속하고, 같은 연결에서 다시 시도하지 않는다', async () => {
+  it('CAM,NUM 이 실패하면(ERR,CAM_MODE) 2초 뒤 한 번 더 보내고, 그래도 안 되면 Mock 숫자 입력으로 계속한다', async () => {
     const f = fakeRobotPort({ camReply: (line) => (line === 'CAM,NUM' ? 'ERR,CAM_MODE' : 'DONE,CAM') });
     const { robot, card } = bare(f);
     await connect(robot);
     card.onNumber(() => {});
-    await expect(card.ready()).resolves.toBe(false);
+    const ready = card.ready();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(card.status()).toMatchObject({ state: 'switching', note: '숫자 모드로 · 한 번 더 시도하는 중' });
+    await vi.advanceTimersByTimeAsync(CAM_RETRY_WAIT_MS);
+    await expect(ready).resolves.toBe(false);
+    expect(camLines(f)).toEqual(['CAM,TAG', 'CAM,NUM', 'CAM,NUM']);
     expect(card.mode).toBe(null);
     expect(card.status()).toMatchObject({ state: 'missing', mock: true });
     expect(card.status().note).toContain('WonderCam 모드를 바꾸지 못했어요');
 
+    // 문제마다 구독만 다시 할 때는 다시 보내지 않는다 (로봇 명령이 막히지 않게)
     card.onNumber(() => {});
-    await card.ready();
-    expect(f.sent.filter((l) => l === 'CAM,NUM')).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(CAM_RETRY_WAIT_MS);
+    expect(f.sent.filter((l) => l === 'CAM,NUM')).toHaveLength(2);
+  });
+
+  it('다시 보낸 CAM,NUM 이 되면 실제 숫자 카드로 (WonderCam 이 늦게 준비된 경우)', async () => {
+    let numTries = 0;
+    const f = fakeRobotPort({
+      camReply: (line) => {
+        if (line !== 'CAM,NUM') return 'DONE,CAM';
+        numTries += 1;
+        return numTries === 1 ? 'ERR,CAM_MODE' : 'DONE,CAM';
+      },
+    });
+    const { robot, card } = bare(f);
+    await connect(robot);
+    const got = [];
+    card.onNumber((e) => got.push(e.number));
+    const ready = card.ready();
+    await vi.advanceTimersByTimeAsync(CAM_RETRY_WAIT_MS);
+    await expect(ready).resolves.toBe(true);
+    expect(card.mode).toBe('NUM');
+    f.robotSays('NUM,3\n');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(got).toEqual([3]);
+  });
+
+  it('실패한 뒤 다음 활동을 시작할 때(ready) 다시 시도한다', async () => {
+    let ok = false; // 처음에는 계속 실패, 나중에 WonderCam 이 준비됨
+    const f = fakeRobotPort({ camReply: (line) => (line === 'CAM,NUM' && !ok ? 'ERR,CAM_MODE' : 'DONE,CAM') });
+    const { robot, card } = bare(f);
+    await connect(robot);
+    card.onNumber(() => {});
+    const first = card.ready();
+    await vi.advanceTimersByTimeAsync(CAM_RETRY_WAIT_MS);
+    await expect(first).resolves.toBe(false);
+
+    ok = true;
+    card.onNumber(() => {}); // 숫자 기억을 다시 시작
+    await expect(card.ready()).resolves.toBe(true);
+    expect(card.mode).toBe('NUM');
+    expect(f.sent.filter((l) => l === 'CAM,NUM')).toHaveLength(3);
+  });
+
+  it('다시 보내려고 기다리는 사이 다른 모드를 원하면, 실패로 남기지 않고 그 모드로 바꾼다', async () => {
+    const f = fakeRobotPort({ camReply: (line) => (line === 'CAM,NUM' ? 'ERR,CAM_MODE' : 'DONE,CAM') });
+    const { robot, card } = bare(f);
+    await connect(robot);
+    card.onNumber(() => {});
+    await vi.advanceTimersByTimeAsync(0); // 첫 CAM,NUM 실패, 2초 기다리는 중
+    card.onCard(() => {}); // 색깔손으로 넘어감
+    await vi.advanceTimersByTimeAsync(CAM_RETRY_WAIT_MS);
+    await expect(card.ready()).resolves.toBe(true);
+    expect(card.mode).toBe('TAG');
+    expect(camLines(f)).toEqual(['CAM,TAG', 'CAM,NUM', 'CAM,TAG']);
+    expect(card.status().note).not.toContain('바꾸지 못했어요');
   });
 
   it('카메라가 없으면(ERR,NO_CAM) 숫자 모드도 시도하지 않는다', async () => {

@@ -13,6 +13,8 @@
 //   - 원하는 모드와 카메라 모드가 다르면 'CAM,TAG' / 'CAM,NUM' / 'CAM,FACE' 를 보낸다. 로봇 명령과 같은 줄(큐)을 쓰고
 //     최대 약 5초 걸린다. 그동안 상태는 'switching'. 프로그램은 await ctx.card.ready() 로 기다릴 수 있다.
 //   - AIHand 를 연결하면 지금 원하는 모드(처음에는 태그)로 맞춘다.
+//   - ERR,CAM_MODE·시간 초과로 실패하면 2초 뒤 한 번 더 보낸다. 그래도 안 되면 Mock 입력으로 계속하고,
+//     다음에 활동을 시작할 때(ready()) 다시 시도한다.
 //
 // 실제 WonderCam 을 쓰는 동안에도 개발자 입력의 버튼·키보드는 계속 동작한다 (카드가 안 읽힐 때 대신 입력).
 
@@ -23,6 +25,13 @@ export { CARD_COLORS, isCardColor, tagIdToColor } from './cards.js';
 export { CARD_NUMBERS, isCardNumber, MOCK_FACE_IDS, isFaceId } from './mock.js';
 
 const MOCK_NOTE = '카드 대신 키보드·버튼';
+/**
+ * 모드 바꾸기가 ERR,CAM_MODE·시간 초과로 실패하면 이만큼 기다렸다가 한 번 더 보낸다.
+ * 라즈베리파이에서 micro:bit 가 WonderCam 보다 먼저 켜졌을 때 실패한 적이 있다 (hardware-check 부록 12).
+ */
+export const CAM_RETRY_WAIT_MS = 2000;
+/** 한 번 바꿀 때 보내는 CAM 명령 수 (처음 1번 + 다시 1번) */
+export const CAM_TRIES = 2;
 const MODE_LABEL = { TAG: '태그 모드', NUM: '숫자 모드', FACE: '얼굴 모드' };
 // 펌웨어가 그 모드를 모를 때(CAM 에 ERR,BAD_ARG) 안내. 숫자는 F3, 얼굴은 F4 부터
 const NEED_FIRMWARE = { NUM: '숫자 카드는 펌웨어 F3가 필요해요', FACE: '얼굴 인식은 펌웨어 F4가 필요해요' };
@@ -48,7 +57,8 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
   let everLinked = false;
   let fatal = false; // 카메라 없음·F1 펌웨어: 이번 연결에서는 다시 시도하지 않는다
   const unsupported = new Set(); // 이 펌웨어가 모르는 모드 (F2 의 NUM)
-  const failed = new Set(); // 바꾸지 못한 모드: 이번 연결에서는 다시 시도하지 않는다
+  const failed = new Set(); // 바꾸지 못한 모드: 다음 ready() 때까지 다시 시도하지 않는다
+  let retrying = false; // 실패한 뒤 다시 보내려고 기다리는 중
   let problem = null; // 상태 표시에 덧붙일 안내
 
   function changed() {
@@ -84,8 +94,19 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
   async function switchTo(mode) {
     switchingTo = mode;
     changed();
-    const msg = await robot.camMode(mode);
+    let msg = null;
+    for (let attempt = 1; attempt <= CAM_TRIES; attempt++) {
+      msg = await robot.camMode(mode);
+      if (robot.kind !== 'serial' || !isRetryable(msg) || attempt === CAM_TRIES || wanted !== mode) break;
+      // ERR,CAM_MODE · 시간 초과: 카메라가 아직 준비 중일 수 있어 잠깐 기다렸다 한 번 더
+      retrying = true;
+      changed();
+      await new Promise((r) => setTimeout(r, CAM_RETRY_WAIT_MS));
+      retrying = false;
+      if (robot.kind !== 'serial' || wanted !== mode) break;
+    }
     switchingTo = null;
+    retrying = false;
     if (robot.kind !== 'serial') return; // 바꾸는 사이 연결이 끊김 (sync 가 정리)
     if (msg?.type === 'DONE') {
       real.reset();
@@ -103,13 +124,22 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
       fatal = true;
       active = null;
       problem = '펌웨어 F4가 필요해요';
+    } else if (wanted !== mode) {
+      // 다시 시도하기 전에 다른 모드를 원하게 됨: 실패로 남기지 않는다 (sync 가 이어서 바꾼다)
+      active = null;
     } else {
-      // ERR,CAM_MODE · 시간 초과 등: 카메라 모드를 알 수 없다
+      // ERR,CAM_MODE · 시간 초과가 다시 시도해도 계속됨: 카메라 모드를 알 수 없다
       failed.add(mode);
       active = null;
       problem = 'WonderCam 모드를 바꾸지 못했어요. 키보드·버튼으로 입력해요';
     }
     changed();
+  }
+
+  /** 다시 보내 볼 만한 실패인지: 카메라 없음·펌웨어가 모름·연결 끊김이 아닌 것 (ERR,CAM_MODE, 시간 초과 등) */
+  function isRetryable(msg) {
+    if (msg?.type === 'DONE') return false;
+    return !['BAD_ARG', 'NO_CAM', 'UNKNOWN_CMD'].includes(msg?.message);
   }
 
   /** 원하는 모드에 맞춘다. 바꾸는 중이면 그게 끝날 때(이어서 또 바꾸면 그것까지) resolve */
@@ -194,6 +224,9 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
      * @returns {Promise<boolean>} 실제 WonderCam 이 원하는 모드로 준비됐으면 true, Mock 입력만 되면 false
      */
     async ready() {
+      // 활동을 시작할 때 부른다: 전에 바꾸지 못한 모드도 한 번 더 시도한다
+      // (그사이 WonderCam 이 준비됐을 수 있다. 문제마다 구독만 다시 할 때는 다시 시도하지 않는다)
+      failed.delete(wanted);
       await sync();
       return active !== null && active === wanted;
     },
@@ -206,7 +239,9 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
           ? { state: 'disconnected', mock: true, note: `AIHand 연결이 끊겨 ${MOCK_NOTE}` }
           : { state: 'mock', mock: true, note: MOCK_NOTE };
       }
-      if (switchingTo) return { state: 'switching', mock: false, note: `${MODE_LABEL[switchingTo]}로` };
+      if (switchingTo) {
+        return { state: 'switching', mock: false, note: `${MODE_LABEL[switchingTo]}로${retrying ? ' · 한 번 더 시도하는 중' : ''}` };
+      }
       const extra = problem ? ` · ${problem}` : '';
       if (active === 'TAG') {
         const shown = real.shown();
