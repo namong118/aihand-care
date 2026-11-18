@@ -17,6 +17,7 @@ import { h, button, message } from './ui/components.js';
 import { PROGRAMS } from './programs/index.js';
 import login from './login/index.js';
 import { createUserStore } from './login/users.js';
+import { sendCourseSummary } from './guardian/index.js';
 
 const appEl = document.querySelector('#app');
 const statusEl = document.querySelector('#statusbar');
@@ -339,8 +340,11 @@ function skipCourseStep() {
 
 /** "코스 그만하기": 지금까지 저장된 기록은 남는다 (요약에서 나머지는 "하지 않음") */
 function stopCourse() {
-  if (course) courseStore.end(course.id, { finished: false, endedAt: new Date().toISOString() });
+  const id = course?.id;
+  if (id) courseStore.end(id, { finished: false, endedAt: new Date().toISOString() });
   showHome();
+  // 보호자 앱(#62): 중간에 마친 코스도 요약을 보낸다. showHome(프로그램 정리) 뒤라 그때까지의 기록이 모두 들어간다
+  if (id) sendCourseSummary(summarizeCourse(courseStore.get(id), devices.log.list()));
 }
 
 function finishCourse() {
@@ -351,6 +355,7 @@ function finishCourse() {
   setScreen('course');
   const summary = summarizeCourse(courseStore.get(id), devices.log.list());
   renderCourseSummary(appEl, { summary, who: whoText(), onHome: showHome, onResults: () => showResults() });
+  sendCourseSummary(summary); // 보호자 앱(#62). 기다리지 않고, 손님·연결 안 한 분은 알아서 보내지 않는다
   ctx.robot
     .hello()
     .then(() => ctx.robot.rest())
