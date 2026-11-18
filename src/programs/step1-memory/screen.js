@@ -100,7 +100,7 @@ export function createScreen(container) {
           given.length > 0 ? h('span', { class: 'act-tag' }, `지금까지: ${join(given)}`) : null,
         ),
         card(
-          h('p', { class: 'act-question', style: { 'font-size': '44px' } }, '기억한 순서대로 카드를 보여 주세요'),
+          h('p', { class: 'act-question', style: { 'font-size': '44px' } }, `숫자 ${count}개를 순서대로 보여 주세요`),
           h('p', { class: 'act-text' }, '카드는 카메라 가까이(10~15cm) 하나씩 보여 주세요. 아래 숫자를 눌러도 돼요.'),
         ),
         h(
