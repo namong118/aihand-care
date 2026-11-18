@@ -11,7 +11,16 @@ const METHOD_TEXT = {
 };
 
 /** 동작이 시작되기 전부터 같은 손모양을 들고 있을 때 안내 (logic.js 의 'old' 상태) */
-const OLD_HAND_TEXT = '손을 잠깐 내렸다가 다시 해 주세요. 새로 만든 손모양부터 세어요.';
+const OLD_HAND_TEXT = '손을 잠깐 내렸다가 다시 해 주세요.';
+
+/**
+ * 게이지 카드와 미리 든 손 안내를 같은 칸에 겹쳐 두고 하나만 보이게 한다 (#101).
+ * 안내가 따로 줄을 차지하면 뜰 때 "따라 했어요/건너뛰기" 버튼이 화면 밖으로 밀렸다.
+ * 칸 높이는 둘 중 큰 쪽(게이지 카드)으로 정해지고, visibility 로만 바꾸므로 높이가 변하지 않는다.
+ * 미리 든 손일 때는 게이지가 어차피 차지 않으니 그 자리에 안내를 보여 준다.
+ */
+const HOLD_PANEL_STYLE = { display: 'grid' };
+const HOLD_LAYER_STYLE = { 'grid-area': '1 / 1' };
 
 /**
  * 루틴 카드 배치: 항상 2열 (루틴 4개면 2×2). 300px 보다 좁아지는 화면에서만 1열.
@@ -31,6 +40,7 @@ const CHOOSER_CARD_STYLE = {
   padding: '18px 24px',
   gap: '6px',
   'min-height': '64px',
+  'justify-content': 'center', // 옆 카드 제목이 2줄이라 카드가 높아져도 내용은 세로 가운데
   border: '0',
   background: 'var(--step-bg)',
 };
@@ -40,7 +50,7 @@ const CHOOSER_GO_STYLE = {
   flex: 'none',
   background: 'var(--step-btn)',
   color: '#FFFFFF',
-  'font-size': '20px',
+  'font-size': '24px', // 고령자 UX 기본값: 글씨 24px 이상 (#101)
   'font-weight': '600',
   padding: '6px 16px',
   'border-radius': 'var(--r-start)',
@@ -71,6 +81,7 @@ export function createScreen(container, poses) {
   let gaugeText = null;
   let countText = null;
   let oldNotice = null;
+  let gaugeCard = null;
 
   function set(...children) {
     area.innerHTML = '';
@@ -78,6 +89,7 @@ export function createScreen(container, poses) {
     gaugeText = null;
     countText = null;
     oldNotice = null;
+    gaugeCard = null;
     area.append(...children.flat().filter(Boolean));
   }
 
@@ -92,7 +104,10 @@ export function createScreen(container, poses) {
       // 카드 전체가 버튼 하나다. 시연 화면(1280×720)에 카드 4개가 스크롤 없이 다 보이게
       // 카드 아래 따로 두던 64px 버튼을 없애고, 카드 위쪽 "고르기 ›" 표시로 누를 수 있음을 알린다.
       // 누르는 곳이 카드 전체라서 버튼보다 더 크다.
-      const card = ({ routine, stepCount }) =>
+      // 카드에는 제목과 "고르기 ›"만 둔다 (#101). "동작 N개"(15px)와 설명(20px)은 글씨 24px 기준에 못 미치고
+      // 가상 로봇손 칸이 붙으면 카드가 높아져서 일단 뺐다. 설명은 다음 화면(루틴 소개)에 나온다.
+      // items 의 stepCount 는 다시 넣을 때를 위해 그대로 받는다
+      const card = ({ routine }) =>
         h(
           'button',
           {
@@ -105,25 +120,24 @@ export function createScreen(container, poses) {
               onPick(routine);
             },
           },
-          // 위쪽 줄: 왼쪽 제목·"동작 N개", 오른쪽 "고르기 ›". 카드가 좁으면 제목 쪽만 줄을 바꾼다
+          // 한 줄: 왼쪽 제목, 오른쪽 "고르기 ›". 카드가 좁으면 제목만 줄을 바꾼다
           h(
             'span',
-            { style: { display: 'flex', 'align-items': 'flex-start', gap: '12px' } },
+            { style: { display: 'flex', 'align-items': 'center', gap: '12px' } },
             h(
               'span',
               { style: { flex: '1', 'min-width': '0', 'font-size': '28px', 'font-weight': '600', 'line-height': '1.3' } },
-              `${routine.title} `,
-              h('span', { class: 'step-pill', style: { 'vertical-align': 'middle', background: 'var(--c-surface)' } }, `동작 ${stepCount}개`),
+              routine.title,
             ),
             h('span', { style: CHOOSER_GO_STYLE }, '고르기 ›'),
           ),
-          h('span', { style: { 'font-size': '20px', 'line-height': '1.45', color: 'var(--c-text-sub)' } }, routine.description),
         );
       set(
         h('h2', { style: { margin: '0', 'font-size': '28px' } }, '어떤 손운동을 해 볼까요? 카드를 눌러 골라 주세요.'),
         h(
           'div',
-          { class: 'home-grid', style: { 'grid-template-columns': CHOOSER_COLUMNS, gap: '16px' } },
+          // grid-auto-rows: 1fr → 모든 줄 높이를 가장 높은 줄에 맞춘다 (제목이 2줄인 카드가 있어도 카드 크기가 모두 같게)
+          { class: 'home-grid', style: { 'grid-template-columns': CHOOSER_COLUMNS, 'grid-auto-rows': '1fr', gap: '16px' } },
           items.map(card),
         ),
       );
@@ -161,7 +175,13 @@ export function createScreen(container, poses) {
       const where = rounds > 1 ? `동작 ${index} / ${count} · 반복 ${step.round} / ${rounds}` : `동작 ${index} / ${count}`;
       countText = h('p', { class: 'act-prompt', 'aria-live': 'polite', style: { padding: '0', color: 'var(--step-fg)', 'min-width': '2.5em' } }, '');
       oldNotice = message(OLD_HAND_TEXT, 'info');
-      oldNotice.hidden = true;
+      Object.assign(oldNotice.style, {
+        ...HOLD_LAYER_STYLE,
+        margin: '0',
+        display: 'flex',
+        'align-items': 'center',
+        visibility: 'hidden',
+      });
       gaugeBar = h('div', { class: 'gauge-fill' });
       gaugeText = h('span', { class: 'act-label' }, `유지: 0.0 / ${holdSec}초`);
       const gauge = h(
@@ -184,8 +204,12 @@ export function createScreen(container, poses) {
           ),
           countText,
         ),
-        h('div', { class: 'act-card', style: { gap: '10px', padding: '20px 32px' } }, gauge, gaugeText),
-        oldNotice,
+        h(
+          'div',
+          { style: HOLD_PANEL_STYLE },
+          (gaugeCard = h('div', { class: 'act-card', style: { ...HOLD_LAYER_STYLE, gap: '10px', padding: '20px 32px' } }, gauge, gaugeText)),
+          oldNotice,
+        ),
         h(
           'div',
           { class: 'act-foot' },
@@ -207,7 +231,9 @@ export function createScreen(container, poses) {
       const shown = ratio > 0 ? Math.min(stableMs, holdMs) : 0;
       gaugeText.textContent = `유지: ${(shown / 1000).toFixed(1)} / ${(holdMs / 1000).toFixed(1)}초`;
       if (countText.textContent !== count) countText.textContent = count;
-      oldNotice.hidden = !showOld;
+      // 게이지 카드와 안내는 같은 칸에 겹쳐 있다. visibility 로 바꿔서 칸 높이가 변하지 않게 한다
+      gaugeCard.style.visibility = showOld ? 'hidden' : 'visible';
+      oldNotice.style.visibility = showOld ? 'visible' : 'hidden';
     },
 
     /** 동작 사이 쉬는 시간: 어떻게 마쳤는지 + 다음 동작 안내. next 가 없으면 마지막 동작 */
