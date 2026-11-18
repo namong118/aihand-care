@@ -132,6 +132,26 @@ describe('createRobot (Mock ↔ 실제 AIHand 전환)', () => {
       expect(openPort).not.toHaveBeenCalled(); // 고르기 창은 띄우지 않는다
     });
 
+    it('허락한 포트가 없으면 "연결 중…"을 끄고 상태 표시줄에 알린다 (버튼이 계속 막히지 않게)', async () => {
+      const robot = createRobot({ poses, supported: () => true, openGranted: async () => null, serialEvents: fakeSerialEvents() });
+      const seen = []; // 상태 표시줄이 다시 그릴 때마다 보는 값
+      robot.onChange(() => seen.push(robot.status().connecting));
+      robot.startAutoConnect();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(seen.at(-1)).toBe(false);
+    });
+
+    it('PONG 이 없어 실패해도 "연결 중…"을 끄고 알린다', async () => {
+      const f = fakeRobotPort({ silent: true });
+      const robot = createRobot({ poses, supported: () => true, openGranted: async () => f.port, serialEvents: fakeSerialEvents() });
+      const seen = [];
+      robot.onChange(() => seen.push(robot.status().connecting));
+      robot.startAutoConnect();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(seen).toContain(true);
+      expect(seen.at(-1)).toBe(false);
+    });
+
     it('허락한 포트가 있으면 켤 때 바로 연결하고 그때의 진행 속도를 보낸다', async () => {
       const f = fakeRobotPort();
       const robot = createRobot({ poses, supported: () => true, openGranted: async () => f.port, serialEvents: fakeSerialEvents() });
