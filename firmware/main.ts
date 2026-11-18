@@ -62,13 +62,21 @@ function send(line: string) {
 }
 
 // ---------- 확장보드 서보 ----------
-// StartbitV2 setPwmServo 와 같은 형식 (180도 범위). 반드시 toBoard() 상태에서 부른다.
-function servo(index: number, angle: number, ms: number) {
-    let pos = Math.round(angle * 2000 / 180 + 500)
-    let b = pins.createBuffer(10)
-    b[0] = 0x55; b[1] = 0x55; b[2] = 0x08; b[3] = 0x03; b[4] = 0x01
+// StartbitV2 서보 명령 (180도 범위). 반드시 toBoard() 상태에서 부른다.
+// 여러 서보를 **명령 하나로 묶어** 보낸다 (#57: 따로 5번 보내면 빠른 동작에서 확장보드가 중간 명령을 놓쳤다).
+// 형식: 0x55 0x55 길이 0x03 서보수 시간L 시간H [번호 위치L 위치H] × 서보수, 길이 = 서보수 × 3 + 5
+// (서보 1개일 때 길이 8 = 예전 setPwmServo 와 같은 형식)
+function servos(ids: number[], angles: number[], ms: number) {
+    let n = ids.length
+    let b = pins.createBuffer(7 + n * 3)
+    b[0] = 0x55; b[1] = 0x55; b[2] = n * 3 + 5; b[3] = 0x03; b[4] = n
     b[5] = ms & 0xff; b[6] = (ms >> 8) & 0xff
-    b[7] = index; b[8] = pos & 0xff; b[9] = (pos >> 8) & 0xff
+    for (let k = 0; k < n; k++) {
+        let pos = Math.round(angles[k] * 2000 / 180 + 500)
+        b[7 + k * 3] = ids[k]
+        b[8 + k * 3] = pos & 0xff
+        b[9 + k * 3] = (pos >> 8) & 0xff
+    }
     serial.writeBuffer(b)
 }
 
@@ -83,16 +91,18 @@ function toUSB() {
     onBoard = false
 }
 
-// 여러 서보를 한 번에 보내고 USB로 되돌린 뒤 wait ms 기다린다.
+// 여러 서보를 명령 하나로 보내고 USB로 되돌린 뒤 wait ms 기다린다.
 // 각도는 여기서 안전 범위로 한 번 더 제한한다.
 function move(ids: number[], angs: number[], ms: number, wait: number) {
-    toBoard()
+    let safe: number[] = []
     for (let n = 0; n < ids.length; n++) {
         let a = angs[n]
         if (ids[n] == WRIST) a = Math.max(WRIST_MIN, Math.min(WRIST_MAX, a))
         else a = Math.max(FINGER_MIN, Math.min(FINGER_MAX, a))
-        servo(ids[n], a, ms * speedK)
+        safe.push(a)
     }
+    toBoard()
+    servos(ids, safe, ms * speedK)
     basic.pause(SETTLE_MS)
     toUSB()
     basic.pause(wait * speedK)
