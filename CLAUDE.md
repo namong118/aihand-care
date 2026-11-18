@@ -60,6 +60,7 @@ src/
     log.js             결과 기록, CSV 내보내기
   dashboard/           웹 대시보드: 홈, 장치 상태, 결과 화면 (A)
   login/               얼굴 로그인·사용자 등록·동의 화면 (C)
+  guardian/            보호자 앱 보내기: 연결 코드·대기열 (B)
   programs/
     step1-memory/      STEP 1 숫자 기억 (폴더명 유지)     (A)
     step2-rps/         STEP 2 사고력 가위바위보           (D)
