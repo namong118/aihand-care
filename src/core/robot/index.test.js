@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createRobot } from './index.js';
+import { createRobot, PLUG_WAIT_MS } from './index.js';
 import poses from '../../data/poses.json';
 
 /** PING 에는 PONG, 다른 명령에는 DONE 으로 바로 답하는 가짜 AIHand 포트 */
@@ -108,5 +108,85 @@ describe('createRobot (Mock ↔ 실제 AIHand 전환)', () => {
     expect(robot.status()).toMatchObject({ state: 'connected', mock: false, note: '' });
     await expect(robot.rest()).resolves.toEqual({ type: 'DONE', command: 'REST' });
     expect(second.sent).toEqual(['PING', 'REST', 'REST']); // 연결 때 한 번 + 위에서 한 번
+  });
+
+  describe('자동 연결 (startAutoConnect, 키오스크)', () => {
+    /** navigator.serial 의 'connect' 이벤트 흉내 */
+    function fakeSerialEvents() {
+      const handlers = new Set();
+      return {
+        addEventListener: (type, cb) => type === 'connect' && handlers.add(cb),
+        removeEventListener: (type, cb) => type === 'connect' && handlers.delete(cb),
+        plug: () => handlers.forEach((cb) => cb()),
+        count: () => handlers.size,
+      };
+    }
+
+    it('허락한 포트가 없으면 아무것도 하지 않고 Mock 을 유지한다', async () => {
+      const openPort = vi.fn();
+      const robot = createRobot({ poses, supported: () => true, openPort, openGranted: async () => null, serialEvents: fakeSerialEvents() });
+      robot.startAutoConnect();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(robot.kind).toBe('mock');
+      expect(robot.status()).toMatchObject({ state: 'mock', note: '화면 속 로봇손', connecting: false });
+      expect(openPort).not.toHaveBeenCalled(); // 고르기 창은 띄우지 않는다
+    });
+
+    it('허락한 포트가 있으면 켤 때 바로 연결하고 그때의 진행 속도를 보낸다', async () => {
+      const f = fakeRobotPort();
+      const robot = createRobot({ poses, supported: () => true, openGranted: async () => f.port, serialEvents: fakeSerialEvents() });
+      robot.startAutoConnect(() => 'SLOW');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(robot.kind).toBe('serial');
+      expect(f.sent).toEqual(['PING', 'SPEED,SLOW', 'REST']);
+    });
+
+    it('USB 를 다시 꽂으면 잠깐 기다렸다가 다시 연결한다', async () => {
+      const first = fakeRobotPort();
+      const second = fakeRobotPort();
+      const granted = [first.port, second.port];
+      const events = fakeSerialEvents();
+      const robot = createRobot({ poses, supported: () => true, openGranted: async () => granted.shift() ?? null, serialEvents: events });
+      robot.startAutoConnect();
+      await vi.advanceTimersByTimeAsync(0);
+      first.unplug();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(robot.status().state).toBe('disconnected');
+
+      events.plug();
+      await vi.advanceTimersByTimeAsync(PLUG_WAIT_MS - 1);
+      expect(robot.kind).toBe('mock'); // micro:bit 가 켜지는 동안은 기다린다
+      await vi.advanceTimersByTimeAsync(1);
+      expect(robot.kind).toBe('serial');
+      expect(second.sent).toEqual(['PING', 'REST']);
+    });
+
+    it('이미 연결되어 있으면 꽂기 이벤트가 와도 다시 열지 않는다', async () => {
+      const f = fakeRobotPort();
+      const openGranted = vi.fn(async () => f.port);
+      const events = fakeSerialEvents();
+      const robot = createRobot({ poses, supported: () => true, openGranted, serialEvents: events });
+      robot.startAutoConnect();
+      await vi.advanceTimersByTimeAsync(0);
+      events.plug();
+      await vi.advanceTimersByTimeAsync(PLUG_WAIT_MS);
+      expect(openGranted).toHaveBeenCalledTimes(1);
+    });
+
+    it('그만두기 함수를 부르면 꽂기 이벤트를 더 듣지 않는다', () => {
+      const events = fakeSerialEvents();
+      const robot = createRobot({ poses, supported: () => true, openGranted: async () => null, serialEvents: events });
+      const stop = robot.startAutoConnect();
+      expect(events.count()).toBe(1);
+      stop();
+      expect(events.count()).toBe(0);
+    });
+
+    it('Chrome 이 아니면 아무것도 하지 않는다', () => {
+      const openGranted = vi.fn();
+      const robot = createRobot({ poses, supported: () => false, openGranted, serialEvents: fakeSerialEvents() });
+      robot.startAutoConnect();
+      expect(openGranted).not.toHaveBeenCalled();
+    });
   });
 });
