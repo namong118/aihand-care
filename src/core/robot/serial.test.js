@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createSerialRobot, TIMEOUT_MS, RESYNC_TRIES } from './serial.js';
+import { createSerialRobot, openGrantedPort, TIMEOUT_MS, RESYNC_TRIES } from './serial.js';
 
 /** 진짜 포트 대신 쓰는 가짜 포트. robotSays(text) 로 로봇이 보낸 글자를 흉내 낸다 */
 function fakePort() {
@@ -268,3 +268,20 @@ describe('createSerialRobot', () => {
     expect(onNumber).not.toHaveBeenCalled();
   });
 });
+
+describe('openGrantedPort (허락한 포트 자동으로 열기)', () => {
+  it('허락한 포트가 없으면 null', async () => {
+    await expect(openGrantedPort({ getPorts: async () => [] })).resolves.toBeNull();
+    await expect(openGrantedPort(undefined)).resolves.toBeNull();
+  });
+
+  it('열리는 첫 포트를 115200 으로 연다 (못 여는 포트는 건너뜀)', async () => {
+    const busy = { open: vi.fn(async () => { throw new Error('busy'); }) };
+    const ok = { open: vi.fn(async () => {}) };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(openGrantedPort({ getPorts: async () => [busy, ok] })).resolves.toBe(ok);
+    expect(ok.open).toHaveBeenCalledWith({ baudRate: 115200 });
+    warn.mockRestore();
+  });
+});
+

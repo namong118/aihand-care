@@ -33,6 +33,8 @@ removeOldUsers(); // 사용자 이름 기능 제거: 예전에 저장한 이름 
 const settings = { ...DEFAULT_SETTINGS, ...loadSavedSettings() };
 
 const { ctx, devices } = createContext(settings);
+// 전에 "AIHand 연결"로 허락한 AIHand 는 켤 때·USB 를 다시 꽂을 때 자동으로 연결한다 (키오스크, #60)
+devices.robot.startAutoConnect(() => settings.speed);
 
 let screen = 'home'; // 'home' | 'program' | 'results' | 'course' | 'login'
 let settingsOpen = false;

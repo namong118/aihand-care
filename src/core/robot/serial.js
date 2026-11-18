@@ -45,6 +45,24 @@ export async function openSerialPort(serialApi = globalThis.navigator?.serial) {
   return port;
 }
 
+/**
+ * 전에 "AIHand 연결"로 허락한 포트를 고르기 창 없이 연다 (키오스크 자동 연결).
+ * 허락은 브라우저 프로필에 남는다 (시크릿 모드가 아니어야 한다). 허락한 포트가 없으면 null.
+ * 허락한 포트가 여럿이면 처음으로 열리는 것을 쓴다 (AIHand 는 한 대만 지원).
+ */
+export async function openGrantedPort(serialApi = globalThis.navigator?.serial) {
+  const ports = (await serialApi?.getPorts?.()) ?? [];
+  for (const port of ports) {
+    try {
+      await port.open({ baudRate: BAUD_RATE });
+      return port;
+    } catch (e) {
+      console.warn('[로봇] 허락한 포트를 열지 못했어요', e);
+    }
+  }
+  return null;
+}
+
 function err(message) {
   return { type: 'ERR', message };
 }
