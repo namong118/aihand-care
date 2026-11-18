@@ -52,6 +52,21 @@ export function createScreen(container) {
       set(card(h('p', { class: 'act-prompt' }, '숫자 카드를 읽을 준비를 하고 있어요')));
     },
 
+    /**
+     * 로봇이 보여 주기 전에 이번에 몇 개를 기억할지 먼저 알려 준다.
+     * attempt 2 = 같은 숫자를 한 번 더 보여 줄 때
+     */
+    announce({ index, total, count, attempt = 1 }) {
+      set(
+        h('div', { class: 'act-head' }, progress(index, total)),
+        card(
+          h('p', { class: 'act-text', style: { 'text-align': 'center' } }, attempt > 1 ? '같은 숫자를 한 번 더 보여 드릴게요' : '이번에는'),
+          h('p', { class: 'act-question', style: { 'text-align': 'center', 'font-size': '64px' } }, `숫자 ${count}개`),
+          h('p', { class: 'act-text', style: { 'text-align': 'center' } }, '로봇을 잘 보고 기억해 주세요'),
+        ),
+      );
+    },
+
     /** 로봇이 보여주는 동안. 정답 숫자는 화면에 쓰지 않는다 */
     watching({ index, total, step, count }) {
       set(
@@ -85,7 +100,7 @@ export function createScreen(container) {
           given.length > 0 ? h('span', { class: 'act-tag' }, `지금까지: ${join(given)}`) : null,
         ),
         card(
-          h('p', { class: 'act-question', style: { 'font-size': '44px' } }, '기억한 순서대로 카드를 보여 주세요'),
+          h('p', { class: 'act-question', style: { 'font-size': '44px' } }, `숫자 ${count}개를 순서대로 보여 주세요`),
           h('p', { class: 'act-text' }, '카드는 카메라 가까이(10~15cm) 하나씩 보여 주세요. 아래 숫자를 눌러도 돼요.'),
         ),
         h(

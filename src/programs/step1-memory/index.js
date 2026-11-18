@@ -1,6 +1,7 @@
 // STEP 1 숫자 기억: logic 과 screen 을 연결한다. core 는 import 하지 않고 ctx 만 쓴다.
 //
 // 한 회차 = 5문제. 문제 하나의 흐름:
+//   "이번에는 숫자 N개" 안내 →
 //   로봇이 숫자를 손가락으로 차례로 보여줌 → 손 내림(REST)
 //   → 사용자가 숫자 카드를 같은 순서로 하나씩 보여줌 (화면 숫자 버튼도 됨, 건너뛰기 가능) → 판정
 //   → 해내면 칭찬 반응 / 처음 해내지 못하면 "다시 해 볼까요?" → 로봇이 같은 순서를 한 번 더 보여 주고 다시
@@ -30,6 +31,8 @@ const isSlow = (ctx) => ctx.settings.speed === 'SLOW';
 
 /** 숫자 하나를 보여준 뒤 기억할 시간 */
 const showGapMs = (ctx) => (isSlow(ctx) ? 1500 : 800);
+/** 로봇이 보여 주기 전에 "숫자 N개" 안내를 보여 주는 시간 */
+const announceMs = (ctx) => (isSlow(ctx) ? 3000 : 2000);
 /** 칭찬을 보여 준 뒤 다음 문제로 넘어가기 전 쉬는 시간 */
 const restMs = (ctx) => (isSlow(ctx) ? 2000 : 1200);
 
@@ -130,6 +133,11 @@ async function playQuestion(ctx, screen, s, count, index, total) {
   let skipped = false;
 
   for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+    // 0) 이번에 몇 개를 기억할지 먼저 알려 주기
+    screen.announce({ ...progress, count, attempt });
+    await wait(announceMs(ctx));
+    if (!s.alive) return null;
+
     // 1) 로봇이 보여 주기 (다시 할 때도 같은 순서를 다시 보여 준다)
     if (!(await showSequence(ctx, screen, s, expected, progress))) return null;
 
