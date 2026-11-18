@@ -23,6 +23,10 @@ export { CARD_COLORS, isCardColor, tagIdToColor } from './cards.js';
 export { CARD_NUMBERS, isCardNumber, MOCK_FACE_IDS, isFaceId } from './mock.js';
 
 const MOCK_NOTE = '카드 대신 키보드·버튼';
+/** 모드 바꾸기 실패(ERR,CAM_MODE·시간 초과) 때 개발자 입력에 보여 줄 할 일 (README "켜는 순서") */
+export const CAM_STUCK_HELP =
+  'WonderCam 모드를 바꾸지 못했어요. 카메라 화면이 로딩 중에 멈췄다면 micro:bit USB와 AIHand 전원을 모두 뺐다가, ' +
+  'AIHand 전원 → 카메라 화면이 뜬 뒤 → USB 순서로 다시 켜 주세요. 지금은 키보드·버튼으로 입력해요';
 const MODE_LABEL = { TAG: '태그 모드', NUM: '숫자 모드', FACE: '얼굴 모드' };
 // 펌웨어가 그 모드를 모를 때(CAM 에 ERR,BAD_ARG) 안내. 숫자는 F3, 얼굴은 F4 부터
 const NEED_FIRMWARE = { NUM: '숫자 카드는 펌웨어 F3가 필요해요', FACE: '얼굴 인식은 펌웨어 F4가 필요해요' };
@@ -104,10 +108,12 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
       active = null;
       problem = '펌웨어 F4가 필요해요';
     } else {
-      // ERR,CAM_MODE · 시간 초과 등: 카메라 모드를 알 수 없다
+      // ERR,CAM_MODE · 시간 초과 등: 카메라 모드를 알 수 없다.
+      // 실물에서는 WonderCam 이 켜지다 멈춘(로딩 동그라미) 경우였고, 명령을 다시 보내거나 micro:bit USB 만
+      // 다시 꽂아서는 풀리지 않았다. USB·AIHand 전원을 모두 끊고 다시 켜야 풀린다 (hardware-check 부록 12)
       failed.add(mode);
       active = null;
-      problem = 'WonderCam 모드를 바꾸지 못했어요. 키보드·버튼으로 입력해요';
+      problem = CAM_STUCK_HELP;
     }
     changed();
   }

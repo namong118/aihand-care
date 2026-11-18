@@ -35,6 +35,8 @@ WonderCam에 보인 색깔 카드의 태그 번호(STEP 3), 숫자 카드의 숫
 
 카메라 모드(태그·숫자·얼굴) 중에 AIHand 전원을 껐다 켰다면 **micro:bit도 리셋**한다. 리셋하지 않으면 응답이 크게 늦어지거나(8초 이상) `CAM,…`이 `ERR,CAM_MODE`로 실패할 수 있다 (부록 9, 원인 [검증 필요] #51)
 
+**micro:bit USB를 꽂아 둔 채 AIHand 전원만 껐다 켜면 WonderCam이 켜지다 멈출 수 있다** (작은 화면에 로딩 동그라미가 계속 돎, 2026-11-18 Pi에서 재현, `docs/hardware-check.md` 부록 12). 이때는 micro:bit 리셋이나 USB만 다시 꽂기로 풀리지 않는다. **USB를 뽑고 AIHand 전원도 끈 뒤**, 위 1~5 순서로 다시 켠다. 그래서 AIHand 전원은 늘 **USB보다 먼저** 켠다 (README "켜는 순서").
+
 ## 명령과 시간
 
 | 명령 | 응답 | 동작 | NORMAL | SLOW |
