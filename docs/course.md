@@ -67,10 +67,14 @@ detail: {
   endedAt:   '2026-11-13T07:41:12.000Z',
   finished: true,                  // "코스 마치기"까지 갔는지
   activities: [
-    { order: 1, program: 'step4-coach',  status: 'played',    rounds: 1, total: 4, done: 4, skipped: 0, avgReactionMs: null },
-    { order: 2, program: 'step2-rps',    status: 'skipped',   rounds: 0, total: 0, done: 0, skipped: 0, avgReactionMs: null },
-    { order: 3, program: 'step1-memory', status: 'played',    rounds: 2, total: 6, done: 5, skipped: 1, avgReactionMs: 1500 },
-    { order: 4, program: 'step3-stroop', status: 'notPlayed', rounds: 0, total: 0, done: 0, skipped: 0, avgReactionMs: null },
+    { order: 1, program: 'step4-coach',  status: 'played',    rounds: 1, total: 4, done: 4, skipped: 0, avgReactionMs: null,
+      outcomes: null, routines: ['basic-grip'] },
+    { order: 2, program: 'step2-rps',    status: 'skipped',   rounds: 0, total: 0, done: 0, skipped: 0, avgReactionMs: null,
+      outcomes: null, routines: null },
+    { order: 3, program: 'step1-memory', status: 'played',    rounds: 2, total: 6, done: 5, skipped: 1, avgReactionMs: 1500,
+      outcomes: { first: 3, second: 2, shown: 0, skipped: 1 }, routines: null },
+    { order: 4, program: 'step3-stroop', status: 'notPlayed', rounds: 0, total: 0, done: 0, skipped: 0, avgReactionMs: null,
+      outcomes: null, routines: null },
   ],
 }
 ```
@@ -81,12 +85,14 @@ detail: {
 | `rounds` | 그 활동을 몇 번 했는지 ("한 번 더 하기"를 하면 2 이상) |
 | `total`, `done`, `skipped` | 회차들의 합. `skipped`는 활동 안에서 건너뛴 문제·동작 수 (활동 건너뛰기와 다름) |
 | `avgReactionMs` | 회차별 평균 반응 시간을 **문제 수(`total`)로 가중**한 평균. 반응 시간이 없으면 `null` |
+| `outcomes` | 문제마다 어떻게 했는지 센 것 `{ first, second, shown, skipped }` (한 번에 함 / 다시 해서 함 / 함께 확인 / 건너뜀). 기록의 `detail.questions[].status`에서 센다 (지금은 STEP 1·2). 문제 목록이 없는 활동은 `null` |
+| `routines` | 한 손운동 루틴 **id** 목록 (기록의 `detail.routine`, 지금은 STEP 4). 처음 한 순서대로 한 번씩. 이름은 `src/data/routines.json`에서 찾는다. 없으면 `null` |
 
-- 넣지 않는 것: 정답률·점수 같은 비율이나 평가 값, 손 유지 시간, 프로그램별 `detail`(문제 내용 등).
+- 넣지 않는 것: 정답률·점수 같은 비율이나 평가 값, 손 유지 시간, 프로그램별 `detail`(문제 내용 등). `outcomes`는 비율이 아니라 **센 개수**만 둔다.
 - 화면에는 "완료 4 / 5", "건너뜀", "하지 않음"처럼 "활동 기록"으로만 보여 준다.
 - 날짜(`date`)는 Asia/Seoul 기준이다. 한국 시간 자정~오전 9시는 UTC로는 전날이지만 한국 날짜로 센다. 스테이션 시계가 맞아야 한다 (#60 시계 맞추기).
 - 보호자 앱(#62)은 이 객체를 그대로 보내고 `courseId`를 중복 방지 키로 쓴다 (다시 보내도 한 번만 저장). 어느 보호자에게 보낼지는 `userId`로 고른다. `userId`가 `null`(손님)이면 보내지 않는다.
-- `userId`·`who`는 형식 버전 1에 뒤에 더한 키다 (있던 키는 그대로라 `version`은 올리지 않았다).
+- `userId`·`who`(#82), `activities[].outcomes`·`routines`(#62 보호자 앱, `docs/guardian-app.md` 6-13)는 형식 버전 1에 뒤에 더한 키다 (있던 키는 그대로라 `version`은 올리지 않았다).
 - 손님과 로그인 기능 전 코스는 둘 다 `userId: null`이라 `who`로 나눈다: 진행 정보나 기록에 `userId` **키가 있고** 값이 `null`이면 `guest`, 키가 아예 없으면 `unknown` (`courseUser()`)
 
 ## 5. 반응 시간 변화 (#8)
