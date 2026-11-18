@@ -136,6 +136,32 @@ export function courseOf(record) {
   return c && typeof c.id === 'string' ? c : null;
 }
 
+/** 문제마다 어떻게 했는지 (STEP 1·2 `detail.questions[].status`) */
+const OUTCOME_KEYS = ['first', 'second', 'shown', 'skipped'];
+
+/**
+ * 회차들의 문제 결과 개수 { first, second, shown, skipped }.
+ * 문제 목록(`detail.questions`)이 있는 회차가 하나도 없으면 null (STEP 3·4 등).
+ */
+export function countOutcomes(rounds) {
+  const lists = rounds.map((r) => r.detail?.questions).filter(Array.isArray);
+  if (lists.length === 0) return null;
+  const out = { first: 0, second: 0, shown: 0, skipped: 0 };
+  for (const q of lists.flat()) {
+    if (OUTCOME_KEYS.includes(q?.status)) out[q.status] += 1;
+  }
+  return out;
+}
+
+/**
+ * 회차들이 한 손운동 루틴 id (STEP 4 `detail.routine`), 처음 한 순서대로 한 번씩.
+ * 루틴 기록이 없으면 null. 이름은 src/data/routines.json 에서 찾는다.
+ */
+export function routineIds(rounds) {
+  const ids = rounds.map((r) => r.detail?.routine).filter((id) => typeof id === 'string' && id !== '');
+  return ids.length > 0 ? [...new Set(ids)] : null;
+}
+
 /**
  * 코스 하나 → 코스 요약 (결과 화면 #8, 보호자 앱 #62 공통 형식, docs/course.md).
  * @param meta     코스 진행 정보 { id, plan: [program...], skipped: [order...], finished, endedAt }
@@ -158,6 +184,9 @@ export function summarizeCourse(meta, records, timeZone = TIME_ZONE) {
       done: rounds.reduce((a, r) => a + r.done, 0),
       skipped: rounds.reduce((a, r) => a + (r.skipped ?? 0), 0),
       avgReactionMs: weightedReaction(rounds),
+      // 보호자 앱 #62 (docs/guardian-app.md 6-13). 해당 기록이 없는 활동은 null
+      outcomes: countOutcomes(rounds),
+      routines: routineIds(rounds),
     };
   });
   const ends = mine.map((r) => r.endedAt).sort();

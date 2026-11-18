@@ -143,7 +143,7 @@ describe('summarizeCourse', () => {
     const s = summarizeCourse({ id, plan: PLAN, skipped: [], finished: true, endedAt: '2026-11-13T05:30:00.000Z' }, records);
     expect(s).toMatchObject({ version: SUMMARY_VERSION, courseId: id, date: '2026-11-13', startedAt: id, endedAt: '2026-11-13T05:30:00.000Z', finished: true });
     expect(s.activities.map((a) => a.status)).toEqual(['played', 'played', 'played', 'played']);
-    expect(s.activities[0]).toEqual({ order: 1, program: 'step4-coach', status: 'played', rounds: 1, total: 5, done: 4, skipped: 0, avgReactionMs: null });
+    expect(s.activities[0]).toEqual({ order: 1, program: 'step4-coach', status: 'played', rounds: 1, total: 5, done: 4, skipped: 0, avgReactionMs: null, outcomes: null, routines: null });
   });
 
   it('"한 번 더 하기"로 두 번 한 활동은 합치고, 반응 시간은 문제 수로 가중', () => {
@@ -162,6 +162,30 @@ describe('summarizeCourse', () => {
     expect(s.activities[1]).toMatchObject({ rounds: 0, total: 0, done: 0, avgReactionMs: null });
     expect(s.finished).toBe(false);
     expect(s.endedAt).toBe('2026-11-13T05:05:00.000Z'); // 진행 정보에 끝난 시각이 없으면 마지막 기록
+  });
+
+  it('보호자 앱용: 문제 결과 개수(outcomes)와 손운동 루틴(routines)을 회차끼리 합친다 (#62)', () => {
+    const withDetail = (r, detail) => ({ ...r, detail: { ...r.detail, ...detail } });
+    const q = (...statuses) => statuses.map((status) => ({ status }));
+    const records = [
+      withDetail(rec('step4-coach', { course: c(1) }), { routine: 'basic-grip' }),
+      withDetail(rec('step4-coach', { course: c(1) }), { routine: 'day-closing' }),
+      withDetail(rec('step4-coach', { course: c(1) }), { routine: 'basic-grip' }),
+      withDetail(rec('step2-rps', { course: c(2) }), { questions: q('first', 'first', 'second', 'shown', 'skipped') }),
+      withDetail(rec('step1-memory', { course: c(3) }), { questions: q('first', 'skipped') }),
+      withDetail(rec('step1-memory', { course: c(3) }), { questions: q('second', 'odd') }),
+      rec('step3-stroop', { course: c(4) }),
+    ];
+    const a = summarizeCourse({ id, plan: PLAN, skipped: [], finished: true }, records).activities;
+    expect(a[0]).toMatchObject({ outcomes: null, routines: ['basic-grip', 'day-closing'] }); // 같은 루틴은 한 번만, 처음 한 순서
+    expect(a[1]).toMatchObject({ outcomes: { first: 2, second: 1, shown: 1, skipped: 1 }, routines: null });
+    expect(a[2].outcomes).toEqual({ first: 1, second: 1, shown: 0, skipped: 1 }); // 모르는 status 는 세지 않음
+    expect(a[3]).toMatchObject({ outcomes: null, routines: null });
+  });
+
+  it('하지 않은 활동은 outcomes·routines 가 null', () => {
+    const a = summarizeCourse({ id, plan: PLAN, skipped: [1] }, []).activities;
+    expect(a.every((x) => x.outcomes === null && x.routines === null)).toBe(true);
   });
 
   it('다른 코스와 코스 밖 기록은 섞지 않는다', () => {
