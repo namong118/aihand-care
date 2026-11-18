@@ -277,6 +277,7 @@ describe('숫자 카드와 카메라 모드 자동 전환 (펌웨어 F3)', () =>
     expect(card.mode).toBe(null);
     expect(card.status()).toMatchObject({ state: 'missing', mock: true });
     expect(card.status().note).toContain('WonderCam 모드를 바꾸지 못했어요');
+    expect(card.status().note).toContain('AIHand 전원 → 카메라 화면이 뜬 뒤 → USB'); // 무엇을 하면 되는지 함께
 
     card.onNumber(() => {});
     await card.ready();
