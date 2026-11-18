@@ -173,10 +173,10 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
    ```
    sudo apt install fonts-noto-cjk
    ```
-3. **시리얼 권한** (AIHand 연결): 사용자가 `dialout` 그룹에 있어야 Chromium에서 micro:bit 포트를 열 수 있습니다.
+3. **시리얼 권한** (AIHand 연결): Raspberry Pi OS가 처음 만든 사용자는 이미 `dialout`·`plugdev` 그룹에 있어서 **따로 할 것이 없습니다** (2026-11-18 확인: micro:bit가 `/dev/ttyACM0`, `plugdev` 그룹으로 잡힘). 다른 사용자로 쓸 때만 확인합니다.
    ```
-   groups                          # 목록에 dialout 이 있으면 끝
-   sudo usermod -aG dialout $USER  # 없으면 추가한 뒤 로그아웃 → 다시 로그인
+   groups                          # 목록에 dialout, plugdev 가 있으면 끝
+   sudo usermod -aG dialout,plugdev $USER  # 없으면 추가한 뒤 로그아웃 → 다시 로그인
    ```
 4. **코드 받기와 빌드**
    ```
@@ -190,6 +190,13 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
    ./scripts/install-kiosk.sh
    ```
    자동 실행을 끄려면 `./scripts/install-kiosk.sh --remove`
+6. **보호자 앱 전송 값** (11/23 실제 전송부터): `npm run build` 전에 앱 폴더에 `.env.local`을 만들어 아래 세 이름에 값을 넣습니다. 하나라도 비어 있으면 보호자 앱 보내기는 Mock(보낸 것처럼만)입니다. 값은 저장소·팀 채팅·PR에 적지 않습니다. `VITE_STATION_KEY`(스테이션 비밀값)는 **라즈베리파이에서 직접 만들어** 넣고, 만드는 방법은 보호자 앱 설계 문서(`docs/guardian-app.md` 4번 "스테이션 비밀값", PR #118)와 `supabase/schema.sql` 맨 위 주석을 따릅니다.
+   ```
+   VITE_SUPABASE_URL=
+   VITE_SUPABASE_ANON_KEY=
+   VITE_STATION_KEY=
+   ```
+   `.env.local`은 `.gitignore`(`.env.*`)에 걸려 올라가지 않습니다. 값을 바꾼 뒤에는 다시 빌드합니다.
 
 #### 키오스크 (전원 ON → 앱 전체 화면)
 
@@ -197,10 +204,22 @@ PR을 올리기 전에 두 명령이 모두 통과하는지 확인해 주세요.
 
 - **활동 기록 유지**: 키오스크 전용 Chromium 프로필(`~/.config/aihand-kiosk`)을 써서 활동 기록·카메라 허용·AIHand 포트 허용이 남습니다. 시크릿 모드는 쓰지 않습니다 (끄면 기록이 지워짐). 주소(포트 4173)를 바꾸면 이전 기록이 안 보이니 바꾸지 않습니다.
 - **처음 한 번**: 웹캠을 켤 때 카메라 허용 창이 뜨면 "허용"을 누릅니다. 다음부터는 묻지 않습니다.
+- **AIHand는 처음 한 번만 "AIHand 연결"**: 상태 표시줄의 "AIHand 연결" → 포트 고르기 창에서 micro:bit를 고릅니다. 다음부터는 **켤 때와 micro:bit USB를 다시 꽂을 때 저절로 연결**됩니다 (허락이 키오스크 프로필에 남음, #123). 웹캠은 켤 때마다 "웹캠 켜기"를 누릅니다.
 - **전원을 그냥 뽑아도 됩니다**: 다음에 켤 때 "제대로 종료되지 않았습니다" 창이 뜨지 않게 해 두었습니다.
 - **키오스크 닫기**: 키보드를 연결하고 `Alt+F4`. 또는 다른 PC에서 ssh로 접속해 `pkill -f aihand-kiosk`
 - **다시 열기**: 메뉴 → 기타 → **손잇다 시연**, 또는 다시 부팅. ssh에서는 `nohup setsid ~/aihand-care/scripts/kiosk.sh &`
 - **안 뜰 때**: 기록 파일 `~/.cache/aihand-kiosk.log`를 봅니다. `dist/ 가 없습니다`가 보이면 아래 "코드 업데이트"를 합니다.
+
+#### 켜는 순서 (WonderCam 숫자 카드가 안 될 때)
+
+micro:bit는 라즈베리파이 USB 전원으로 켜져서 AIHand(WonderCam)보다 **먼저** 켜지기 쉽습니다. 그러면 숫자 기억에서 카메라가 숫자 모드로 바뀌지 못하고(**WonderCam 작은 화면에 로딩 동그라미가 계속 돎**), 앱은 "WonderCam: 찾지 못함 … Mock"으로 바뀌어 화면 버튼으로만 진행됩니다 (2026-11-18 확인, `docs/hardware-check.md` 4번).
+
+1. AIHand 어댑터 전원을 켭니다
+2. **WonderCam 화면이 완전히 뜰 때까지** 기다립니다 (로딩 동그라미가 끝나고 카메라 영상이 보임)
+3. micro:bit USB를 라즈베리파이에 꽂습니다 (이미 꽂혀 있으면 **뽑았다 다시 꽂기**) → 앱이 저절로 다시 연결
+4. 홈의 **숫자 기억** 카드(하나만 해 보기)에서 숫자 카드가 읽히는지 봅니다
+
+시연 전에는 이 순서로 한 번 확인해 둡니다.
 
 #### 시계 맞추기
 
