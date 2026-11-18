@@ -1,5 +1,6 @@
 // 홈 화면 (디자인 시안 v11 "홈"): 날짜·인사말과 "오늘의 활동 시작하기", 코스 순서대로 활동 카드 4장,
-// 아래 줄에 "하나만 해 보기"와 지금 설정(난이도·속도) + "바꾸기".
+// 아래 줄에 지금 설정(난이도·속도) + "바꾸기".
+// 활동 카드를 누르면 그 활동 하나만 바로 시작한다 (예전 "하나만 해 보기" 작은 버튼 줄을 대신함, 11/18 Pi 시연 의견).
 // 설정 영역 자체는 settings.js, 상단 바는 statusbar.js.
 // 로그인은 코스를 시작할 때 하므로 홈에서는 호칭을 부르지 않는다.
 
@@ -36,13 +37,21 @@ function todayText(now = new Date()) {
   return new Intl.DateTimeFormat('ko-KR', { timeZone: TIME_ZONE, month: 'long', day: 'numeric', weekday: 'long' }).format(now);
 }
 
-/** 코스 카드 하나 (눌러서 시작하지 않는다. 시작은 위쪽 버튼 하나) */
-function courseCard(p, order) {
+/**
+ * 코스 카드 하나. 누르면 그 활동 하나만 시작한다 (로그인 없이, docs/decisions.md 4-1).
+ * 코스 전체는 위쪽 "오늘의 활동 시작하기" 버튼으로 시작한다.
+ */
+function courseCard(p, order, onPick) {
   return h(
     'li',
-    { class: `home-course-card step${p.step}` },
-    h('div', { class: 'home-course-head' }, art(p.step), h('span', { class: 'home-course-order' }, `${order}번째`)),
-    h('div', { class: 'home-course-text' }, h('span', { class: 'home-course-name' }, p.name), h('span', { class: 'home-course-desc' }, p.short)),
+    {},
+    h(
+      'button',
+      { type: 'button', class: `home-course-card step${p.step}`, onClick: onPick, 'aria-label': `${order}번째 ${p.name}, 하나만 해 보기` },
+      h('span', { class: 'home-course-head' }, art(p.step), h('span', { class: 'home-course-order' }, `${order}번째`)),
+      h('span', { class: 'home-course-text' }, h('span', { class: 'home-course-name' }, p.name), h('span', { class: 'home-course-desc' }, p.short)),
+      h('span', { class: 'home-course-go', 'aria-hidden': 'true' }, '하나만 해 보기 ›'),
+    ),
   );
 }
 
@@ -80,17 +89,10 @@ export function renderHome(container, app) {
         ),
       ),
       // 시연 코스 순서 (src/data/course.json, #59)
-      h('ol', { class: 'home-course', 'aria-label': `오늘의 활동 ${plan.length}가지, 차례대로` }, plan.map((p, i) => courseCard(p, i + 1))),
+      h('ol', { class: 'home-course', 'aria-label': `오늘의 활동 ${plan.length}가지, 차례대로` }, plan.map((p, i) => courseCard(p, i + 1, () => app.startProgram(p.id)))),
       h(
         'div',
         { class: 'home-foot' },
-        h('span', { class: 'home-foot-label' }, '하나만 해 보기'),
-        h(
-          'div',
-          { class: 'home-singles' },
-          // 하나씩 할 때는 로그인 없이 바로 (docs/decisions.md 4-1)
-          plan.map((p) => h('button', { type: 'button', class: 'chip-button', onClick: () => app.startProgram(p.id) }, p.name)),
-        ),
         h(
           'div',
           { class: 'home-current' },
