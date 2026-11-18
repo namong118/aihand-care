@@ -109,6 +109,7 @@ AIHand가 이 손모양을 모두 만들 수 있는지는 아직 확인하지 �
 | `ctx.card.ready()` | Promise&lt;boolean&gt; | 구독 뒤 WonderCam 모드 바꾸기(최대 약 5초)가 끝날 때까지 기다린다. 실제 카메라가 준비됐으면 `true`, Mock 입력만 되면 `false`. 카메라는 한 번에 한 모드라서 색 카드와 숫자 카드를 동시에 받을 수 없다 (가장 최근 구독 기준) |
 | `ctx.log.record(rec)` | 저장된 기록 | 회차가 끝날 때 공통 필드로 기록 (아래) |
 | `ctx.settings` | 객체 | `{ mock, difficulty: 'easy'\|'normal'\|'hard', speed: 'SLOW'\|'NORMAL' }` |
+| `ctx.single` | `true` 또는 없음 | 홈 "하나만 해 보기"로 들어왔으면 `true`, 코스(오늘의 활동) 중이면 없음. 코스 밖에서만 보여 줄 화면을 고를 때 쓴다 (STEP 2 동시에 가위바위보) |
 
 ### `ctx.log.record` 공통 필드
 
