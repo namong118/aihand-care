@@ -41,6 +41,13 @@ export function createRobot({
     changed();
   }
 
+  /** "연결 중…" 표시를 켜고 끈다. 상태 표시줄이 다시 그려지도록 반드시 알린다 */
+  function setConnecting(value) {
+    if (connecting === value) return;
+    connecting = value;
+    changed();
+  }
+
   function backToMock(reason) {
     serial = null;
     note = `${reason}. 화면 속 로봇손으로 계속해요`;
@@ -53,18 +60,18 @@ export function createRobot({
    * @param auto  자동 연결이면 true: 포트를 못 열어도 안내 문구를 바꾸지 않는다
    */
   async function connectWith(portPromise, { speed, auto }) {
-    connecting = true;
+    setConnecting(true);
     let port;
     try {
       port = await portPromise;
     } catch (e) {
-      connecting = false;
+      setConnecting(false);
       // 창을 닫은 경우(NotFoundError)는 조용히 넘어간다
       if (!auto && e?.name !== 'NotFoundError') setNote('포트를 열지 못했어요. 다른 프로그램이 쓰고 있는지 확인해 주세요');
       return false;
     }
     if (!port) {
-      connecting = false;
+      setConnecting(false);
       return false;
     }
     setNote(auto ? '전에 연결한 AIHand 에 다시 연결하는 중…' : '연결 확인 중…');
@@ -89,7 +96,7 @@ export function createRobot({
       },
     });
     const ok = await robot.check();
-    connecting = false;
+    setConnecting(false);
     if (!ok) {
       await robot.close();
       setNote('AIHand 가 응답하지 않아요. 펌웨어와 전원을 확인해 주세요');
