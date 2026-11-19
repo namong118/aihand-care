@@ -20,15 +20,18 @@
 --   해시: 비밀값을 섞어서 만든 64글자. 해시로는 비밀값을 되돌려 알아낼 수 없다.
 --
 --   1. 라즈베리파이 터미널, 앱 폴더에서 (비밀값이 화면과 명령 기록에 남지 않는다)
---        printf 'VITE_STATION_KEY=%s\n' "$(openssl rand -hex 32)" >> .env.local
+--        grep -q '^VITE_STATION_KEY=' .env.local 2>/dev/null || printf 'VITE_STATION_KEY=%s\n' "$(openssl rand -hex 32)" >> .env.local
 --        grep '^VITE_STATION_KEY=' .env.local | cut -d= -f2- | tr -d '\n' | sha256sum
 --      → 맨 앞 64글자가 해시다. (맥에서는 sha256sum 대신 shasum -a 256)
+--      첫 줄은 비밀값이 이미 있으면 새로 만들지 않는다. 두 번 실행해도 줄이 하나라 해시가 틀려지지 않는다.
 --      ※ .env.local 에는 VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY 도 있어야 한다 (설계 8번)
 --   2. SQL Editor 에서 (해시와 이름표만 넣는다)
 --        insert into public.station_keys (key_hash, label) values ('<해시 64글자>', 'raspi-시연');
 --   3. 확인: select label, created_at from public.station_keys;
---   - 비밀값이 새어 나간 것 같으면: 새 비밀값으로 1~2번을 다시 하고, 옛 줄을 지운 뒤 다시 빌드한다
---        delete from public.station_keys where label = 'raspi-시연';
+--   - 비밀값이 새어 나간 것 같으면 (바꾸는 동안은 보내기가 403 → 대기열에 남았다가 다시 보낸다)
+--     ① Supabase에서 옛 해시 지우기: delete from public.station_keys where label = 'raspi-시연';
+--     ② .env.local 에서 VITE_STATION_KEY 줄을 편집기로 지운다 (남아 있으면 1번 첫 줄이 새로 만들지 않는다)
+--     ③ 1~2번을 다시 하고, npm run build 로 다시 빌드한다
 --
 -- ■ 시험용 비밀값 (개발 PC)
 --   라즈베리파이 비밀값을 나눠 쓰지 않는다. 개발 PC에서 위 1번처럼 따로 만들고,
@@ -37,8 +40,11 @@
 --
 -- ■ 앱이 부르는 방법 (@supabase/supabase-js 없이 fetch)
 --   POST <VITE_SUPABASE_URL>/rest/v1/rpc/<함수 이름>
---   머리글: apikey: <공개 키>, Authorization: Bearer <공개 키>, Content-Type: application/json
+--   머리글: apikey: <공개 키>, Content-Type: application/json   (Authorization 머리글은 없어도 된다)
 --   본문: 함수 인자 이름 그대로, 예) { "station_key": "...", "code": "...", "user_id": "..." }
+--   공개 키: 대시보드 → Project Settings → API Keys 의 Publishable key (sb_publishable_…).
+--     이 값을 VITE_SUPABASE_ANON_KEY 에 넣는다 (이름은 그대로 둔다). 옛 anon key(eyJ…)도 된다.
+--     2026-11-19 클라우드에서 확인: 두 키 모두 apikey 만으로, 또는 Authorization: Bearer 를 더해도 200
 --
 -- ■ 여기 두지 않는 것: 얼굴 사진·특징값, 실명, 연락처, 호칭(displayName), 비밀값 자체
 -- =====================================================================
@@ -95,7 +101,7 @@ create table if not exists public.station_keys (
 -- ---------------------------------------------------------------------
 -- 3. 표를 직접 읽고 쓰지 못하게 막기 (RLS)
 -- ---------------------------------------------------------------------
--- 공개 키(anon key)는 앱 안에 들어가 누구나 볼 수 있다.
+-- 공개 키(publishable key, 옛 이름 anon key)는 앱 안에 들어가 누구나 볼 수 있다.
 -- 그래서 표는 막아 두고, 아래 4~5번의 함수로만 다루게 한다.
 -- RLS를 켜고 허용 규칙(policy)을 하나도 만들지 않으면 공개 키로는 한 줄도 읽고 쓸 수 없다.
 alter table public.pairings     enable row level security;
