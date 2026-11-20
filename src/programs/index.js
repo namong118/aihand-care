@@ -5,10 +5,13 @@ import step1 from './step1-memory/index.js';
 import step2 from './step2-rps/index.js';
 import step3 from './step3-stroop/index.js';
 import step4 from './step4-coach/index.js';
+// 도전 활동 (홈의 기본 활동 카드 아래 칸, dashboard/catalog.js CHALLENGES)
+import challengeBaseball from './challenge-baseball/index.js';
 
 export const PROGRAMS = {
   [step1.id]: step1,
   [step2.id]: step2,
   [step3.id]: step3,
   [step4.id]: step4,
+  [challengeBaseball.id]: challengeBaseball,
 };
