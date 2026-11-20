@@ -9,6 +9,11 @@
 글자의 **뜻이 아니라 글자 색**과 같은 **색깔 카드를 AIHand의 WonderCam에 보여주는** 활동 (스트룹 과제 형식).
 교육·체험용 활동이며, 치료·예방 효과를 주장하지 않는다.
 
+놀이는 두 가지다. 시작 화면에서 고르고, 기본은 **색깔 글자**(코스에서 고르지 않고 넘어가도 그대로 진행).
+
+- **색깔 글자:** 위의 스트룹 과제
+- **카드 섞기 (#132):** 아래 "카드 섞기" 참고. 움직이는 카드를 눈으로 따라가는 어려운 단계 (30~40대도 어렵게)
+
 ## 입력
 
 - **색깔 카드:** `ctx.card.onCard(cb)` → `cb({ color })`
@@ -31,6 +36,30 @@
 - [x] 회차 시작 때 `ctx.card.ready()`로 카메라가 태그 모드가 될 때까지 기다림 (STEP 1 숫자 모드 다음이면 최대 약 5초)
 - [x] 말소리(`voice.js`): 문제·결과 문구를 브라우저 음성으로 읽어 줌. 글자 뜻은 읽지 않음. 지원하지 않으면 조용히 넘어감
 
+## 카드 섞기 (#132)
+
+1. 카드 4장이 앞면(색 + 색 이름 글자)으로 한 줄. 카드 아래 자리 번호 **1~4**는 고정 (코드 안에서는 0~3)
+2. "카드를 잘 보세요" 2초 (속도 느리게 3초, `showMs`) → 4장 모두 뒤집힘 (뒷면은 4장 모두 같은 무늬)
+3. 두 장씩 자리를 바꾸며 섞임. **한 번에 한 장만 움직인다:** ① 앞 카드가 들려서 상대 자리 위로 → ② 상대 카드가 빈자리로 → ③ 들린 카드가 내려옴 (`moveMs`, `moveMs`, `moveMs × 0.6`)
+4. 로봇이 손가락으로 자리를 묻는다: 1 `INDEX` · 2 `V` · 3 `THREE` · 4 `FOUR` (`positionPose`). 화면에도 그 자리를 테두리와 "▲ 3번" 글자로 표시
+5. 색깔 카드(또는 화면 버튼)로 답 → 그 자리 카드를 뒤집어 보여 줌 → `react('ok' | 'retry')`. 다른 색이어도 **다시 묻지 않는다** ("여기에는 파랑이 있었어요")
+6. 판 끝에 4장 모두 앞면으로. **한 회차 5판** (`SHUFFLE_ROUNDS`)
+
+| 단계 | 섞는 횟수 | `moveMs` | 묻는 자리 |
+|---|---|---|---|
+| 쉬움 `easy` | 2 | 1200 | 1곳 |
+| 보통 `normal` | 4 | 1000 | 1곳 |
+| 어려움 `hard` | 6 | 800 | 2곳 |
+| 도전 | 8 | 600 | 2곳 |
+
+- 쉬움·보통·어려움은 `ctx.settings.difficulty`, **도전**은 STEP 3 시작 화면의 "도전 단계로 하기"로 고른다. 속도 느리게면 `moveMs` ×1.5 (`shuffleSpec`)
+- 바로 앞 섞기와 같은 쌍은 연달아 바꾸지 않는다 (`makeSwaps`)
+- 로직: `logic.js`의 `SHUFFLE_SPEC`, `shuffleSpec`, `showMs`, `makeStart`, `makeSwaps`, `applySwaps`, `pickAsks`, `positionPose`, `judgeShuffle` (테스트 있음)
+- 화면: 애니메이션은 브라우저 내장 `element.animate()`로 카드의 `transform`만 움직인다 (`top`·`left`를 바꾸지 않음, 라즈베리파이에서 가볍게). 카드·자리 모양은 공통 스타일을 고치지 않으려고 `screen.js`에서 `style`로 준다
+- 판정은 계산한 배치(`applySwaps`)로 한다. 화면에서 움직인 결과와 다르면 콘솔에 경고
+- 답은 물을 때만 받는다. **섞는 동안 보여 준 카드는 버린다** (그때는 `onCard`를 구독하지 않음)
+- 로봇 순서: 회차 시작 `hello()` → 묻기마다 `showPose(positionPose(p))` (손이 움직이는 동안에도 답은 받음) → 답 뒤 `react(...)` → 다 같으면 `hello()` 한 번 더
+
 ## 접근성 메모
 
 이 활동은 색 자체를 보는 과제라서 문제 글자는 색으로만 구분된다. 대신:
@@ -43,8 +72,14 @@
 
 한 회차(여러 문제)가 끝날 때 한 번 기록한다. `total`은 문제 수, `done`은 맞힌 수, `avgReactionMs`는 문제별 반응 시간의 평균.
 
-공통 필드 + `detail: { difficulty, questions: [{ word, ink, congruent, picked, pickedWord, inputVia, reactionMs }, ...] }`
+공통 필드 + 색깔 글자: `detail: { game: 'stroop', difficulty, questions: [{ word, ink, congruent, picked, pickedWord, inputVia, reactionMs }, ...] }`
 (`word`·`ink`·`picked`는 `'red'` 같은 색 이름, `inputVia`는 `'card'` 또는 `'button'`)
+
+카드 섞기: `total`은 물은 횟수(5판 × 묻는 자리 수), `done`은 같은 색을 고른 수, `avgReactionMs`는 묻고 나서 답까지의 평균.
+`detail: { game: 'shuffle', difficulty, challenge, rounds: [{ start, swaps, final, asks: [{ position, answer, picked, correct, inputVia, reactionMs }] }] }`
+(`start`·`final`은 자리 0~3의 색, `swaps`는 `[[0, 2], ...]`, `position`은 0~3)
+
+결과 화면에서는 점수·정답률처럼 쓰지 않는다 ("물어본 카드 10장 가운데 7장의 색을 찾아 주셨어요").
 
 ## 하지 말아야 할 것
 
