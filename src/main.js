@@ -149,6 +149,7 @@ function showHome() {
     openResults: () => showResults(),
     startProgram: (id) => showProgram(id),
     startCourse: showLogin,
+    hasProgram: (id) => Boolean(PROGRAMS[id]), // 도전 활동이 아직 없으면 홈에서 "준비 중"
   });
 }
 
