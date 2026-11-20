@@ -3,18 +3,19 @@
 // 카드·자리 모양은 이 활동 전용이라 공통 스타일을 고치지 않고 이 파일에서 style 로 준다.
 
 import { h, button, message } from '../../ui/components.js';
+import { levelPicker } from '../../ui/level-picker.js';
 
 // 크기 (7인치 1280×720에서 스크롤 없이 보이게)
 const CARD_H = 120; // 카드 높이(px)
 const LIFT = 70; // 들린 카드가 올라가는 높이(px). 다른 카드 위로 지나가고, 위쪽 진행 표시는 가리지 않는다
 const BACK = 'repeating-linear-gradient(45deg, #5B3FA6 0 14px, #6E52B8 14px 28px)'; // 뒷면 무늬 (4장 모두 같음)
 
-/** 단계 고르기 버튼 아래 한 줄 설명 */
-const LEVEL_TEXT = {
-  1: '천천히 네 번 섞어요. 한 자리를 물어요.',
-  2: '여섯 번 섞어요. 두 자리를 물어요.',
-  3: '빠르게 여덟 번 섞어요. 두 자리를 물어요.',
-};
+/** 단계 고르기 버튼 아래 한 줄 설명 (공통 부품 levelPicker) */
+const LEVELS = [
+  { level: 1, desc: '천천히 네 번 섞어요. 한 자리를 물어요.' },
+  { level: 2, desc: '여섯 번 섞어요. 두 자리를 물어요.' },
+  { level: 3, desc: '빠르게 여덟 번 섞어요. 두 자리를 물어요.' },
+];
 
 export function createScreen(container, colors) {
   container.innerHTML = '';
@@ -116,41 +117,18 @@ export function createScreen(container, colors) {
   }
 
   return {
-    /** 시작 화면: 단계 고르기. selected = 미리 선택할 단계(1~3), onStart(level) */
+    /** 시작 화면: 단계 고르기 (도전 활동 공통 부품). selected = 미리 선택할 단계(1~3), onStart(level) */
     intro(selected, onStart) {
-      let level = selected;
-      const render = () => {
-        set(
-          h(
-            'div',
-            { class: 'act-card' },
-            h('p', { class: 'act-text' }, '카드 4장이 뒤집혀 섞여요. 눈으로 잘 따라가서, 로봇이 손가락으로 묻는 자리의 카드 색을 색깔 카드로 보여 주세요. 아래 버튼을 눌러도 돼요.'),
-          ),
-          h(
-            'div',
-            { class: 'act-answers', role: 'group', 'aria-label': '단계 고르기', style: { 'grid-template-columns': 'repeat(3, minmax(0, 1fr))' } },
-            [1, 2, 3].map((n) => {
-              const on = n === level;
-              return h(
-                'button',
-                {
-                  type: 'button',
-                  class: 'act-answer',
-                  'aria-pressed': String(on),
-                  onClick: () => { level = n; render(); },
-                  style: { 'flex-direction': 'column', gap: '6px', 'box-shadow': on ? 'inset 0 0 0 4px #1f1b18' : null },
-                },
-                // 고른 단계는 테두리와 함께 "✔" 글자로도 알린다 (색만으로 알리지 않기)
-                h('span', { style: { 'font-size': '28px', 'font-weight': '700' } }, on ? `✔ ${n}단계` : `${n}단계`),
-                h('span', { style: { 'font-size': '20px', 'font-weight': '400' } }, LEVEL_TEXT[n]),
-              );
-            }),
-          ),
-          h('p', { class: 'act-text' }, '색깔이 잘 구분되지 않으시면 이 활동은 건너뛰셔도 괜찮아요.'),
-          h('div', { class: 'row' }, button('시작하기', () => onStart(level))),
-        );
-      };
-      render();
+      // 7인치에서 시작 버튼까지 스크롤 없이 보이게, 색 구분 안내도 설명 안에 넣는다
+      set(
+        levelPicker({
+          title: '카드 섞기',
+          lead: '카드 4장이 섞여요. 로봇이 손가락으로 묻는 자리의 카드 색을 색깔 카드나 아래 버튼으로 알려 주세요. 색깔이 잘 구분되지 않으시면 건너뛰셔도 괜찮아요.',
+          levels: LEVELS,
+          selected,
+          onStart,
+        }),
+      );
     },
 
     waiting(text) {
