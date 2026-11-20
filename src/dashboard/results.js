@@ -5,8 +5,8 @@
 
 import { h, button, seconds } from '../ui/components.js';
 import { summarize, downloadCSV } from '../core/log.js';
-import { CATALOG, findProgramInfo } from './catalog.js';
-import { groupByDay, filterDaysByUser, reactionTrend, GUEST, WHO, TIME_ZONE } from './course-logic.js';
+import { CATALOG, CHALLENGES, findProgramInfo } from './catalog.js';
+import { groupByDay, filterDaysByUser, reactionTrend, challengeText, GUEST, WHO, TIME_ZONE } from './course-logic.js';
 import { activityText } from './course.js';
 
 /** 위쪽 탭: 보는 방법 */
@@ -59,8 +59,16 @@ function programTitle(id) {
   return findProgramInfo(id)?.title ?? id ?? '-';
 }
 
-/** 기록 한 건의 "완료 4 / 5 · 건너뛴 문제 1" */
+/** 기록이 하나라도 있는 도전 활동만 (도전 활동은 코스 밖에서 가끔 하므로, 안 한 활동 줄은 그리지 않는다) */
+function playedChallenges(records, also = null) {
+  const ids = new Set(records.map((r) => r.program));
+  return CHALLENGES.filter((c) => ids.has(c.id) || c.id === also);
+}
+
+/** 기록 한 건의 "완료 4 / 5 · 건너뛴 문제 1". 도전 활동은 "2단계 · 3번 만에 찾음"처럼 (challengeText) */
 function recordText(r) {
+  const challenge = challengeText(r);
+  if (challenge) return challenge;
   const parts = [`완료 ${r.done} / ${r.total}`];
   if ((r.skipped ?? 0) > 0) parts.push(`건너뛴 문제 ${r.skipped}`);
   return parts.join(' · ');
@@ -76,7 +84,7 @@ function detailText(r) {
     if (!m) return '-';
     return `손 인식 ${m.detected ?? 0} · 버튼 ${m.manual ?? 0} · 건너뜀 ${m.skipped ?? 0}`;
   }
-  return '-';
+  return challengeText(r) ?? '-';
 }
 
 function table(headers, rows, props = {}) {
@@ -196,25 +204,41 @@ function daysView(records, courses, users, filter, onFilter) {
 
 // ---- 활동별 모아 보기 ----
 
+/** 활동별 한 줄: 한 횟수 · 완료 수 / 전체 · 건너뜀 · 평균 반응 시간 */
+function programRows(list, summary) {
+  return list.map((p) => {
+    const s = summary[p.id];
+    return h(
+      'tr',
+      {},
+      h('th', { scope: 'row' }, p.title),
+      h('td', {}, s ? `${s.count}회` : '0회'),
+      h('td', {}, s ? `${s.done} / ${s.total}` : '-'),
+      h('td', {}, s ? s.skipped : '-'),
+      h('td', {}, s ? seconds(s.avgReactionMs) : '-'),
+    );
+  });
+}
+
 function programsView(records) {
   if (records.length === 0) return [empty()];
   const summary = summarize(records);
+  const challenges = playedChallenges(records);
   return [
-    table(
-      ['활동', '한 횟수', '완료 수 / 전체', '건너뛴 문제', '평균 반응 시간'],
-      CATALOG.map((p) => {
-        const s = summary[p.id];
-        return h(
-          'tr',
-          {},
-          h('th', { scope: 'row' }, p.title),
-          h('td', {}, s ? `${s.count}회` : '0회'),
-          h('td', {}, s ? `${s.done} / ${s.total}` : '-'),
-          h('td', {}, s ? s.skipped : '-'),
-          h('td', {}, s ? seconds(s.avgReactionMs) : '-'),
-        );
-      }),
-    ),
+    table(['활동', '한 횟수', '완료 수 / 전체', '건너뛴 문제', '평균 반응 시간'], programRows(CATALOG, summary)),
+    challenges.length > 0
+      ? h(
+          'section',
+          { class: 'result-trend', style: { 'margin-top': '20px' } },
+          h('h3', {}, '도전 활동'),
+          h(
+            'p',
+            { class: 'result-note' },
+            '숫자 야구·이어 세기는 한 판이 1이에요. 완료: 숫자를 찾았거나 로봇이 끝 숫자를 부른 판 · 건너뜀: 정답 보기·그만하기로 마친 판',
+          ),
+          table(['도전 활동', '한 횟수', '완료 수 / 전체', '건너뜀', '평균 반응 시간'], programRows(challenges, summary)),
+        )
+      : null,
   ];
 }
 
@@ -250,14 +274,28 @@ function trendBlock(program, trend, max) {
   );
 }
 
-function reactionView(records) {
-  const trends = CATALOG.map((p) => [p.id, reactionTrend(records, p.id)]).filter(([, trend]) => trend.length > 0);
+/** 활동 묶음 하나의 반응 시간 블록들. 눈금은 묶음 안에서만 맞춘다 (도전 활동은 한 번에 더 오래 생각함) */
+function trendBlocks(list, records) {
+  const trends = list.map((p) => [p.id, reactionTrend(records, p.id)]).filter(([, trend]) => trend.length > 0);
   const max = Math.max(TREND_SCALE_MS, ...trends.flatMap(([, trend]) => trend.map((d) => d.avgReactionMs)));
-  const blocks = trends.map(([id, trend]) => trendBlock(id, trend, max));
-  if (blocks.length === 0) return [h('p', {}, '아직 반응 시간 기록이 없어요.')];
+  return trends.map(([id, trend]) => trendBlock(id, trend, max));
+}
+
+function reactionView(records) {
+  const blocks = trendBlocks(CATALOG, records);
+  const challengeBlocks = trendBlocks(CHALLENGES, records);
+  if (blocks.length === 0 && challengeBlocks.length === 0) return [h('p', {}, '아직 반응 시간 기록이 없어요.')];
   return [
     h('p', { class: 'result-note' }, '화면에 문제가 나온 뒤 답할 때까지 걸린 시간의 평균이에요. 반응 시간을 재지 않는 활동(손운동)은 없고, 가위바위보는 "보!"에 맞춰 내는 동시에 가위바위보를 빼고 보여 줘요.'),
     ...blocks,
+    challengeBlocks.length > 0
+      ? h(
+          'p',
+          { class: 'result-note' },
+          '도전 활동: 숫자 야구는 숫자를 한 번 내는 데, 이어 세기는 내 차례에 셀 개수를 고르는 데 걸린 시간이에요. 기본 활동과 막대 눈금을 따로 맞췄어요.',
+        )
+      : null,
+    ...challengeBlocks,
   ];
 }
 
@@ -270,7 +308,7 @@ function roundsView(all, filter, onFilter) {
     'div',
     { class: 'row', role: 'group', 'aria-label': '활동 고르기' },
     button('전체', () => onFilter({ ...filter, program: null }), { variant: 'choice', pressed: !filter.program }),
-    CATALOG.map((p) =>
+    [...CATALOG, ...playedChallenges(all, filter.program)].map((p) =>
       button(p.name, () => onFilter({ ...filter, program: p.id }), {
         variant: 'choice',
         pressed: filter.program === p.id,
