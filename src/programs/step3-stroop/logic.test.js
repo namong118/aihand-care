@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { makeQuestion, judge, makeRound, gapMs, summarizeRound, QUESTIONS_PER_ROUND, isPerfect, NO_ANSWER_HINT_MS } from './logic.js';
+import {
+  makeQuestion, judge, makeRound, gapMs, summarizeRound, QUESTIONS_PER_ROUND, isPerfect, NO_ANSWER_HINT_MS,
+  SHUFFLE_SPEC, shuffleSpec, makeStart, makeSwaps, applySwaps, pickAsks, positionPose, judgeShuffle,
+} from './logic.js';
 import colors from '../../data/colors.json';
 
 describe('makeQuestion', () => {
@@ -123,5 +126,100 @@ describe('isPerfect', () => {
 describe('NO_ANSWER_HINT_MS', () => {
   it('문제 사이 쉬는 시간보다 길다 (바로 안내가 뜨지 않게)', () => {
     expect(NO_ANSWER_HINT_MS).toBeGreaterThan(gapMs('SLOW'));
+  });
+});
+
+describe('카드 섞기', () => {
+  // 정해진 값을 차례로 돌려주는 rand (테스트용)
+  const seq = (...values) => {
+    let i = 0;
+    return () => values[i++ % values.length];
+  };
+  // 매번 다른 값을 주는 간단한 의사 난수 (seed 고정)
+  const lcg = (seed) => () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+
+  it('applySwaps: 한 쌍 바꾸기', () => {
+    expect(applySwaps(['red', 'blue', 'yellow', 'green'], [[0, 2]])).toEqual(['yellow', 'blue', 'red', 'green']);
+  });
+
+  it('applySwaps: 여러 번 바꾸기', () => {
+    expect(applySwaps(['red', 'blue', 'yellow', 'green'], [[0, 1], [1, 3], [2, 3]])).toEqual(['blue', 'green', 'red', 'yellow']);
+  });
+
+  it('applySwaps: 같은 쌍을 두 번 바꾸면 원래대로, 원본은 그대로', () => {
+    const order = ['red', 'blue', 'yellow', 'green'];
+    expect(applySwaps(order, [[1, 2], [1, 2]])).toEqual(order);
+    applySwaps(order, [[0, 3]]);
+    expect(order).toEqual(['red', 'blue', 'yellow', 'green']);
+  });
+
+  it('makeSwaps: 개수, 자리 0~3, 한 쌍의 두 자리는 다름', () => {
+    for (const seed of [1, 2, 3, 42, 777]) {
+      const swaps = makeSwaps(8, lcg(seed));
+      expect(swaps).toHaveLength(8);
+      for (const [a, b] of swaps) {
+        expect(a).toBeGreaterThanOrEqual(0);
+        expect(b).toBeLessThanOrEqual(3);
+        expect(a).not.toBe(b);
+      }
+    }
+    // rand 가 1 에 가까워도 범위 안
+    for (const [a, b] of makeSwaps(3, () => 0.9999)) {
+      expect(a).not.toBe(b);
+      expect(b).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('makeSwaps: 바로 앞과 같은 쌍이 연달아 나오지 않음', () => {
+    for (const seed of [1, 5, 9, 123, 2026]) {
+      const swaps = makeSwaps(12, lcg(seed));
+      for (let i = 1; i < swaps.length; i++) expect(swaps[i]).not.toEqual(swaps[i - 1]);
+    }
+    // 처음 두 번은 같은 쌍 [0,1]이 나와도 다시 뽑는다
+    expect(makeSwaps(2, seq(0, 0, 0, 0, 0.9, 0.9))).toEqual([[0, 1], [2, 3]]);
+  });
+
+  it('makeStart: 색 4개가 한 번씩', () => {
+    for (const seed of [1, 2, 3]) {
+      const start = makeStart(colors, lcg(seed));
+      expect([...start].sort()).toEqual(['blue', 'green', 'red', 'yellow']);
+    }
+    expect([...makeStart(['red', 'blue', 'yellow', 'green'], () => 0)].sort()).toEqual(['blue', 'green', 'red', 'yellow']);
+  });
+
+  it('pickAsks: 서로 다른 자리', () => {
+    for (const seed of [1, 2, 3, 4]) {
+      const asks = pickAsks(2, lcg(seed));
+      expect(asks).toHaveLength(2);
+      expect(asks[0]).not.toBe(asks[1]);
+      for (const p of asks) expect([0, 1, 2, 3]).toContain(p);
+    }
+    expect(pickAsks(1, () => 0)).toHaveLength(1);
+  });
+
+  it('shuffleSpec: 난이도별 값, 도전이 우선, 느리게 ×1.5', () => {
+    expect(shuffleSpec('easy')).toEqual({ swaps: 2, moveMs: 1200, asks: 1 });
+    expect(shuffleSpec('normal')).toEqual({ swaps: 4, moveMs: 1000, asks: 1 });
+    expect(shuffleSpec('hard')).toEqual({ swaps: 6, moveMs: 800, asks: 2 });
+    expect(shuffleSpec('easy', true)).toEqual({ swaps: 8, moveMs: 600, asks: 2 });
+    expect(shuffleSpec('hard', false, 'SLOW').moveMs).toBe(1200);
+    expect(shuffleSpec('normal', true, 'SLOW').moveMs).toBe(900);
+    expect(SHUFFLE_SPEC.easy.moveMs).toBe(1200); // 원본 값은 그대로
+  });
+
+  it('positionPose: 0~3 → 손모양, 범위 밖이면 오류', () => {
+    expect([0, 1, 2, 3].map(positionPose)).toEqual(['INDEX', 'V', 'THREE', 'FOUR']);
+    expect(() => positionPose(4)).toThrow();
+    expect(() => positionPose(-1)).toThrow();
+    expect(() => positionPose(1.5)).toThrow();
+  });
+
+  it('judgeShuffle: 같은 색 / 다른 색, answer 는 그 자리의 실제 색', () => {
+    const final = ['blue', 'red', 'green', 'yellow'];
+    expect(judgeShuffle(final, 2, 'green')).toEqual({ correct: true, answer: 'green' });
+    expect(judgeShuffle(final, 0, 'red')).toEqual({ correct: false, answer: 'blue' });
   });
 });
