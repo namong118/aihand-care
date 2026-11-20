@@ -17,9 +17,16 @@ describe('반응 멘트', () => {
     }
   });
 
-  it('맞게 골랐을 때 {color}는 고른 색 이름으로 바뀐다', () => {
-    const last = () => 0.999; // 마지막 문장 = {color} 문장
-    expect(goodLine('파랑', last)).toBe('파랑, 잘 고르셨어요!');
+  it('다르게 골랐을 때 같은 문제를 다시 하는 것처럼 들리는 말이 없다 (다음 문제로 넘어감)', () => {
+    for (const line of RETRY_LINES) {
+      for (const word of ['다시', '한 번 더', '찾아 주세요']) expect(line).not.toContain(word);
+    }
+  });
+
+  it('맞게 골랐을 때 멘트에는 색 이름이 없다 (뒤에 "글자 색은 OO이었어요."가 따로 붙음)', () => {
+    for (const line of GOOD_LINES) {
+      for (const name of COLOR_NAMES) expect(line).not.toContain(name);
+    }
     expect(goodLine('파랑', () => 0)).toBe('잘하셨어요!');
   });
 

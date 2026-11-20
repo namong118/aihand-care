@@ -21,17 +21,20 @@ export function createScreen(container, colors) {
 
   return {
     intro(onStart) {
+      // 음성만으로 알리지 않는다: 고른 시작 멘트를 화면에도 쓴다 (#112 리뷰)
+      const line = startLine();
       set(
         h(
           'div',
           { class: 'act-card' },
+          h('p', { class: 'act-text' }, line),
           h('p', { class: 'act-question' }, '글자의 "색깔"을 봐 주세요'),
           h('p', { class: 'act-text' }, '글자를 읽지 말고, 글자 색과 같은 색깔 카드를 로봇 카메라(WonderCam)에 보여 주세요. 아래 버튼을 눌러도 돼요.'),
           h('p', { class: 'act-text' }, '색깔이 잘 구분되지 않으시면 이 활동은 건너뛰셔도 괜찮아요.'),
         ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
-      speak(startLine());
+      speak(line);
     },
 
     waiting(text) {
