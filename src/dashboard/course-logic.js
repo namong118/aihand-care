@@ -285,12 +285,15 @@ export function filterDaysByUser(days, user) {
 /**
  * 한 활동의 반응 시간 변화: 날짜별로 문제 수 가중 평균 (날짜 오름차순). 코스 밖 기록도 포함한다.
  * 반응 시간이 없는 날은 넣지 않는다.
+ * STEP 2 "동시에 가위바위보"(하나만 해 보기 전용, detail.mode === 'quick')는 "보!"부터 잰 시간이라
+ * 문제부터 재는 사고력 가위바위보와 섞이지 않게 뺀다 (#116).
  * @returns [{ date, avgReactionMs, rounds }]
  */
 export function reactionTrend(records, program, timeZone = TIME_ZONE) {
   const byDate = new Map();
   for (const r of records) {
     if (r.program !== program) continue;
+    if (r.detail?.mode === 'quick') continue;
     const date = localDate(r.startedAt, timeZone);
     if (!date) continue;
     if (!byDate.has(date)) byDate.set(date, []);
