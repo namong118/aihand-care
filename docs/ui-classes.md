@@ -47,6 +47,30 @@ h('div', { class: 'act-answers', style: { 'grid-template-columns': 'repeat(3, mi
 );
 ```
 
+## 도전 활동 단계 고르기 (`src/ui/level-picker.js`)
+
+도전 활동(숫자 야구·21 게임·카드 섞기 등)은 모두 시작 화면에서 **1·2·3단계**를 고릅니다. 모양이 같도록 이 부품을 같이 씁니다. 클래스는 `level-*` (`styles.css` "도전 활동 단계 고르기").
+
+```js
+import { levelPicker } from '../../ui/level-picker.js';
+
+container.append(levelPicker({
+  title: '카드 섞기',
+  lead: '카드 4장이 섞여요. 로봇이 손가락으로 묻는 자리의 색을 알려 주세요.',
+  levels: [
+    { level: 1, desc: '네 번 천천히 섞어요' },
+    { level: 2, desc: '여섯 번, 두 곳을 물어요' },
+    { level: 3, desc: '여덟 번, 빠르게' },
+  ],
+  selected: 1,            // 미리 고른 단계: ctx.settings.challengeLevel 이 1·2·3 이면 그 값, 아니면 1
+  onStart: (level) => { /* 그 단계로 시작 */ },
+}));
+```
+
+- 세 단계는 늘 한 줄에 놓입니다 (Mock 화면의 가상 로봇손 칸이 있어도). 설명(`desc`)은 짧게 한 줄로 씁니다
+- 고른 단계는 활동 색 테두리와 "✔ 고름" 글자로 보여 줍니다 (색만으로 알리지 않음)
+- 예: `src/programs/challenge-baseball/screen.js`
+
 ## 7인치(1280×720)
 
 답 버튼과 건너뛰기는 코스 막대가 있어도 스크롤 없이 첫 화면에 보여야 합니다. 2026-11-16 Mock 화면 기준 맨 아래 버튼 위치: STEP 1 708px, STEP 2 716px, STEP 3 629px, STEP 4 653px.
