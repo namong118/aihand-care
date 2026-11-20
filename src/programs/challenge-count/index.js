@@ -1,4 +1,4 @@
-// 도전 활동 "21 게임" (기본 활동 가위바위보의 짝, 홈 가위바위보 카드 아래 칸). core 는 import 하지 않고 ctx 만 쓴다.
+// 도전 활동 "이어 세기" (기본 활동 가위바위보의 짝, 홈 가위바위보 카드 아래 칸). core 는 import 하지 않고 ctx 만 쓴다.
 //
 // 한 회차 = 한 판:
 //   시작 화면에서 1·2·3단계 고르기 (미리 선택: ctx.settings.challengeLevel, 없으면 1단계)
@@ -11,7 +11,7 @@
 import { levelSpec, defaultLevel, makeGame, allowedCounts, countFrom, robotCount, countPose, poseCount, summarizeGame } from './logic.js';
 import { createScreen } from './screen.js';
 
-const ID = 'challenge-21';
+const ID = 'challenge-count';
 
 let session = null; // 지금 화면의 실행 상태. unmount 하면 alive = false
 
@@ -29,7 +29,7 @@ async function robot(promise) {
   try {
     await promise;
   } catch (err) {
-    console.error('21 게임 로봇 명령 오류', err);
+    console.error('이어 세기 로봇 명령 오류', err);
   }
 }
 
@@ -174,7 +174,7 @@ function showLevels(ctx, screen, s) {
 
 export default {
   id: ID,
-  title: '21 게임',
+  title: '이어 세기',
 
   mount(container, ctx) {
     session = { alive: true, answer: null, waits: new Set() };

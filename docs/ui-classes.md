@@ -49,7 +49,7 @@ h('div', { class: 'act-answers', style: { 'grid-template-columns': 'repeat(3, mi
 
 ## 도전 활동 단계 고르기 (`src/ui/level-picker.js`)
 
-도전 활동(숫자 야구·21 게임·카드 섞기 등)은 모두 시작 화면에서 **1·2·3단계**를 고릅니다. 모양이 같도록 이 부품을 같이 씁니다. 클래스는 `level-*` (`styles.css` "도전 활동 단계 고르기").
+도전 활동(숫자 야구·이어 세기·카드 섞기 등)은 모두 시작 화면에서 **1·2·3단계**를 고릅니다. 모양이 같도록 이 부품을 같이 씁니다. 클래스는 `level-*` (`styles.css` "도전 활동 단계 고르기").
 
 ```js
 import { levelPicker } from '../../ui/level-picker.js';

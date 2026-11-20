@@ -1,4 +1,4 @@
-// 21 게임 화면 그리기. 판정은 하지 않고 보여주기만 한다.
+// 이어 세기 화면 그리기. 판정은 하지 않고 보여주기만 한다.
 // 모양은 styles.css "활동 화면 공통"(act-*) 클래스와 단계 고르기(src/ui/level-picker.js).
 
 import { h, button, message } from '../../ui/components.js';
@@ -85,7 +85,7 @@ export function createScreen(container) {
     levels({ selected }, onStart) {
       set(
         levelPicker({
-          title: '21 게임',
+          title: '이어 세기',
           lead: '내가 먼저, 1부터 로봇과 번갈아 수를 이어 세요. 몇 개를 셀지 손가락으로 보여 주세요. 끝 숫자를 로봇이 부르게 만들어 보세요.',
           levels: [1, 2, 3].map((level) => ({ level, desc: LEVEL_DESC[level] })),
           selected,
