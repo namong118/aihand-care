@@ -5,7 +5,7 @@
 
 import { h, button, message } from '../../ui/components.js';
 import { handIcon } from '../../ui/icons.js';
-import { handText, HAND_LABELS } from './logic.js';
+import { handText, timingText, HAND_LABELS } from './logic.js';
 
 // 화면 버튼은 익숙한 "가위, 바위, 보" 순서로
 const BUTTON_ORDER = ['V', 'ROCK', 'PAPER'];
@@ -16,6 +16,16 @@ const STATUS_TEXT = {
   second: '○ 다시 생각해서 해내셨어요',
   shown: 'ℹ 함께 답을 확인했어요',
   skipped: '→ 건너뛰었어요',
+};
+
+// 동시에 가위바위보 요약 화면의 판별 결과 문구
+const QUICK_TEXT = {
+  win: '○ 이기셨어요',
+  draw: '△ 비겼어요',
+  lose: '◇ 로봇이 이겼어요',
+  early: '→ 조금 빨랐어요',
+  late: '→ 조금 늦었어요',
+  none: '→ 손이 안 보였어요',
 };
 
 export function createScreen(container) {
@@ -56,7 +66,110 @@ export function createScreen(container) {
     );
   }
 
+  let quickWordEl = null; // 동시에 가위바위보 판 화면의 "가위/바위/보!" 큰 글자
+
   return {
+    /** "하나만 해 보기"로 들어왔을 때 첫 화면: 어떤 가위바위보를 할지 고르기 */
+    modeChoice(onQuick, onThink) {
+      set(
+        card(
+          h('p', { class: 'act-question' }, '어떤 가위바위보를 해 볼까요?'),
+          h('p', { class: 'act-text' }, '동시에 가위바위보: 로봇과 진짜처럼 “보!”에 맞춰 함께 손을 내요.'),
+          h('p', { class: 'act-text' }, '생각하는 가위바위보: 화면의 말에 맞게 손을 생각해서 내요.'),
+        ),
+        h('div', { class: 'row' }, button('동시에 가위바위보', onQuick), button('생각하는 가위바위보', onThink, { variant: 'secondary' })),
+      );
+    },
+
+    /** 동시에 가위바위보 안내 */
+    quickIntro({ total, lateSec }, onStart) {
+      set(
+        card(
+          h('p', { class: 'act-question' }, '“보!”에 맞춰 함께 내요'),
+          h('p', { class: 'act-text' }, '손을 카메라 밖으로 내리고 기다려 주세요.'),
+          h('p', { class: 'act-text' }, '“가위, 바위, 보!”의 “보!” 소리에 맞춰 가위·바위·보 중 하나를 내 주세요. 로봇도 같이 내요.'),
+          h('p', { class: 'act-text' }, `“보!” 뒤 ${lateSec}초 안에 내면 돼요. 모두 ${total}판이에요.`),
+        ),
+        h('div', { class: 'row' }, button('시작하기', onStart)),
+      );
+    },
+
+    /** 동시에 가위바위보 한 판: 큰 구호 글자 + 화면 버튼 (손 인식 대체 입력, 구호 내내 보인다) */
+    quickPlay({ index, total, holdSec }, onAnswer) {
+      quickWordEl = h('p', { class: 'act-prompt', 'aria-live': 'assertive', style: { 'font-size': '110px', padding: '24px 0' } }, '');
+      set(
+        h('div', { class: 'act-head' }, h('span', { class: 'act-progress', 'aria-label': `${total}판 중 ${index}번째` }, `${index}판 / ${total}`)),
+        card(quickWordEl),
+        h(
+          'div',
+          { class: 'act-answers', role: 'group', 'aria-label': '내 손 고르기', style: { 'grid-template-columns': 'repeat(3, minmax(0, 1fr))' } },
+          BUTTON_ORDER.map((hand) =>
+            h(
+              'button',
+              { type: 'button', class: 'act-answer', onClick: () => onAnswer(hand) },
+              h('span', { class: 'act-art' }, handIcon(hand)),
+              HAND_LABELS[hand],
+            ),
+          ),
+        ),
+        h('div', { class: 'act-foot' }, h('p', { class: 'act-foot-text' }, `“보!”에 맞춰 손을 내 주세요 (${holdSec}초 보여 주기). 버튼을 눌러도 돼요.`)),
+      );
+    },
+
+    /** 동시에 가위바위보 구호 글자 바꾸기 (버튼은 그대로 두고 글자만) */
+    quickWord(word) {
+      if (quickWordEl) quickWordEl.textContent = word;
+    },
+
+    /** 동시에 가위바위보 한 판 결과: 로봇 손 · 내 손 · 결과 문구 */
+    quickResult({ robotHand, userHand, msg, timingMs }) {
+      const side = (label, hand) =>
+        h(
+          'div',
+          { style: { display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '6px', flex: '1 1 150px' } },
+          h('span', { class: 'act-label' }, label),
+          h('span', { class: 'act-art act-art-lg' }, hand ? handIcon(hand, 58) : '?'),
+          h('span', { style: { 'font-size': '28px', 'font-weight': '600' } }, hand ? HAND_LABELS[hand] : '—'),
+        );
+      set(
+        message(msg.text, msg.tone),
+        h('div', { class: 'act-card act-card-row' }, side('로봇', robotHand), side('나', userHand)),
+        timingText(timingMs) ? card(h('p', { class: 'act-text' }, timingText(timingMs))) : null,
+      );
+    },
+
+    /**
+     * 동시에 가위바위보 요약: 판별 한 줄 + 이김·비김 수. 점수나 능력 평가처럼 보이지 않게 활동 기록으로만.
+     * games: [{ robotHand, hand, timing, timingMs, outcome }], sum: summarizeQuick 결과
+     */
+    quickSummary({ games, sum }, onAgain) {
+      set(
+        message(`${games.length}판을 모두 함께 해 주셨어요. 수고하셨어요!`, 'good'),
+        card(
+          h('h2', { style: { 'font-size': '30px', margin: '0' } }, '오늘의 활동 기록'),
+          h('p', { class: 'act-text' }, `“보!”에 맞춰 낸 판 ${sum.done}번 · 이김 ${sum.wins} · 비김 ${sum.draws} · 로봇이 이김 ${sum.losses}`),
+          h(
+            'ol',
+            { class: 'act-list' },
+            games.map((g, i) =>
+              h(
+                'li',
+                {},
+                h('span', { class: 'act-list-no' }, `${i + 1}판`),
+                h(
+                  'span',
+                  { class: 'act-list-main' },
+                  `로봇 ${HAND_LABELS[g.robotHand]} · 나 ${g.hand ? HAND_LABELS[g.hand] : '—'}${g.timing === 'ontime' ? ` · ${timingText(g.timingMs)}` : ''}`,
+                ),
+                h('span', { class: 'act-list-state' }, QUICK_TEXT[g.outcome ?? g.timing]),
+              ),
+            ),
+          ),
+        ),
+        h('div', { class: 'row' }, button('한 번 더 하기', onAgain)),
+      );
+    },
+
     intro({ total, revealSec }, onStart) {
       set(
         card(

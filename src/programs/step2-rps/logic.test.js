@@ -266,3 +266,169 @@ describe('isRpsHand', () => {
     expect(isRpsHand(null)).toBe(false);
   });
 });
+
+// ---------- 동시에 가위바위보 ----------
+import {
+  HANDS,
+  QUICK_GAMES,
+  EARLY_MS,
+  quickTiming,
+  makeQuickRound,
+  timingOf,
+  quickResult,
+  quickMessage,
+  timingText,
+  summarizeQuick,
+} from './logic.js';
+
+describe('quickTiming: 동시에 가위바위보 시간 값', () => {
+  it('난이도가 어려울수록 제때로 보는 시간이 짧다', () => {
+    const e = quickTiming('easy', 'NORMAL').lateMs;
+    const n = quickTiming('normal', 'NORMAL').lateMs;
+    const h = quickTiming('hard', 'NORMAL').lateMs;
+    expect(e).toBeGreaterThan(n);
+    expect(n).toBeGreaterThan(h);
+  });
+
+  it('천천히면 확정 시간과 제때 시간이 더 길다', () => {
+    const normal = quickTiming('normal', 'NORMAL');
+    const slow = quickTiming('normal', 'SLOW');
+    expect(slow.holdMs).toBeGreaterThan(normal.holdMs);
+    expect(slow.lateMs).toBe(normal.lateMs + 500);
+  });
+
+  it('모르는 난이도는 쉬움으로', () => {
+    expect(quickTiming('???', 'NORMAL')).toEqual(quickTiming('easy', 'NORMAL'));
+  });
+});
+
+describe('makeQuickRound: 로봇이 낼 손 목록', () => {
+  it('기본 판 수만큼, 모두 가위·바위·보', () => {
+    const list = makeQuickRound();
+    expect(list).toHaveLength(QUICK_GAMES);
+    list.forEach((hand) => expect(HANDS).toContain(hand));
+  });
+
+  it('같은 손이 세 번 연달아 나오지 않는다 (rand 고정)', () => {
+    const list = makeQuickRound(6, () => 0);
+    for (let i = 2; i < list.length; i++) {
+      expect(list[i] === list[i - 1] && list[i] === list[i - 2]).toBe(false);
+    }
+  });
+});
+
+describe('timingOf: "보!"에 맞춰 냈는지', () => {
+  const goAt = 10_000;
+  it.each([
+    [goAt - EARLY_MS - 1, 'early'],
+    [goAt - EARLY_MS, 'ontime'],
+    [goAt, 'ontime'],
+    [goAt + 1000, 'ontime'],
+    [goAt + 1001, 'late'],
+  ])('손 만든 시각 %d → %s', (formedAt, expected) => {
+    expect(timingOf(formedAt, goAt, 1000)).toBe(expected);
+  });
+});
+
+describe('quickResult: 한 판 결과', () => {
+  const goAt = 10_000;
+  const lateMs = 1000;
+
+  it('제때 내면 승패를 정한다', () => {
+    const r = quickResult({ robotHand: 'V', input: { hand: 'ROCK', formedAt: goAt + 400 }, goAt, lateMs });
+    expect(r).toEqual({ timing: 'ontime', timingMs: 400, outcome: 'win' });
+  });
+
+  it('늦게 내면 승패를 따지지 않는다', () => {
+    const r = quickResult({ robotHand: 'V', input: { hand: 'ROCK', formedAt: goAt + 1500 }, goAt, lateMs });
+    expect(r).toEqual({ timing: 'late', timingMs: 1500, outcome: null });
+  });
+
+  it('너무 먼저 내도 승패를 따지지 않는다 (화면 버튼)', () => {
+    const r = quickResult({ robotHand: 'V', input: { hand: 'PAPER', formedAt: goAt - 800 }, goAt, lateMs });
+    expect(r.timing).toBe('early');
+    expect(r.outcome).toBeNull();
+  });
+
+  it('확정된 손이 없고, "보!" 전부터 들고 있던 손이 보이면 early', () => {
+    const now = goAt + 2000;
+    const lastPose = { name: 'ROCK', stableMs: 3000 }; // goAt - 1000 에 만든 손
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose, now }).timing).toBe('early');
+  });
+
+  it('확정된 손이 없고, "보!" 뒤 늦게 만든 손이 보이면 late', () => {
+    const now = goAt + 1600;
+    const lastPose = { name: 'PAPER', stableMs: 200 }; // goAt + 1400 에 만든 손 (확정 전에 판이 끝남)
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose, now })).toEqual({
+      timing: 'late',
+      timingMs: 1400,
+      outcome: null,
+    });
+  });
+
+  it('확정된 손이 없고 손도 안 보이면 none', () => {
+    const now = goAt + 2000;
+    const lastPose = { name: null, stableMs: 0 };
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose, now }).timing).toBe('none');
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, now }).timing).toBe('none');
+  });
+});
+
+describe('quickMessage: 결과 문구', () => {
+  it('"실패"·"틀렸" 같은 말을 쓰지 않는다', () => {
+    const cases = [
+      { timing: 'ontime', outcome: 'win' },
+      { timing: 'ontime', outcome: 'draw' },
+      { timing: 'ontime', outcome: 'lose' },
+      { timing: 'early', outcome: null },
+      { timing: 'late', outcome: null },
+      { timing: 'none', outcome: null },
+    ];
+    for (const c of cases) {
+      const { text } = quickMessage(c);
+      expect(text).toBeTruthy();
+      expect(text).not.toMatch(/실패|틀렸/);
+    }
+  });
+
+  it('이기면 good', () => {
+    expect(quickMessage({ timing: 'ontime', outcome: 'win' }).tone).toBe('good');
+  });
+});
+
+describe('timingText', () => {
+  it.each([
+    [-200, '“보!”와 거의 동시에'],
+    [100, '“보!”와 거의 동시에'],
+    [450, '“보!”에서 0.5초'],
+    [1200, '“보!”에서 1.2초'],
+    [null, ''],
+  ])('%s → %s', (ms, text) => {
+    expect(timingText(ms)).toBe(text);
+  });
+});
+
+describe('summarizeQuick: 회차 요약', () => {
+  it('제때 낸 판만 done·승패·평균에 넣고, 먼저 낸 시간은 0으로 센다', () => {
+    const games = [
+      { timing: 'ontime', timingMs: 400, outcome: 'win' },
+      { timing: 'ontime', timingMs: -200, outcome: 'lose' },
+      { timing: 'ontime', timingMs: 800, outcome: 'draw' },
+      { timing: 'late', timingMs: 1500, outcome: null },
+      { timing: 'none', timingMs: null, outcome: null },
+    ];
+    expect(summarizeQuick(games)).toEqual({
+      total: 5,
+      done: 3,
+      skipped: 1,
+      avgReactionMs: 400, // (400 + 0 + 800) / 3
+      wins: 1,
+      draws: 1,
+      losses: 1,
+    });
+  });
+
+  it('제때 낸 판이 없으면 평균은 null', () => {
+    expect(summarizeQuick([{ timing: 'none', timingMs: null, outcome: null }]).avgReactionMs).toBeNull();
+  });
+});

@@ -195,7 +195,8 @@ function showProgram(id, step = null) {
   }
   current = program;
   try {
-    program.mount(body, step ? courseCtx(step) : ctx);
+    // 하나만 해 보기(코스 밖)일 때는 ctx.single = true. 프로그램이 코스 밖에서만 보여 줄 화면을 고를 수 있게 (STEP 2 동시에 가위바위보)
+    program.mount(body, step ? courseCtx(step) : { ...ctx, single: true });
   } catch (err) {
     console.error(err);
     body.append(message('화면을 여는 중에 문제가 생겼어요. 홈으로 돌아가 다시 해 볼까요?', 'retry'));

@@ -6,6 +6,8 @@
 //   → 두 번째도 맞지 않으면 답을 함께 확인하고 로봇이 그 손을 보여 준다
 // 어려움: 로봇 손을 3초(천천히 4.5초)만 보여 주고 내린다. 제한 시간은 없다.
 // 회차가 끝나면 요약 화면을 보여 주고 ctx.log.record 로 한 번 기록한다.
+//
+// 홈 "하나만 해 보기"로 들어오면(ctx.single) 먼저 모드를 고른다: 동시에 가위바위보(quick.js) / 생각하는 가위바위보(이 파일).
 
 import {
   HANDS,
@@ -21,9 +23,12 @@ import {
   summarizeRound,
   handFeedback,
   shouldShowNotice,
+  QUICK_GAMES,
+  quickTiming,
 } from './logic.js';
 import { createScreen } from './screen.js';
 import { speak, stopSpeaking } from './voice.js';
+import { playQuickRound } from './quick.js';
 
 const ID = 'step2-rps';
 
@@ -241,7 +246,19 @@ export default {
     const s = session;
     const screen = createScreen(container);
     const reveal = revealMs(ctx.settings.difficulty, ctx.settings.speed);
-    screen.intro({ total: QUESTIONS_PER_ROUND, revealSec: reveal ? reveal / 1000 : null }, () => start(ctx, screen, s));
+    const thinkIntro = () =>
+      screen.intro({ total: QUESTIONS_PER_ROUND, revealSec: reveal ? reveal / 1000 : null }, () => start(ctx, screen, s));
+
+    // "하나만 해 보기"로 들어왔을 때(ctx.single)만 동시에 가위바위보를 고를 수 있다. 코스에서는 사고력 모드 그대로
+    if (!ctx.single) {
+      thinkIntro();
+      return;
+    }
+    const quickIntro = () =>
+      screen.quickIntro({ total: QUICK_GAMES, lateSec: quickTiming(ctx.settings.difficulty, ctx.settings.speed).lateMs / 1000 }, () =>
+        playQuickRound(ctx, screen, s).catch((err) => console.error(err)),
+      );
+    screen.modeChoice(quickIntro, thinkIntro);
   },
 
   unmount() {

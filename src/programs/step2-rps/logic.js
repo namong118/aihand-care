@@ -219,3 +219,123 @@ export function summarizeRound(items) {
   };
 }
 
+
+// ---------- 동시에 가위바위보 ("하나만 해 보기" 전용, 진짜처럼 동시에 내기) ----------
+//
+// "가위, 바위, 보!"의 "보!"에 맞춰 로봇과 사용자가 함께 손을 낸다. 승패는 운이고,
+// "보!"에 맞춰 제때 냈는지(손을 만든 시각 - "보!" 시각)를 활동 기록으로 남긴다.
+
+/** 한 회차 판 수 */
+export const QUICK_GAMES = 5;
+
+/** "보!"보다 이 시간 안쪽으로 조금 먼저 낸 손은 제때 낸 것으로 본다 (사람은 구호와 함께 손을 내기 시작한다) */
+export const EARLY_MS = 300;
+
+/** "보!" 뒤 이 시간 안에 손을 만들면 제때 낸 것. 난이도별, 속도 "천천히"면 0.5초 더 준다 */
+const LATE_MS = { easy: 1500, normal: 1000, hard: 700 };
+
+/**
+ * 동시에 가위바위보 시간 값.
+ *   holdMs: 손모양을 이 시간 유지하면 확정 (사고력 모드보다 짧다. 빨리 내고 빨리 확정)
+ *   lateMs: "보!" 뒤 이 시간 안에 낸 손까지 제때 낸 것
+ */
+export function quickTiming(difficulty, speed) {
+  const slow = speed === 'SLOW';
+  return {
+    holdMs: slow ? 500 : 300,
+    lateMs: (LATE_MS[difficulty] ?? LATE_MS.easy) + (slow ? 500 : 0),
+  };
+}
+
+/** 로봇이 낼 손 목록. 같은 손이 세 번 연달아 나오지는 않게 한다 */
+export function makeQuickRound(count = QUICK_GAMES, rand = Math.random) {
+  const list = [];
+  for (let i = 0; i < count; i++) {
+    let hand = HANDS[Math.floor(rand() * HANDS.length)];
+    if (i >= 2 && list[i - 1] === hand && list[i - 2] === hand) {
+      hand = HANDS[(HANDS.indexOf(hand) + 1) % HANDS.length];
+    }
+    list.push(hand);
+  }
+  return list;
+}
+
+/**
+ * 손을 낸 때가 "보!"에 맞았는지.
+ *   formedAt: 손모양을 만든 시각, goAt: "보!" 시각
+ * 반환: 'early'(너무 먼저) | 'ontime'(제때) | 'late'(늦게)
+ */
+export function timingOf(formedAt, goAt, lateMs) {
+  const d = formedAt - goAt;
+  if (d < -EARLY_MS) return 'early';
+  if (d > lateMs) return 'late';
+  return 'ontime';
+}
+
+/**
+ * 한 판 결과.
+ *   input: { hand, formedAt } | null(손이 확정되지 않음)
+ *   lastPose: 판이 끝날 때 마지막으로 보인 손 { name, stableMs } (확정되지 않았을 때 이유(early/late/none)를 알려 주는 데만 쓴다)
+ *   now: 판이 끝난 시각
+ * 반환: { timing: 'ontime'|'early'|'late'|'none', timingMs, outcome: 'win'|'draw'|'lose'|null }
+ *   outcome 은 제때 냈을 때만 정한다 (늦게 내면 로봇 손을 보고 낼 수 있어서 승패를 따지지 않는다)
+ */
+export function quickResult({ robotHand, input, goAt, lateMs, lastPose = null, now = goAt }) {
+  if (input) {
+    const timing = timingOf(input.formedAt, goAt, lateMs);
+    return {
+      timing,
+      timingMs: Math.round(input.formedAt - goAt),
+      outcome: timing === 'ontime' ? outcome(input.hand, robotHand) : null,
+    };
+  }
+  // 확정된 손이 없음: 마지막에 보인 가위·바위·보를 언제 만들었는지로 이유를 알려 준다
+  //   "보!" 훨씬 전부터 들고 있던 손 → 너무 먼저 / 그 뒤에 만들었지만 확정 전에 판이 끝남 → 늦게
+  if (lastPose && isRpsHand(lastPose.name)) {
+    const formedAt = now - lastPose.stableMs;
+    const timing = formedAt < goAt - EARLY_MS ? 'early' : 'late';
+    return { timing, timingMs: timing === 'late' ? Math.round(formedAt - goAt) : null, outcome: null };
+  }
+  return { timing: 'none', timingMs: null, outcome: null };
+}
+
+/** 한 판 결과 문구. "실패", "틀렸습니다" 같은 말은 쓰지 않는다 */
+export function quickMessage({ timing, outcome: result }) {
+  if (timing === 'ontime') {
+    if (result === 'win') return { tone: 'good', text: '이기셨어요!' };
+    if (result === 'draw') return { tone: 'info', text: '비겼어요!' };
+    return { tone: 'info', text: '로봇이 이겼어요! 다음 판에 이겨 볼까요?' };
+  }
+  if (timing === 'early') return { tone: 'retry', text: '조금 빨랐어요. “보!” 소리에 맞춰 내 볼까요?' };
+  if (timing === 'late') return { tone: 'retry', text: '조금 늦었어요. “보!” 소리에 맞춰 내 볼까요?' };
+  return { tone: 'retry', text: '손이 보이지 않았어요. 다음 판에는 “보!”에 맞춰 손을 내 주세요.' };
+}
+
+/** "보!"에서 손을 낼 때까지 걸린 시간 글자. 먼저 낸 경우(0 이하)는 "거의 동시에" */
+export function timingText(timingMs) {
+  if (!Number.isFinite(timingMs)) return '';
+  if (timingMs <= 100) return '“보!”와 거의 동시에';
+  return `“보!”에서 ${(timingMs / 1000).toFixed(1)}초`;
+}
+
+/**
+ * 동시에 가위바위보 회차 요약 (ctx.log.record 공통 필드 + 승패 수).
+ *   games: [{ timing, timingMs, outcome }]
+ * 반환: { total, done, skipped, avgReactionMs, wins, draws, losses }
+ *   done: 제때 낸 판 수, skipped: 손이 보이지 않은 판 수
+ *   avgReactionMs: 제때 낸 판의 "보!"부터 손을 만들 때까지 평균 (먼저 낸 것은 0으로 센다, 없으면 null)
+ */
+export function summarizeQuick(games) {
+  const ontime = games.filter((g) => g.timing === 'ontime');
+  const times = ontime.map((g) => Math.max(0, g.timingMs)).filter((ms) => Number.isFinite(ms));
+  const count = (o) => ontime.filter((g) => g.outcome === o).length;
+  return {
+    total: games.length,
+    done: ontime.length,
+    skipped: games.filter((g) => g.timing === 'none').length,
+    avgReactionMs: times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : null,
+    wins: count('win'),
+    draws: count('draw'),
+    losses: count('lose'),
+  };
+}
