@@ -7,6 +7,7 @@ import step3 from './step3-stroop/index.js';
 import step4 from './step4-coach/index.js';
 // 도전 활동 (홈의 기본 활동 카드 아래 칸, dashboard/catalog.js CHALLENGES)
 import challengeBaseball from './challenge-baseball/index.js';
+import challengeCount from './challenge-count/index.js';
 
 export const PROGRAMS = {
   [step1.id]: step1,
@@ -14,4 +15,5 @@ export const PROGRAMS = {
   [step3.id]: step3,
   [step4.id]: step4,
   [challengeBaseball.id]: challengeBaseball,
+  [challengeCount.id]: challengeCount,
 };
