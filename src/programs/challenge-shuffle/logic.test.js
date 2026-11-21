@@ -55,6 +55,10 @@ describe('makeSwaps', () => {
       const swaps = makeSwaps(12, lcg(seed));
       for (let i = 1; i < swaps.length; i++) expect(swaps[i]).not.toEqual(swaps[i - 1]);
     }
+    for (const rand of [() => 0, () => 0.9999]) {
+      const swaps = makeSwaps(8, rand);
+      for (let i = 1; i < swaps.length; i++) expect(swaps[i]).not.toEqual(swaps[i - 1]);
+    }
     // 두 번째에 같은 쌍 [0,1]이 나오면 다시 뽑는다
     expect(makeSwaps(2, seq(0, 0, 0, 0, 0.9, 0.9))).toEqual([[0, 1], [2, 3]]);
   });

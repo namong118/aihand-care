@@ -67,15 +67,24 @@ function makePair(rand) {
 
 /**
  * 바꿀 자리 쌍 목록. 예: [[0, 2], [1, 3], [0, 1]]
- * 바로 앞과 같은 쌍은 다시 뽑는다 (되돌려져서 너무 쉬워짐). rand 가 늘 같은 값이면 20번 시도 후 그대로 넣는다.
+ * 바로 앞과 같은 쌍은 다시 뽑는다 (되돌려져서 너무 쉬워짐). rand 가 늘 같은 값이면 20번 시도 후 앞과 다른 첫 쌍을 넣는다.
  */
 export function makeSwaps(count, rand = Math.random) {
   const list = [];
+  const pairs = [
+    [0, 1], [0, 2], [0, 3],
+    [1, 2], [1, 3], [2, 3],
+  ];
   while (list.length < count) {
     const prev = list[list.length - 1];
     let pair = makePair(rand);
     for (let tries = 0; prev && pair[0] === prev[0] && pair[1] === prev[1] && tries < 20; tries++) {
       pair = makePair(rand);
+    }
+    if (prev && pair[0] === prev[0] && pair[1] === prev[1]) {
+      pair = pairs.find((candidate) =>
+        candidate[0] !== prev[0] || candidate[1] !== prev[1],
+      );
     }
     list.push(pair);
   }
