@@ -251,6 +251,13 @@ describe('reactionTrend', () => {
   it('반응 시간이 없는 활동은 빈 목록', () => {
     expect(reactionTrend([rec('step4-coach', { avg: null })], 'step4-coach')).toEqual([]);
   });
+  it('동시에 가위바위보(detail.mode quick)는 빼고 사고력 가위바위보만 (#116)', () => {
+    const quick = { ...rec('step2-rps', { start: '2026-11-13T05:00:00.000Z', total: 5, avg: 300 }) };
+    quick.detail = { ...quick.detail, mode: 'quick' };
+    const records = [quick, rec('step2-rps', { start: '2026-11-13T06:00:00.000Z', total: 5, avg: 2000 })];
+    expect(reactionTrend(records, 'step2-rps')).toEqual([{ date: '2026-11-13', avgReactionMs: 2000, rounds: 1 }]);
+    expect(reactionTrend([quick], 'step2-rps')).toEqual([]);
+  });
 });
 
 describe('groupByDay (결과 화면 날짜별 기록)', () => {

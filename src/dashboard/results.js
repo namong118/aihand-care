@@ -256,7 +256,7 @@ function reactionView(records) {
   const blocks = trends.map(([id, trend]) => trendBlock(id, trend, max));
   if (blocks.length === 0) return [h('p', {}, '아직 반응 시간 기록이 없어요.')];
   return [
-    h('p', { class: 'result-note' }, '화면에 문제가 나온 뒤 답할 때까지 걸린 시간의 평균이에요. 반응 시간을 재지 않는 활동(손운동)은 없어요.'),
+    h('p', { class: 'result-note' }, '화면에 문제가 나온 뒤 답할 때까지 걸린 시간의 평균이에요. 반응 시간을 재지 않는 활동(손운동)은 없고, 가위바위보는 "보!"에 맞춰 내는 동시에 가위바위보를 빼고 보여 줘요.'),
     ...blocks,
   ];
 }

@@ -3,6 +3,7 @@
 
 import { h, button, message } from '../../ui/components.js';
 import { speak } from './voice.js';
+import { startLine, goodLine, retryLine } from './lines.js';
 
 export function createScreen(container, colors) {
   container.innerHTML = '';
@@ -20,16 +21,20 @@ export function createScreen(container, colors) {
 
   return {
     intro(onStart) {
+      // 음성만으로 알리지 않는다: 고른 시작 멘트를 화면에도 쓴다 (#112 리뷰)
+      const line = startLine();
       set(
         h(
           'div',
           { class: 'act-card' },
+          h('p', { class: 'act-text' }, line),
           h('p', { class: 'act-question' }, '글자의 "색깔"을 봐 주세요'),
           h('p', { class: 'act-text' }, '글자를 읽지 말고, 글자 색과 같은 색깔 카드를 로봇 카메라(WonderCam)에 보여 주세요. 아래 버튼을 눌러도 돼요.'),
           h('p', { class: 'act-text' }, '색깔이 잘 구분되지 않으시면 이 활동은 건너뛰셔도 괜찮아요.'),
         ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
+      speak(line);
     },
 
     waiting(text) {
@@ -84,14 +89,16 @@ export function createScreen(container, colors) {
     feedback({ correct, inkColor }) {
       const ink = find(inkColor);
       if (correct) {
-        set(message(`잘하셨어요! 글자 색은 ${ink.label}이었어요.`, 'good'));
-        speak(`잘하셨어요! 글자 색은 ${ink.label}이었어요.`);
+        const line = goodLine(ink.label);
+        set(message(`${line} 글자 색은 ${ink.label}이었어요.`, 'good'));
+        speak(`${line} 글자 색은 ${ink.label}이었어요.`);
       } else {
+        const line = retryLine();
         set(
-          message('다시 해 볼까요?', 'retry'),
+          message(line, 'retry'),
           h('div', { class: 'act-card' }, h('p', { class: 'act-text' }, `글자 색은 ${ink.label}이었어요.`)),
         );
-        speak(`다시 해 볼까요? 글자 색은 ${ink.label}이었어요.`);
+        speak(`${line} 글자 색은 ${ink.label}이었어요.`);
       }
     },
 
