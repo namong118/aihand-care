@@ -304,3 +304,25 @@ export function reactionTrend(records, program, timeZone = TIME_ZONE) {
     .filter((d) => d.avgReactionMs !== null)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
+
+/**
+ * 도전 활동 한 판의 기록 글 (결과 화면 "기록"·"자세히" 칸). 기록(detail)에 남은 값만 읽는다.
+ * 점수·판정처럼 보이지 않게 한 일을 그대로 쓴다. 이 함수가 모르는 활동은 null (기본 글을 쓴다)
+ *   숫자 야구: "2단계 · 3번 만에 찾음" / "2단계 · 8번 내고 정답 함께 확인"
+ *   이어 세기: "1단계 · 끝 숫자 20 · 로봇이 끝 숫자를 부름" / "… · 끝 숫자를 부르심" / "… · 중간에 그만함"
+ */
+export function challengeText(r) {
+  const d = r?.detail;
+  if (!d) return null;
+  const level = Number.isFinite(d.level) ? `${d.level}단계 · ` : '';
+  if (r.program === 'challenge-baseball') {
+    const tries = d.tries ?? d.history?.length ?? 0;
+    return `${level}${d.solved ? `${tries}번 만에 찾음` : `${tries}번 내고 정답 함께 확인`}`;
+  }
+  if (r.program === 'challenge-count') {
+    const end = Number.isFinite(d.end) ? `끝 숫자 ${d.end} · ` : '';
+    const how = d.winner === 'me' ? '로봇이 끝 숫자를 부름' : d.winner === 'robot' ? '끝 숫자를 부르심' : '중간에 그만함';
+    return `${level}${end}${how}`;
+  }
+  return null;
+}
