@@ -1,9 +1,15 @@
 // 이어 세기 화면 그리기. 판정은 하지 않고 보여주기만 한다.
 // 모양은 styles.css "활동 화면 공통"(act-*) 클래스와 단계 고르기(src/ui/level-picker.js).
 
-import { h, button, message } from '../../ui/components.js';
+import { h, button, message, firstOnly } from '../../ui/components.js';
 import { levelPicker } from '../../ui/level-picker.js';
 import { countFrom, goodSpots, josa } from './logic.js';
+
+/** 끝 화면 버튼 두 개. 두 번 빨리 눌러도 처음 누른 것 하나만 받는다 (firstOnly) */
+function endButtons(onAgain, onLevels) {
+  const [again, levels] = firstOnly(onAgain, onLevels);
+  return [button('한 판 더 하기', again), button('단계 바꾸기', levels, { variant: 'secondary' })];
+}
 
 /** 단계 설명 (시작 화면) */
 const LEVEL_DESC = {
@@ -106,7 +112,7 @@ export function createScreen(container) {
             `1부터 번갈아 세요. 한 번에 1개부터 ${maxStep}개까지 셀 수 있어요. ${end}${josa(end, '을', '를')} 로봇이 부르게 만들어 보세요.`,
           ),
         ),
-        h('div', { class: 'row', style: { 'justify-content': 'center' } }, button('시작하기', onGo)),
+        h('div', { class: 'row', style: { 'justify-content': 'center' } }, button('시작하기', firstOnly(onGo)[0])),
       );
     },
 
@@ -214,7 +220,7 @@ export function createScreen(container) {
           : myTurns
             ? h('p', { class: 'act-text', style: { margin: '0' } }, `${myTurns}번 세셨어요.`)
             : null,
-        h('div', { class: 'row' }, button('한 판 더 하기', onAgain), button('단계 바꾸기', onLevels, { variant: 'secondary' })),
+        h('div', { class: 'row' }, ...endButtons(onAgain, onLevels)),
       );
     },
   };

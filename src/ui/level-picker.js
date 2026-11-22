@@ -10,7 +10,7 @@
 //     onStart: (level) => { ... },
 //   }));
 
-import { h, button } from './components.js';
+import { h, button, firstOnly } from './components.js';
 
 export function levelPicker({ title, lead, levels, selected = 1, onStart, startLabel = '시작하기' }) {
   let current = levels.some((l) => l.level === selected) ? selected : levels[0].level;
@@ -41,6 +41,7 @@ export function levelPicker({ title, lead, levels, selected = 1, onStart, startL
     }),
   );
   paint();
+  const [start] = firstOnly(() => onStart(current)); // 두 번 눌러도 한 번만 시작
 
   return h(
     'div',
@@ -52,6 +53,6 @@ export function levelPicker({ title, lead, levels, selected = 1, onStart, startL
       lead ? h('p', { class: 'act-text' }, lead) : null,
     ),
     list,
-    h('div', { class: 'row' }, button(startLabel, () => onStart(current))),
+    h('div', { class: 'row' }, button(startLabel, start)),
   );
 }
