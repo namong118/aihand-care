@@ -1,4 +1,6 @@
-// 대시보드 설정 저장: 난이도·속도. 개인정보는 저장하지 않는다.
+// 대시보드 설정 저장: 난이도·속도, 나의 시작 찾기로 정한 활동별 시작 단계(levels). 개인정보는 저장하지 않는다.
+
+import { cleanLevels } from './find-start-logic.js';
 
 // 예전 버전이 저장한 사용자 이름 목록. 이제 쓰지 않으므로 앱이 시작할 때 지운다.
 const OLD_USERS_KEY = 'aihand-care.users.v1';
@@ -21,12 +23,13 @@ function write(key, value) {
   }
 }
 
-/** 저장된 설정 중 difficulty, speed 만 꺼낸다. */
+/** 저장된 설정 중 difficulty, speed, levels 만 꺼낸다. levels 는 활동에 맞는 값만 (cleanLevels) */
 export function loadSavedSettings() {
   const s = read(SETTINGS_KEY, {});
   const out = {};
   if (['easy', 'normal', 'hard'].includes(s.difficulty)) out.difficulty = s.difficulty;
   if (['SLOW', 'NORMAL'].includes(s.speed)) out.speed = s.speed;
+  out.levels = cleanLevels(s.levels);
   return out;
 }
 
@@ -34,6 +37,7 @@ export function saveSettings(settings) {
   write(SETTINGS_KEY, {
     difficulty: settings.difficulty,
     speed: settings.speed,
+    levels: cleanLevels(settings.levels),
   });
 }
 

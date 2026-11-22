@@ -7,11 +7,24 @@ import { renderHome } from './dashboard/home.js';
 import { renderSettings } from './dashboard/settings.js';
 import { createDevPanel } from './dashboard/devpanel.js';
 import { renderResults } from './dashboard/results.js';
-import { CATALOG, findProgramInfo } from './dashboard/catalog.js';
+import { CATALOG, CHALLENGES, findProgramInfo } from './dashboard/catalog.js';
 import { loadCourse, newCourseId, tagRecord, stepInfo, courseProgress, courseOf, summarizeCourse } from './dashboard/course-logic.js';
 import { createCourseStore } from './dashboard/course-store.js';
 import { renderCourseIntro, renderStepIntro, createCourseBar, renderCourseSummary } from './dashboard/course.js';
 import courseJson from './data/course.json';
+import findStartJson from './data/find-start.json';
+import {
+  loadFindStart,
+  readyGroups,
+  outcomeOf,
+  nextPosition,
+  recommendFor,
+  newFindStartId,
+  tagFindStart,
+  findStartOf,
+  settingsFor,
+} from './dashboard/find-start-logic.js';
+import { renderFindStartIntro, createFindStartBar, renderFindStartBetween, renderFindStartRecommend } from './dashboard/find-start.js';
 import { loadSavedSettings, saveSettings, removeOldUsers } from './dashboard/prefs.js';
 import { h, button, message } from './ui/components.js';
 import { PROGRAMS } from './programs/index.js';
@@ -36,7 +49,7 @@ const { ctx, devices } = createContext(settings);
 // 전에 "AIHand 연결"로 허락한 AIHand 는 켤 때·USB 를 다시 꽂을 때 자동으로 연결한다 (키오스크, #60)
 devices.robot.startAutoConnect(() => settings.speed);
 
-let screen = 'home'; // 'home' | 'program' | 'results' | 'course' | 'login'
+let screen = 'home'; // 'home' | 'program' | 'results' | 'course' | 'login' | 'find'
 let settingsOpen = false;
 
 function updateStatusbar() {
@@ -58,6 +71,14 @@ function setSetting(key, value) {
   if (screen === 'home') showHome(); // 제목 아래 "난이도 · 속도" 알약 갱신
 }
 
+/** 나의 시작 찾기로 정한 시작 단계 지우기 (설정 영역) */
+function clearLevels() {
+  settings.levels = {};
+  saveSettings(settings);
+  updateSettings();
+  if (screen === 'home') showHome();
+}
+
 function updateSettings() {
   renderSettings(settingsEl, {
     open: settingsOpen,
@@ -65,6 +86,7 @@ function updateSettings() {
     setSetting,
     close: () => toggleSettings(false),
     openRegister: showRegister,
+    clearLevels,
   });
 }
 
@@ -141,6 +163,7 @@ function showHome() {
   leaveProgram();
   course = null; // 코스 중에 홈으로 오면 코스는 끝 (그만하기·마치기에서 이미 저장)
   who = null; // 다음 코스는 다시 로그인
+  finding = null; // 나의 시작 찾기 중에 홈으로 오면 저장하지 않고 끝
   setScreen('home');
   renderHome(appEl, {
     settings,
@@ -150,6 +173,8 @@ function showHome() {
     startProgram: (id) => showProgram(id),
     startCourse: showLogin,
     hasProgram: (id) => Boolean(PROGRAMS[id]), // 도전 활동이 아직 없으면 홈에서 "준비 중"
+    levels: settings.levels ?? {}, // 나의 시작 찾기로 정한 시작 단계 → 카드에 "보통부터"
+    openFindStart: findGroups.length > 0 ? showFindStartIntro : null,
   });
 }
 
@@ -157,8 +182,9 @@ function showHome() {
  * 프로그램 화면.
  * @param id     프로그램 id
  * @param step   코스 중이면 stepInfo() 결과. 위쪽 막대를 코스 막대로 바꾸고, 기록에 detail.course 를 붙인다
+ * @param find   나의 시작 찾기 짧은 판이면 { no, of }. 위쪽 막대를 나의 시작 찾기 막대로 바꾸고, 기록에 detail.findStart 를 붙인다
  */
-function showProgram(id, step = null) {
+function showProgram(id, step = null, find = null) {
   leaveProgram();
   setScreen('program');
   const info = findProgramInfo(id);
@@ -176,6 +202,15 @@ function showProgram(id, step = null) {
       onStop: stopCourse,
     });
     bar = course.bar.el;
+  } else if (find) {
+    bar = createFindStartBar({
+      program: id,
+      role: finding.role,
+      no: find.no,
+      of: find.of,
+      onSkip: () => finishFindStep('skipped'),
+      onStop: showHome,
+    }).el;
   } else {
     bar = h(
       'div',
@@ -196,7 +231,9 @@ function showProgram(id, step = null) {
   current = program;
   try {
     // 하나만 해 보기(코스 밖)일 때는 ctx.single = true. 프로그램이 코스 밖에서만 보여 줄 화면을 고를 수 있게 (STEP 2 동시에 가위바위보)
-    program.mount(body, step ? courseCtx(step) : { ...ctx, single: true });
+    // 시작 단계를 정해 둔 활동은 그 단계로 연다 (나의 시작 찾기, settingsFor)
+    const runCtx = step ? courseCtx(step) : find ? findCtx() : { ...ctx, settings: settingsFor(id, settings), single: true };
+    program.mount(body, runCtx);
   } catch (err) {
     console.error(err);
     body.append(message('화면을 여는 중에 문제가 생겼어요. 홈으로 돌아가 다시 해 볼까요?', 'retry'));
@@ -219,6 +256,7 @@ function courseCtx(step) {
   const userId = who?.userId ?? null;
   return {
     ...ctx,
+    settings: settingsFor(step.program, settings),
     log: { ...ctx.log, record: (r) => ctx.log.record(tagRecord(r, { id, order: step.order, of: step.of, userId })) },
   };
 }
@@ -230,6 +268,7 @@ function whoText() {
 
 // 지금 활동의 기록이 저장되면 막대에 "다음 활동으로" 버튼을 보여준다
 devices.log.onRecord((rec) => {
+  onFindStartRecord(rec);
   if (!course || screen !== 'program') return;
   const c = courseOf(rec);
   if (c?.id === course.id && c.order === course.index + 1) course.bar?.setFinished();
@@ -364,6 +403,111 @@ function finishCourse() {
     .hello()
     .then(() => ctx.robot.rest())
     .catch((err) => console.error('코스 마침 인사 오류', err));
+}
+
+// ---- 나의 시작 찾기 ----
+// 홈 "나의 시작 찾기" → 시작 안내 → 짝마다 기본 활동 짧은 판 → (해내시면) 도전 활동 1단계 짧은 판 → 추천 화면.
+// 짝과 추천 단계는 src/data/find-start.json. 프로그램은 ctx.settings.findStart 가 true 면 짧은 판으로 한다.
+// 짧은 판 기록에는 detail.findStart 가 붙고, 결과 화면 반응 시간 변화에서는 빠진다.
+// 정한 시작 단계는 settings.levels 에 저장 (스테이션 하나에 하나, prefs.js).
+const allFindGroups = loadFindStart(findStartJson, [...CATALOG, ...CHALLENGES].map((p) => p.id));
+const findGroups = readyGroups(allFindGroups);
+let finding = null; // 진행 중인 나의 시작 찾기 { id, index, role, no, results: { 짝 id: { basic, challenge } }, waiting }
+
+function showFindStartIntro() {
+  leaveProgram();
+  course = null;
+  finding = null;
+  setScreen('find');
+  renderFindStartIntro(appEl, { groups: findGroups, onStart: startFindStart, onHome: showHome });
+}
+
+function startFindStart() {
+  finding = { id: newFindStartId(), index: 0, role: 'basic', no: 1, results: {}, waiting: false };
+  runFindStep();
+}
+
+/** 지금 짝·역할의 짧은 판을 연다 */
+function runFindStep() {
+  const g = findGroups[finding.index];
+  finding.waiting = true; // 이 활동의 기록을 기다리는 중
+  showProgram(finding.role === 'basic' ? g.basic : g.challenge, null, { no: finding.no, of: findGroups.length * 2 });
+}
+
+/** 짧은 판에 넘기는 ctx: settings.findStart = true, 기록에 detail.findStart */
+function findCtx() {
+  const tag = { id: finding.id, group: findGroups[finding.index].id, role: finding.role };
+  return {
+    ...ctx,
+    settings: { ...settings, findStart: true },
+    log: { ...ctx.log, record: (r) => ctx.log.record(tagFindStart(r, tag)) },
+  };
+}
+
+/** 짧은 판 기록이 저장되면 다음으로 (프로그램 흐름이 끝난 뒤에 화면을 바꾸도록 한 박자 뒤에) */
+function onFindStartRecord(rec) {
+  if (!finding?.waiting || screen !== 'program') return;
+  const f = findStartOf(rec);
+  if (f?.id !== finding.id || f.role !== finding.role || f.group !== findGroups[finding.index].id) return;
+  finding.waiting = false;
+  const outcome = outcomeOf(rec);
+  setTimeout(() => finishFindStep(outcome), 0);
+}
+
+/** 짧은 판 하나가 끝남 (해냄·해 봄·건너뜀) */
+function finishFindStep(outcome) {
+  if (!finding) return;
+  finding.waiting = false;
+  const g = findGroups[finding.index];
+  finding.results[g.id] = { ...finding.results[g.id], [finding.role]: outcome };
+  const next = nextPosition(findGroups.length, finding, outcome);
+  if (!next) {
+    showFindRecommend();
+    return;
+  }
+  const toChallenge = next.role === 'challenge';
+  finding.index = next.index;
+  finding.role = next.role;
+  finding.no += 1;
+  if (toChallenge) showFindBetween();
+  else runFindStep();
+}
+
+/** 기본 활동을 해낸 뒤 도전 활동 안내 */
+function showFindBetween() {
+  leaveProgram();
+  setScreen('find');
+  renderFindStartBetween(appEl, {
+    group: findGroups[finding.index],
+    onGo: runFindStep,
+    onPass: () => finishFindStep('skipped'),
+    onStop: showHome,
+  });
+}
+
+/** 추천 화면 */
+function showFindRecommend() {
+  leaveProgram();
+  setScreen('find');
+  const levels = settings.levels ?? {};
+  const rows = findGroups.map((group) => {
+    const rec = recommendFor(group, finding.results[group.id]);
+    const pick = rec ?? {
+      basic: levels[group.basic] ?? settings.difficulty,
+      challenge: levels[group.challenge] ?? 1,
+    };
+    return { group, pick, recommended: Boolean(rec) };
+  });
+  renderFindStartRecommend(appEl, {
+    rows,
+    later: allFindGroups.filter((g) => !g.ready),
+    onSave: (picked) => {
+      settings.levels = { ...levels, ...picked };
+      saveSettings(settings);
+      showHome();
+    },
+    onHome: showHome,
+  });
 }
 
 function showResults(filter = {}) {

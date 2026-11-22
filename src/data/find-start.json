@@ -1,0 +1,20 @@
+{
+  "groups": [
+    {
+      "id": "memory",
+      "basic": "step1-memory",
+      "challenge": "challenge-baseball",
+      "ready": true,
+      "minutes": 3,
+      "basicText": "숫자 3개를 한 번 기억해요",
+      "challengeText": "짧게 한 판 해 봐요 (5번까지)",
+      "recommend": {
+        "both": { "basic": "hard", "challenge": 2 },
+        "basic": { "basic": "normal", "challenge": 1 },
+        "none": { "basic": "easy", "challenge": 1 }
+      }
+    },
+    { "id": "rps", "basic": "step2-rps", "challenge": "challenge-count", "ready": false },
+    { "id": "color", "basic": "step3-stroop", "challenge": "challenge-shuffle", "ready": false }
+  ]
+}

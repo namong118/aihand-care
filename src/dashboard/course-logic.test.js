@@ -259,6 +259,13 @@ describe('reactionTrend', () => {
     expect(reactionTrend(records, 'step2-rps')).toEqual([{ date: '2026-11-13', avgReactionMs: 2000, rounds: 1 }]);
     expect(reactionTrend([quick], 'step2-rps')).toEqual([]);
   });
+
+  it('나의 시작 찾기 짧은 판(detail.findStart)은 뺀다', () => {
+    const short = { ...rec('step1-memory', { start: '2026-11-22T05:00:00.000Z', total: 1, avg: 900 }) };
+    short.detail = { ...short.detail, findStart: { id: 'find-1', group: 'memory', role: 'basic' } };
+    const records = [short, rec('step1-memory', { start: '2026-11-22T06:00:00.000Z', total: 5, avg: 2000 })];
+    expect(reactionTrend(records, 'step1-memory')).toEqual([{ date: '2026-11-22', avgReactionMs: 2000, rounds: 1 }]);
+  });
 });
 
 describe('groupByDay (결과 화면 날짜별 기록)', () => {

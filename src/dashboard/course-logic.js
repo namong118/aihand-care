@@ -294,6 +294,7 @@ export function reactionTrend(records, program, timeZone = TIME_ZONE) {
   for (const r of records) {
     if (r.program !== program) continue;
     if (r.detail?.mode === 'quick') continue;
+    if (r.detail?.findStart) continue; // 나의 시작 찾기 짧은 판은 평소 회차와 길이가 달라 빼고 본다
     const date = localDate(r.startedAt, timeZone);
     if (!date) continue;
     if (!byDate.has(date)) byDate.set(date, []);

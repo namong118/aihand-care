@@ -3,6 +3,14 @@
 
 import { h, button } from '../ui/components.js';
 import { outlineButton } from './statusbar.js';
+import { findProgramInfo } from './catalog.js';
+
+/** 시작 단계 글자 "숫자 기억 보통 · 숫자 야구 1단계" */
+function levelsText(levels) {
+  return Object.entries(levels)
+    .map(([id, lv]) => `${findProgramInfo(id)?.name ?? id} ${typeof lv === 'number' ? `${lv}단계` : labelOf(DIFFICULTIES, lv)}`)
+    .join(' · ');
+}
 
 export const DIFFICULTIES = [
   { value: 'easy', label: '쉬움' },
@@ -44,8 +52,10 @@ function choiceRow(title, list, current, onPick) {
  * @param el   설정 영역 자리. 닫혀 있으면 비워서 숨긴다
  * @param opts { open, settings, setSetting(key, value), close(), openRegister() }
  *   openRegister: 사용자 등록 화면(#84)으로. 없으면 버튼을 그리지 않는다
+ *   clearLevels: 나의 시작 찾기로 정한 시작 단계 지우기. 정한 단계가 있을 때만 줄을 그린다
  */
-export function renderSettings(el, { open, settings, setSetting, close, openRegister }) {
+export function renderSettings(el, { open, settings, setSetting, close, openRegister, clearLevels }) {
+  const levels = settings.levels ?? {};
   el.innerHTML = '';
   el.hidden = !open;
   if (!open) return;
@@ -61,6 +71,20 @@ export function renderSettings(el, { open, settings, setSetting, close, openRegi
         { class: 'settings-note' },
         '보호자나 선생님이 활동 전에 맞춰 두는 항목입니다. 로봇 동작 속도도 함께 바뀝니다.',
       ),
+      // 나의 시작 찾기로 정한 활동은 위 난이도 대신 이 단계로 시작한다
+      clearLevels && Object.keys(levels).length > 0
+        ? h(
+            'div',
+            { class: 'settings-row' },
+            h('span', { class: 'settings-label' }, '시작 단계'),
+            h(
+              'div',
+              { class: 'settings-choices' },
+              h('span', { class: 'settings-levels' }, levelsText(levels)),
+              button('지우기', clearLevels, { variant: 'secondary' }),
+            ),
+          )
+        : null,
       // 사용자 등록은 선생님이 한다 (#82, 등록 화면 #84). 어르신 화면(홈)에는 두지 않는다
       openRegister
         ? h(

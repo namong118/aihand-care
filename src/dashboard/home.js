@@ -4,6 +4,7 @@
 // 카드 아래 칸은 짝 도전 활동 (11/20, #132). 코스에는 들어가지 않는다.
 // 설정 영역 자체는 settings.js, 상단 바는 statusbar.js.
 // 로그인은 코스를 시작할 때 하므로 홈에서는 호칭을 부르지 않는다.
+// "나의 시작 찾기" 입구는 주 버튼 아래. 시작 단계를 정해 두면 카드에 "보통부터"·"1단계부터"가 붙는다 (find-start.js).
 
 import { h } from '../ui/components.js';
 import { challengeFor, findProgramInfo } from './catalog.js';
@@ -42,7 +43,15 @@ function todayText(now = new Date()) {
  * 짝 도전 활동 칸 (기본 활동 카드 아래). 프로그램이 아직 없으면 "준비 중"으로 누를 수 없다.
  * 기본 활동 카드와 누르는 영역을 따로 두어, 기본 활동을 누르려다 도전을 누르지 않게 한다.
  */
-function challengeSlot(c, ready, onPick) {
+/** 시작 단계 알약: 기본 활동 "보통부터", 도전 활동 "1단계부터". 정해 두지 않았으면 null */
+function levelBadge(id, levels) {
+  const lv = levels?.[id];
+  if (lv === undefined) return null;
+  const text = typeof lv === 'number' ? `${lv}단계부터` : `${labelOf(DIFFICULTIES, lv)}부터`;
+  return h('span', { class: 'home-level' }, text);
+}
+
+function challengeSlot(c, ready, onPick, badge = null) {
   const head = h('span', { class: 'home-challenge-tag' }, '도전');
   if (!ready) {
     return h(
@@ -58,6 +67,7 @@ function challengeSlot(c, ready, onPick) {
     { type: 'button', class: 'home-challenge', onClick: onPick, 'aria-label': `도전 ${c.name}, ${c.short}` },
     head,
     h('span', { class: 'home-challenge-name' }, c.name),
+    badge,
     h('span', { class: 'home-challenge-go', 'aria-hidden': 'true' }, '›'),
   );
 }
@@ -77,16 +87,34 @@ function courseCard(p, order, app) {
       'button',
       { type: 'button', class: `home-course-card step${p.step}`, onClick: () => app.startProgram(p.id), 'aria-label': `${order}번째 ${p.name}, 하나만 해 보기` },
       h('span', { class: 'home-course-head' }, art(p.step), h('span', { class: 'home-course-order' }, `${order}번째`)),
-      h('span', { class: 'home-course-text' }, h('span', { class: 'home-course-name' }, p.name), h('span', { class: 'home-course-desc' }, p.short)),
+      h(
+        'span',
+        { class: 'home-course-text' },
+        h('span', { class: 'home-course-name' }, p.name, levelBadge(p.id, app.levels)),
+        h('span', { class: 'home-course-desc' }, p.short),
+      ),
       h('span', { class: 'home-course-go', 'aria-hidden': 'true' }, '하나만 해 보기 ›'),
     ),
-    c ? challengeSlot(c, ready, () => app.startProgram(c.id)) : null,
+    c ? challengeSlot(c, ready, () => app.startProgram(c.id), levelBadge(c.id, app.levels)) : null,
+  );
+}
+
+/** 나의 시작 찾기 입구. 시작 단계를 정해 두었으면 "다시 찾기" */
+function findStartEntry(app) {
+  if (!app.openFindStart) return null;
+  const saved = Object.keys(app.levels ?? {}).length > 0;
+  return h(
+    'div',
+    { class: 'home-find' },
+    h('span', {}, saved ? '시작 단계를 정해 두었어요' : '어디서부터 할지 모르겠다면'),
+    h('button', { type: 'button', class: 'home-find-btn', onClick: app.openFindStart }, saved ? '다시 찾기' : '나의 시작 찾기'),
   );
 }
 
 /**
  * @param container  그릴 자리
- * @param app        { settings, plan: [programId...], openSettings(), openResults(), startProgram(id), startCourse(), hasProgram(id) }
+ * @param app        { settings, plan: [programId...], openSettings(), openResults(), startProgram(id), startCourse(), hasProgram(id),
+ *                     levels: { 활동 id: 시작 단계 }, openFindStart() (없으면 입구를 그리지 않음) }
  */
 export function renderHome(container, app) {
   const { settings } = app;
@@ -114,6 +142,7 @@ export function renderHome(container, app) {
             '오늘의 활동 시작하기',
             svgIcon(`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="${NS}"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`),
           ),
+          findStartEntry(app),
           app.openResults ? h('button', { type: 'button', class: 'link-button', onClick: app.openResults }, '지난 기록 보기') : null,
           // 기본 활동의 난이도·속도. 도전 칸이 붙으면서 1280×720에 들어가게 아래 줄에서 이리로 옮김 (11/20)
           h(
