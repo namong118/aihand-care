@@ -229,11 +229,23 @@ export function createScreen(container, colors) {
     /** 회차 끝: summary = { total, done }, rounds = 판 수 */
     end({ total, done }, rounds, onAgain, onChoose) {
       holders = [];
+      // 두 번 빨리 누르면 회차가 두 개 같이 돌므로, 두 버튼 중 처음 한 번만 받는다
+      let picked = false;
+      const once = (fn) => () => {
+        if (picked) return;
+        picked = true;
+        row.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+        fn();
+      };
+      const row = h('div', { class: 'row' },
+        button('한 번 더 하기', once(onAgain)),
+        button('단계 다시 고르기', once(onChoose), { variant: 'secondary' }),
+      );
       set(
         message(`${rounds}판을 모두 마쳤어요. 수고하셨어요!`, 'good'),
         h('p', {}, `물어본 카드 ${total}장 가운데 ${done}장의 색을 찾아 주셨어요.`),
         h('p', {}, '이번 회차가 끝났어요. 한 번 더 해도 좋아요.'),
-        h('div', { class: 'row' }, button('한 번 더 하기', onAgain), button('단계 다시 고르기', onChoose, { variant: 'secondary' })),
+        row,
       );
     },
 
