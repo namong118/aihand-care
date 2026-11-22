@@ -30,6 +30,12 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        # 보호자 폰 앱(guardian/)이 배포 주소에서 실제 기록을 읽게 Supabase 주소·공개 키를 넘긴다 (#62, docs/guardian-app.md 4번)
+        # 값은 저장소 Settings → Secrets and variables → Actions → Variables 에 넣는다. 없으면 빈 값이라 지금처럼 Mock(#demo만)
+        # VITE_STATION_KEY(스테이션 비밀값)는 넣지 않는다: 라즈베리파이 .env.local 에만. 그래서 배포 주소의 스테이션 앱은 계속 Mock
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
