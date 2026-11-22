@@ -11,6 +11,8 @@ import {
   nextLength,
   summarizeRound,
   MAX_LENGTH_BY_DIFFICULTY,
+  QUESTIONS_PER_ROUND,
+  roundPlan,
 } from './logic.js';
 import poses from '../../data/poses.json';
 
@@ -141,5 +143,16 @@ describe('summarizeRound', () => {
   });
   it('반응 시간이 하나도 없으면 null', () => {
     expect(summarizeRound([{ status: 'skipped', reactionMs: null }]).avgReactionMs).toBeNull();
+  });
+});
+
+describe('roundPlan (나의 시작 찾기 짧은 판)', () => {
+  it('보통 회차는 5문제, 난이도별 첫 개수', () => {
+    expect(roundPlan('normal')).toEqual({ questions: QUESTIONS_PER_ROUND, length: 2 });
+    expect(roundPlan('hard', false)).toEqual({ questions: QUESTIONS_PER_ROUND, length: 3 });
+  });
+  it('나의 시작 찾기면 난이도와 관계없이 숫자 3개 한 문제', () => {
+    expect(roundPlan('easy', true)).toEqual({ questions: 1, length: 3 });
+    expect(roundPlan('hard', true)).toEqual({ questions: 1, length: 3 });
   });
 });

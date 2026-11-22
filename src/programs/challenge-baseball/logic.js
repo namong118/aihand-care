@@ -22,6 +22,15 @@ export function levelSpec(level) {
   return LEVELS[defaultLevel(level)];
 }
 
+/** 나의 시작 찾기 짧은 판: 1단계, 5번까지 (ctx.settings.findStart) */
+export const FIND_START_GAME = { level: 1, maxTries: 5 };
+
+/** 이번 판의 단계 값. 나의 시작 찾기면 1단계에 낼 수 있는 횟수만 줄인다 */
+export function gameSpec(level, findStart = false) {
+  if (findStart) return { ...LEVELS[FIND_START_GAME.level], maxTries: FIND_START_GAME.maxTries };
+  return levelSpec(level);
+}
+
 /** 시작 화면에서 미리 고를 단계. ctx.settings.challengeLevel 이 1·2·3 이면 그대로, 아니면 1 */
 export function defaultLevel(value) {
   return [1, 2, 3].includes(value) ? value : 1;

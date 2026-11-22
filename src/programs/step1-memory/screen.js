@@ -41,7 +41,13 @@ export function createScreen(container) {
             { class: 'act-text' },
             '로봇이 손가락으로 숫자를 차례로 보여줘요. 잘 보고 기억했다가, 같은 순서로 숫자 카드를 하나씩 카메라 가까이(약 10~15cm) 보여 주세요.',
           ),
-          h('p', { class: 'act-text' }, `모두 ${total}문제예요. 처음에는 숫자 ${count}개로 시작하고, 해내면 하나씩 늘어나요.`),
+          h(
+            'p',
+            { class: 'act-text' },
+            total === 1
+              ? `숫자 ${count}개를 한 번만 기억해 보아요.` // 나의 시작 찾기 짧은 판
+              : `모두 ${total}문제예요. 처음에는 숫자 ${count}개로 시작하고, 해내면 하나씩 늘어나요.`,
+          ),
         ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
