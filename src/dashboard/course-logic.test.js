@@ -17,6 +17,7 @@ import {
   groupByDay,
   reactionTrend,
   SUMMARY_VERSION,
+  challengeText,
 } from './course-logic.js';
 import course from '../data/course.json';
 import { CATALOG } from './catalog.js';
@@ -362,5 +363,30 @@ describe('코스 사용자 (#82)', () => {
     // 손님을 고르면 진짜 손님 코스(B)만. 로그인 기능 전 코스(OLD)는 "모든 분"에서만
     expect(filterDaysByUser(days, GUEST).map((d) => d.courses.map((c) => c.courseId))).toEqual([['B']]);
     expect(filterDaysByUser(days, 'u-zz')).toEqual([]);
+  });
+});
+
+describe('challengeText (도전 활동 한 판 기록 글)', () => {
+  const r = (program, detail) => ({ program, total: 1, done: 0, skipped: 0, detail });
+  it('숫자 야구', () => {
+    expect(challengeText(r('challenge-baseball', { level: 2, solved: true, tries: 3 }))).toBe('2단계 · 3번 만에 찾음');
+    expect(challengeText(r('challenge-baseball', { level: 1, solved: false, stopped: true, tries: 2 }))).toBe('1단계 · 2번 내고 정답 함께 확인');
+  });
+  it('이어 세기', () => {
+    expect(challengeText(r('challenge-count', { level: 3, end: 23, winner: 'me' }))).toBe('3단계 · 끝 숫자 23 · 로봇이 끝 숫자를 부름');
+    expect(challengeText(r('challenge-count', { level: 1, end: 20, winner: 'robot' }))).toBe('1단계 · 끝 숫자 20 · 끝 숫자를 부르심');
+    expect(challengeText(r('challenge-count', { level: 1, end: 20, winner: null, stopped: true }))).toBe('1단계 · 끝 숫자 20 · 중간에 그만함');
+  });
+  it('모르는 활동·detail 없음은 null', () => {
+    expect(challengeText(r('challenge-shuffle', { level: 1 }))).toBeNull();
+    expect(challengeText(r('step1-memory', {}))).toBeNull();
+    expect(challengeText({ program: 'challenge-count' })).toBeNull();
+  });
+  it('점수·판정처럼 보이는 말을 쓰지 않는다', () => {
+    const texts = [
+      challengeText(r('challenge-baseball', { level: 1, solved: false, tries: 8 })),
+      challengeText(r('challenge-count', { level: 1, end: 20, winner: 'robot' })),
+    ];
+    for (const t of texts) for (const w of ['점수', '정답률', '실패', '틀렸', '졌']) expect(t).not.toContain(w);
   });
 });
