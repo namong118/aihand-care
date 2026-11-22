@@ -2,7 +2,7 @@
 // 설계: docs/guardian-app.md 5번 "다른 담당자에게 넘기는 함수"
 //
 //   createPairing(userId) → { url, shortCode }   연결 코드 만들기 (등록 화면 #84, QR 보기 #82)
-//   drawQr(element, url)                         QR 그리기 (지금은 코드 글자만 크게 보여 주는 Mock)
+//   drawQr(element, url)                         QR 그리기 (QR 그림 + 연결 코드 글자)
 //   sendCourseSummary(summary)                   코스 끝에 요약 보내기 (main.js finishCourse·stopCourse)
 //   listPairings(userId) / revokePairing(code)   연결 목록 보기·연결 끊기 (#82)
 //   forgetUser(userId)                           사용자를 지울 때 Supabase 기록도 지우기
@@ -17,6 +17,7 @@
 // 모두 있으면 진짜, 하나라도 없으면 Mock (보낸 것처럼 대기열을 비우고 콘솔에 남긴다).
 // TODO(11/23): 진짜 보내기(fetch → Supabase RPC)는 아직 없다. 지금은 진짜 모드여도 대기열에 남겨 둔다.
 
+import QRCode from 'qrcode';
 import { createUserStore } from '../login/users.js';
 import { createGuardianStore } from './store.js';
 import {
@@ -164,30 +165,58 @@ export function createPairing(userId) {
 }
 
 /**
- * QR 그리기. TODO: qrcode 패키지는 팀 확인 뒤 추가 (설계 7번).
- * 지금은 Mock: QR 대신 연결 코드 글자를 크게 보여 준다 (폰 앱에서 직접 입력할 수 있다).
+ * QR 그리기: 안내 + QR 그림 + 연결 코드 글자. 보호자가 폰 카메라로 찍으면 폰 앱이 열리고 연결된다.
+ *   - 그림은 SVG 라 크게 키워도 선명하다. 화면이 어두워도 찍히게 흰 바탕·검은 무늬·가장자리 여백
+ *   - 인터넷이 없어도 그린다 (qrcode 패키지가 앱 안에 들어 있다, docs/decisions.md 4번)
+ *   - QR 을 그리지 못하면 코드 글자만 남긴다 (보호자가 폰 앱에 직접 넣을 수 있다)
+ * 코드 글자도 함께 보여 주므로, 부르는 쪽은 shortCode 를 따로 보여 주지 않아도 된다.
+ * 반환: 그림을 다 그리면 끝나는 Promise (기다리지 않아도 된다)
  */
 export function drawQr(element, url) {
   const { code } = parsePairingUrl(url);
   const box = document.createElement('div');
-  box.className = 'guardian-qr guardian-qr-mock';
+  box.className = 'guardian-qr';
   box.dataset.url = url;
-  box.style.cssText = 'display:grid;gap:8px;justify-items:center;padding:24px;border:3px dashed currentColor;border-radius:12px;text-align:center;';
+  box.style.cssText = 'display:grid;gap:12px;justify-items:center;text-align:center;';
 
   const lead = document.createElement('p');
-  lead.textContent = '보호자 폰 앱에 이 연결 코드를 입력해 주세요';
-  lead.style.cssText = 'margin:0;font-size:24px;';
+  lead.textContent = '보호자 폰 카메라로 QR을 찍어 주세요';
+  lead.style.cssText = 'margin:0;font-size:24px;font-weight:700;';
+
+  const pic = document.createElement('div');
+  pic.className = 'guardian-qr-image';
+  pic.setAttribute('role', 'img');
+  pic.setAttribute('aria-label', '보호자 연결 QR');
+  pic.style.cssText = 'width:min(280px,60vw);aspect-ratio:1;background:#fff;border-radius:12px;line-height:0;';
+
+  const hint = document.createElement('p');
+  hint.textContent = '찍기 어려우면 폰 앱에 이 연결 코드를 넣어 주세요';
+  hint.style.cssText = 'margin:0;font-size:24px;';
 
   const codeText = document.createElement('p');
+  codeText.className = 'guardian-qr-code';
   codeText.textContent = code ? formatCode(code) : '코드를 만들지 못했어요';
-  codeText.style.cssText = 'margin:0;font-size:48px;font-weight:700;letter-spacing:0.08em;';
+  codeText.style.cssText = 'margin:0;font-size:40px;font-weight:700;letter-spacing:0.08em;';
 
-  const note = document.createElement('p');
-  note.textContent = 'QR 그림은 준비 중이에요';
-  note.style.cssText = 'margin:0;font-size:24px;';
-
-  box.append(lead, codeText, note);
+  box.append(lead, pic, hint, codeText);
   element.replaceChildren(box);
+
+  // 오류 정정 M: 화면 반사·흐림에 조금 견디면서 칸이 너무 잘아지지 않게. 여백 4칸은 QR 규격의 권장값
+  return QRCode.toString(url, { type: 'svg', errorCorrectionLevel: 'M', margin: 4, color: { dark: '#000000', light: '#ffffff' } })
+    .then((svg) => {
+      pic.innerHTML = svg; // qrcode 가 만든 그림 (무늬만 있고 글자는 없다)
+      const el = pic.querySelector('svg');
+      el.setAttribute('width', '100%');
+      el.setAttribute('height', '100%');
+      el.setAttribute('shape-rendering', 'crispEdges');
+      el.setAttribute('aria-hidden', 'true');
+    })
+    .catch((err) => {
+      console.error(`${TAG} QR 을 그리지 못했어요. 연결 코드 글자만 보여 줍니다`, err);
+      pic.remove();
+      lead.textContent = '보호자 폰 앱에 이 연결 코드를 넣어 주세요';
+      hint.remove();
+    });
 }
 
 /**
