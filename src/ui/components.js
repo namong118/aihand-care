@@ -48,6 +48,22 @@ export function button(label, onClick, { variant = 'primary', pressed, disabled 
   );
 }
 
+/**
+ * 화면을 넘기는 버튼 여러 개 가운데 처음 누른 것 하나만 받는다.
+ * 터치 화면을 두 번 빨리 누르면 회차가 두 개 같이 시작되어 화면이 멈추는 것을 막는다 (#135 리뷰).
+ *   const [again, levels] = firstOnly(onAgain, onLevels);
+ *   button('한 판 더 하기', again), button('단계 바꾸기', levels)
+ * 화면을 다시 그릴 때마다 새로 부른다 (그 화면의 버튼끼리만 묶인다).
+ */
+export function firstOnly(...handlers) {
+  let used = false;
+  return handlers.map((fn) => (...args) => {
+    if (used) return;
+    used = true;
+    fn(...args);
+  });
+}
+
 /** 안내 문구. tone: 'info' | 'good' | 'retry' (색과 함께 앞에 기호를 붙인다) */
 export function message(text, tone = 'info') {
   const mark = { info: 'ℹ', good: '○', retry: '↻' }[tone] ?? '';
