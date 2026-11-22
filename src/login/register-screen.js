@@ -128,13 +128,18 @@ export function createRegisterScreen(container, { onCancel }) {
      */
     finished(user, { tested }, onFinish) {
       const qrSlot = h('div', { class: 'qr-slot', 'aria-label': '보호자 연결 자리' });
+      // QR(약 450px 높이)을 오른쪽에 두어 1280×720에서 "마치기" 버튼이 스크롤 없이 보이게 한다
       set(
         message(`등록을 마쳤어요: ${user.displayName}`, 'good'),
-        user.faceId !== null
-          ? h('p', {}, tested ? '얼굴도 잘 알아봤어요.' : '얼굴 알아보기는 아직 시험하지 않았어요.')
-          : h('p', {}, '로그인할 때 호칭 버튼을 눌러 주세요.'),
-        qrSlot,
-        h('div', { class: 'row' }, button('마치기', onFinish)),
+        h('div', { style: 'display:grid;grid-template-columns:1fr auto;gap:32px;align-items:start;' },
+          h('div', {},
+            user.faceId !== null
+              ? h('p', {}, tested ? '얼굴도 잘 알아봤어요.' : '얼굴 알아보기는 아직 시험하지 않았어요.')
+              : h('p', {}, '로그인할 때 호칭 버튼을 눌러 주세요.'),
+            h('div', { class: 'row' }, button('마치기', onFinish)),
+          ),
+          qrSlot,
+        ),
       );
       try {
         const { url } = createPairing(user.userId);
