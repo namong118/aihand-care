@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>손잇다 보호자</title>
+    <meta name="description" content="손잇다 보호자 앱: 어르신의 활동 기록 요약을 폰으로 봅니다." />
+    <meta name="theme-color" content="#1e3a75" />
+    <!-- 홈 화면에 추가 (PWA). public/guardian/ 의 파일이라 배포 주소(/aihand-care/)가 저절로 붙는다 -->
+    <link rel="manifest" href="/guardian/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/sonit-32.png" />
+    <link rel="apple-touch-icon" href="/icons/sonit-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="손잇다" />
+  </head>
+  <body>
+    <!-- 보호자 폰 앱 (#62). 화면은 src/guardian/phone/ 이 그린다 -->
+    <div id="app"></div>
+    <noscript>이 앱은 자바스크립트를 켜야 볼 수 있어요.</noscript>
+    <script type="module" src="/src/guardian/phone/main.js"></script>
+  </body>
+</html>

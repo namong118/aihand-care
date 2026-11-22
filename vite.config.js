@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
 // GitHub Pages 주소는 https://namong118.github.io/aihand-care/ 처럼 레포 이름 폴더 아래에 있다.
@@ -8,6 +9,16 @@ export default defineConfig(({ command, isPreview }) => ({
   base: command === 'serve' && !isPreview ? '/' : '/aihand-care/',
   server: {
     port: 5173,
+  },
+  // 페이지 두 개를 함께 빌드한다: 스테이션 앱(index.html)과 보호자 폰 앱(guardian/index.html, #62)
+  // 폰 앱 주소: 배포 https://namong118.github.io/aihand-care/guardian/ · 개발 http://localhost:5173/guardian/
+  build: {
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        guardian: fileURLToPath(new URL('./guardian/index.html', import.meta.url)),
+      },
+    },
   },
   test: {
     // 화면(DOM) 코드는 테스트하지 않으므로 node 환경으로 충분하다.
