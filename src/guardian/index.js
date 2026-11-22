@@ -6,7 +6,7 @@
 //   sendCourseSummary(summary)                   코스 끝에 요약 보내기 (main.js finishCourse·stopCourse)
 //   listPairings(userId) / revokePairing(code)   연결 목록 보기·연결 끊기 (#82)
 //   forgetUser(userId)                           사용자를 지울 때 Supabase 기록도 지우기
-//   outboxStatus() → { waiting, lastSentAt, mock }
+//   outboxStatus() → { waiting, lastSentAt, mock, failed }
 //
 // ⚠️ 이 파일을 불러오면(import) 바로 보내기를 한 번 시도하고, 그 뒤로 1분마다와
 //    인터넷이 다시 연결될 때(online 이벤트) 대기열을 다시 보낸다 (2026-11-19 결정).
@@ -14,8 +14,10 @@
 //    보내기는 화면 흐름을 기다리게 하지 않는다: 위 함수들은 보내기가 끝나기 전에 바로 돌아온다.
 //
 // 보내기 모드: .env.local 에 VITE_SUPABASE_URL·VITE_SUPABASE_ANON_KEY·VITE_STATION_KEY 가
-// 모두 있으면 진짜, 하나라도 없으면 Mock (보낸 것처럼 대기열을 비우고 콘솔에 남긴다).
-// TODO(11/23): 진짜 보내기(fetch → Supabase RPC)는 아직 없다. 지금은 진짜 모드여도 대기열에 남겨 둔다.
+// 모두 있으면 진짜(fetch → Supabase 함수), 하나라도 없으면 Mock (보낸 것처럼 대기열을 비우고 콘솔에 남긴다).
+// 진짜 보내기가 안 되면:
+//   인터넷 끊김·403 비밀값·5xx → 대기열에 남겨 두고 1분 뒤·online 때 다시
+//   400 모양·409 코드 겹침(다시 보내도 같음) → 그 칸만 aihand-care.outbox-failed.v1 로 빼고 나머지는 계속
 
 import { createUserStore } from '../login/users.js';
 import { createGuardianStore } from './store.js';
@@ -38,14 +40,24 @@ import {
   forgetInOutbox,
   flushOutbox,
   outboxStatusOf,
+  rpcUrl,
+  rpcRequest,
+  isPermanentStatus,
+  sendErrorText,
+  addFailed,
 } from './logic.js';
 
 const RETRY_MS = 60 * 1000; // 1분마다 다시 보내기
+const TIMEOUT_MS = 15 * 1000; // 핫스팟이 불안하면 답이 안 올 수 있다. 15초 넘으면 실패로 보고 다음에 다시
 const TAG = '[보호자 앱]';
 const KIND_TEXT = { pairing: '연결 코드', summary: '코스 요약', revoke: '연결 끊기', forget: '사용자 지우기' };
 
 const store = createGuardianStore();
 const mode = sendMode(import.meta.env);
+// 값은 콘솔에 남기지 않는다. 비밀값은 라즈베리파이 .env.local 에만 (설계 4번 "스테이션 비밀값")
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const STATION_KEY = import.meta.env.VITE_STATION_KEY;
 let lastSentAt = null; // 메모리에만 둔다 (새로고침하면 null)
 let flushing = null; // 보내는 중이면 그 Promise (두 번 겹쳐 보내지 않게)
 let again = false; // 보내는 중에 새로 부르면, 끝난 뒤 한 번 더 보낸다
@@ -63,9 +75,43 @@ async function mockSend(item) {
   console.info(`${TAG} Mock: 보낸 것처럼 처리 → ${describe(item)}`);
 }
 
-/** 진짜 보내기. TODO(11/23): fetch 로 Supabase RPC 부르기. 지금은 실패로 두어 대기열에 남긴다 */
-async function realSend() {
-  throw new Error('실제 전송은 아직 만들지 않았어요 (11/23 예정)');
+/**
+ * 진짜 보내기: 칸 하나를 Supabase 함수 하나로 부른다 (supabase-js 없이 fetch).
+ * 성공하면 함수가 돌려준 글자('saved' 등), 안 되면 에러. 다시 보내도 같은 에러면 err.permanent = true
+ */
+async function realSend(item) {
+  const { name, body } = rpcRequest(item, STATION_KEY);
+  const res = await fetch(rpcUrl(SUPABASE_URL, name), {
+    method: 'POST',
+    headers: { apikey: ANON_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  const text = await res.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+  if (!res.ok) {
+    const err = new Error(sendErrorText(res.status, data?.message ?? ''));
+    err.permanent = isPermanentStatus(res.status);
+    throw err;
+  }
+  if (data === 'no-pairing') {
+    console.info(`${TAG} 보냈지만 저장되지 않았어요 (Supabase에 이분의 연결 코드가 없음) → ${describe(item)}`);
+  } else {
+    console.info(`${TAG} 보냄 (${data}) → ${describe(item)}`);
+  }
+  return data;
+}
+
+/** 다시 보내도 안 되는 칸: 대기열에서 빼서 따로 보관하고 콘솔에 에러로 남긴다 */
+function dropItem(item, error) {
+  store.saveFailed(addFailed(store.loadFailed(), item, error, Date.now()));
+  console.error(`${TAG} 다시 보내도 안 돼서 대기열에서 뺐어요 (aihand-care.outbox-failed.v1 에 보관): ${error}`, describe(item));
 }
 
 function isOffline() {
@@ -92,14 +138,14 @@ function trySend() {
     save: store.saveOutbox,
     send: mode.mock ? mockSend : realSend,
     now: () => Date.now(),
+    drop: dropItem,
   })
-    .then(({ sent, failed }) => {
+    .then(({ sent, failed, error }) => {
       if (sent > 0) lastSentAt = new Date().toISOString();
       if (failed) {
         again = false; // 실패했으면 바로 다시 하지 않고 1분 뒤·online 때
-
         const left = store.loadOutbox().length;
-        console.warn(`${TAG} 보내지 못해 ${left}건을 남겨 둡니다 (다음에 다시): ${failed.lastError ?? ''}`, describe(failed));
+        console.warn(`${TAG} 보내지 못해 ${left}건을 남겨 둡니다 (1분 뒤 다시): ${error}`, describe(failed));
       }
     })
     .catch((err) => console.error(`${TAG} 보내기 오류`, err))
@@ -130,6 +176,8 @@ function start() {
 
   if (mode.mock) {
     console.info(`${TAG} Mock 으로 동작합니다 (보내지 않고 보낸 것처럼 처리). 빠진 값: ${mode.missing.join(', ')}`);
+  } else {
+    console.info(`${TAG} Supabase 로 진짜 보냅니다.`);
   }
   trySend(); // 앱을 켤 때 남아 있던 것 보내기
 }
@@ -237,7 +285,10 @@ export function forgetUser(userId) {
   trySend();
 }
 
-/** 장치 상태 표시용: { waiting 보낼 것 수, lastSentAt 마지막으로 보낸 시각(이번에 켠 뒤), mock } */
+/**
+ * 장치 상태 표시용: { waiting 보낼 것 수, lastSentAt 마지막으로 보낸 시각(이번에 켠 뒤), mock,
+ *   failed 다시 보내도 안 돼서 빼 둔 수 }
+ */
 export function outboxStatus() {
-  return outboxStatusOf(store.loadOutbox(), { lastSentAt, mock: mode.mock });
+  return outboxStatusOf(store.loadOutbox(), { lastSentAt, mock: mode.mock, failed: store.loadFailed().length });
 }

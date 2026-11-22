@@ -1,8 +1,8 @@
-// 보호자 앱(#62) 스테이션 저장소: 대기열과 연결 목록을 localStorage 에 읽고 쓴다.
+// 보호자 앱(#62) 스테이션 저장소: 대기열·연결 목록·빼 둔 것을 localStorage 에 읽고 쓴다.
 // 깨진 값이면 빈 목록으로 읽는다 (logic.js parseOutbox·parsePairings).
 // localStorage 를 쓸 수 없으면 메모리에만 둔다 (새로고침하면 사라짐).
 
-import { OUTBOX_KEY, PAIRINGS_KEY, parseOutbox, parsePairings } from './logic.js';
+import { OUTBOX_KEY, PAIRINGS_KEY, FAILED_KEY, parseOutbox, parsePairings, parseFailed } from './logic.js';
 
 function memoryStorage() {
   const data = new Map();
@@ -45,5 +45,7 @@ export function createGuardianStore(storage = defaultStorage()) {
     saveOutbox: (outbox) => write(OUTBOX_KEY, outbox),
     loadPairings: () => read(PAIRINGS_KEY, parsePairings),
     savePairings: (pairings) => write(PAIRINGS_KEY, pairings),
+    loadFailed: () => read(FAILED_KEY, parseFailed),
+    saveFailed: (list) => write(FAILED_KEY, list),
   };
 }
