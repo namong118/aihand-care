@@ -19,6 +19,19 @@
   --ok-fg: #1d6b4c;
   --danger: #9b2c2c;
   --sun: #8a5a00;
+  --chip: #edf0f6;
+  /* 활동 색: s 뒤 숫자는 STEP 번호 (화면에는 번호를 쓰지 않는다) */
+  --s1-bg: #d7efe3;
+  --s1-fg: #1d6b4c;
+  --s2-bg: #faefcc;
+  --s2-fg: #7a5200;
+  --s3-bg: #e9e2f9;
+  --s3-fg: #5b3fa6;
+  --s4-bg: #dfe8fb;
+  --s4-fg: #2d4e9e;
+  --legend-bg: #edf0f6;
+  --legend-fg: #3b4560;
+  --tab-off: #dfe4ee;
   --radius: 18px;
   --font: 'Apple SD Gothic Neo', 'Noto Sans KR', 'Noto Sans CJK KR', 'Malgun Gothic', system-ui, sans-serif;
   color-scheme: light;
@@ -43,6 +56,18 @@
     --ok-fg: #8fd9b6;
     --danger: #ffb4b4;
     --sun: #f2cf77;
+    --chip: #222d45;
+    --s1-bg: #1c3b2e;
+    --s1-fg: #8fd9b6;
+    --s2-bg: #3d3214;
+    --s2-fg: #f2cf77;
+    --s3-bg: #2e2650;
+    --s3-fg: #c7b4f5;
+    --s4-bg: #1f2d52;
+    --s4-fg: #a9c1f5;
+    --legend-bg: #222d45;
+    --legend-fg: #c2cbde;
+    --tab-off: #222d45;
     color-scheme: dark;
   }
 }
@@ -272,7 +297,12 @@ p {
 }
 
 .day {
+  width: 100%;
   min-height: 56px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -288,6 +318,7 @@ p {
 
 .day.has {
   background: var(--has-bg);
+  cursor: pointer;
 }
 
 .day.has .dn {
@@ -302,6 +333,7 @@ p {
 .day .sp {
   font-size: 20px;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .day .sp small {
@@ -321,4 +353,337 @@ p {
 
 .cal-foot b {
   color: var(--fg);
+}
+
+/* ---- 회차 화면 (6-4 ~ 6-10) ---- */
+
+/* 회차 탭: 고른 탭은 흰 바탕·굵은 글씨로 아래 내용과 이어진다 (색만으로 알리지 않기) */
+.tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: -16px;
+  padding: 0 4px;
+}
+
+.tab {
+  flex: none;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 1px solid var(--line-strong);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: var(--tab-off);
+  color: var(--sub);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 800;
+  border-color: var(--surface);
+  position: relative;
+  z-index: 1;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel.with-tabs > .card:first-child {
+  border-top-left-radius: 0;
+}
+
+.sum-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sum-main {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+
+/* 쌓은 막대 */
+.chart svg {
+  display: block;
+  overflow: visible;
+}
+
+.grid-line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.t-axis,
+.t-seg {
+  fill: var(--muted);
+  font-size: 16px;
+}
+
+.t-val {
+  fill: var(--fg);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+/* 그래프 칸이 넓게: 좌우 안쪽 여백을 줄인다 */
+.chart-card {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.chart-card > h2,
+.chart-card > .chart-cap,
+.chart-card > .legend {
+  margin-left: 6px;
+  margin-right: 6px;
+}
+
+.chart-cap {
+  font-size: 16px;
+  color: var(--muted);
+}
+
+/* 활동 이름: SVG 의 막대 칸과 같은 자리 (screen.js stackedChart 의 m.l·m.r 과 맞춘다) */
+.chart-names {
+  display: grid;
+  margin-left: calc(26 / 340 * 100%);
+  margin-right: calc(2 / 340 * 100%);
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.3;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.chart-names small {
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  color: var(--sub);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend svg {
+  flex: none;
+  border-radius: 4px;
+}
+
+/* 활동마다 */
+.act {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.acts h2 + .act {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.act h3 {
+  margin: 0;
+  font-size: 19px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 알약 (손 움직임·생각·기억·집중): 스테이션 홈 카드와 같은 글자 */
+.pill {
+  font-size: 16px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.act.s1 .pill { background: var(--s1-bg); color: var(--s1-fg); }
+.act.s2 .pill { background: var(--s2-bg); color: var(--s2-fg); }
+.act.s3 .pill { background: var(--s3-bg); color: var(--s3-fg); }
+.act.s4 .pill { background: var(--s4-bg); color: var(--s4-fg); }
+
+/* 숫자 카드 4칸 */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.stat {
+  background: var(--chip);
+  border-radius: 12px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stat-k {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.stat-v {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-v small {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sub);
+  margin-left: 1px;
+}
+
+/* 이름 / 값 줄 */
+.facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 8px 0 0;
+  align-items: baseline;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.act-desc {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.act-main {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.act-extra {
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.act-off {
+  color: var(--muted);
+}
+
+/* 방사형 (6-9 B) */
+.radar svg {
+  display: block;
+  max-width: 360px;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.radar-ring {
+  fill: none;
+  stroke: var(--line-strong);
+}
+
+.radar-shape {
+  fill: var(--accent);
+  fill-opacity: 0.22;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.radar-dot {
+  fill: var(--accent);
+}
+
+.t-lab {
+  fill: var(--sub);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* 모아 보기 (6-11) */
+.section-title {
+  margin: 8px 4px -4px;
+  font-size: 22px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 800;
+}
+
+.trend-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.trend-dot {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.trend-dot.last {
+  fill: var(--accent);
 }
