@@ -1,9 +1,10 @@
 {
-  "voice": "Microsoft Heami Desktop",
-  "rate": -1,
-  "trim": {
-    "leadMs": 30,
-    "tailMs": 300
+  "voice": {
+    "engine": "supertonic-3-int8",
+    "voice": 1,
+    "steps": 5,
+    "speed": 1,
+    "rate": 22050
   },
   "files": {
     "“보!” 소리에 맞춰 내 볼까요?": "7da2ad80.wav",
