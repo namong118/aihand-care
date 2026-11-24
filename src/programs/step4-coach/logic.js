@@ -141,3 +141,32 @@ export function summarizeSteps(results) {
     methods,
   };
 }
+
+// ---------- 음성 안내 (#61) ----------
+// 화면과 음성이 같은 문구를 쓰도록 여기 모아 둔다. 음성 파일은 voiceLines() 의 문장으로 만든다 (npm run voice).
+// 동작 문구(routines.json 의 say)를 고쳐도 npm run voice 로 음성 파일을 다시 만든다.
+// 읽을 것은 CLAUDE.md "음성 안내" 표를 따른다. 숫자 세기("하나")는 읽지 않는다.
+
+/** 동작 안내 문구. say 가 없으면 손모양 이름 (labelOf: 'ROCK' → '주먹(바위)') */
+export function stepLine(step, labelOf) {
+  return step.say ?? labelOf(step.pose);
+}
+
+/** 동작이 시작되기 전부터 같은 손모양을 들고 있을 때 안내 (holdState 의 'old') */
+export const OLD_HAND_TEXT = '손을 잠깐 내렸다가 다시 해 주세요.';
+
+/** 동작 사이 쉬는 시간: 따라 했을 때 / 건너뛰었을 때 (화면 글자, 음성) */
+export const REST_DONE_TEXT = '좋아요!';
+export const REST_SKIPPED_TEXT = '건너뛰었어요. 괜찮아요.';
+export const REST_SKIPPED_VOICE = '괜찮아요.';
+
+/** 루틴을 마쳤을 때 */
+export const FINISH_TEXT = '오늘 손운동을 함께 마쳤어요. 수고하셨어요!';
+
+/** STEP 4에서 음성으로 읽을 수 있는 문구 전부 (음성 파일 만들기용). routines: data/routines.json, poses: data/poses.json */
+export function voiceLines(routines, poses) {
+  const labelOf = (name) => poses.find((p) => p.name === name)?.label ?? name;
+  const lines = [OLD_HAND_TEXT, REST_DONE_TEXT, REST_SKIPPED_VOICE, FINISH_TEXT];
+  for (const routine of routines) for (const step of routine.steps) lines.push(stepLine(step, labelOf));
+  return lines;
+}

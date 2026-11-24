@@ -3,15 +3,14 @@
 
 import { h, button, message } from '../../ui/components.js';
 import { handIcon } from '../../ui/icons.js';
+import { speak } from '../../ui/voice.js';
+import { stepLine, OLD_HAND_TEXT, REST_DONE_TEXT, REST_SKIPPED_TEXT, REST_SKIPPED_VOICE, FINISH_TEXT } from './logic.js';
 
 const METHOD_TEXT = {
   detected: '손 인식으로 확인',
   manual: '"따라 했어요" 버튼',
   skipped: '건너뜀',
 };
-
-/** 동작이 시작되기 전부터 같은 손모양을 들고 있을 때 안내 (logic.js 의 'old' 상태) */
-const OLD_HAND_TEXT = '손을 잠깐 내렸다가 다시 해 주세요.';
 
 /**
  * 게이지 카드와 미리 든 손 안내를 같은 칸에 겹쳐 두고 하나만 보이게 한다 (#101).
@@ -76,12 +75,13 @@ export function createScreen(container, poses) {
   const area = h('div', { class: 'program-body' });
   container.append(area);
   const labelOf = (name) => poses.find((p) => p.name === name)?.label ?? name;
-  const sayOf = (step) => step.say ?? labelOf(step.pose);
+  const sayOf = (step) => stepLine(step, labelOf);
   let gaugeBar = null;
   let gaugeText = null;
   let countText = null;
   let oldNotice = null;
   let gaugeCard = null;
+  let oldSpoken = false; // 이번 동작에서 미리 든 손 안내를 읽었는지 (동작마다 한 번만 읽는다)
 
   function set(...children) {
     area.innerHTML = '';
@@ -174,6 +174,7 @@ export function createScreen(container, poses) {
       const holdSec = (holdMs / 1000).toFixed(1);
       const where = rounds > 1 ? `동작 ${index} / ${count} · 반복 ${step.round} / ${rounds}` : `동작 ${index} / ${count}`;
       countText = h('p', { class: 'act-prompt', 'aria-live': 'polite', style: { padding: '0', color: 'var(--step-fg)', 'min-width': '2.5em' } }, '');
+      oldSpoken = false;
       oldNotice = message(OLD_HAND_TEXT, 'info');
       Object.assign(oldNotice.style, {
         ...HOLD_LAYER_STYLE,
@@ -217,6 +218,7 @@ export function createScreen(container, poses) {
           button('건너뛰기', onSkip, { variant: 'secondary' }),
         ),
       );
+      speak(sayOf(step));
     },
 
     /**
@@ -234,26 +236,33 @@ export function createScreen(container, poses) {
       // 게이지 카드와 안내는 같은 칸에 겹쳐 있다. visibility 로 바꿔서 칸 높이가 변하지 않게 한다
       gaugeCard.style.visibility = showOld ? 'hidden' : 'visible';
       oldNotice.style.visibility = showOld ? 'visible' : 'hidden';
+      if (showOld && !oldSpoken) {
+        oldSpoken = true;
+        speak(OLD_HAND_TEXT);
+      }
     },
 
     /** 동작 사이 쉬는 시간: 어떻게 마쳤는지 + 다음 동작 안내. next 가 없으면 마지막 동작 */
     rest(method, next) {
       set(
         method === 'skipped'
-          ? message('건너뛰었어요. 괜찮아요.', 'info')
-          : message(`좋아요! (${METHOD_TEXT[method]})`, 'good'),
+          ? message(REST_SKIPPED_TEXT, 'info')
+          : message(`${REST_DONE_TEXT} (${METHOD_TEXT[method]})`, 'good'),
         next
           ? h('p', {}, `잠깐 쉬어요. 다음 동작: ${sayOf(next)}`)
           : h('p', {}, '마지막 동작이었어요.'),
       );
+      // 다음 동작 문구는 다음 동작 화면에서 읽으므로 여기서는 짧게만 읽는다 (쉬는 시간 2초)
+      speak(method === 'skipped' ? REST_SKIPPED_VOICE : REST_DONE_TEXT);
     },
 
     finish({ total, done, skipped, methods }) {
       set(
-        message('오늘 손운동을 함께 마쳤어요. 수고하셨어요!', 'good'),
+        message(FINISH_TEXT, 'good'),
         h('p', {}, `동작 ${total}개 중 ${done}개를 함께 했어요${skipped ? ` (건너뜀 ${skipped}개)` : ''}.`),
         h('p', { class: 'mock-status' }, `손 인식 ${methods.detected} · 버튼 ${methods.manual} · 건너뜀 ${methods.skipped}`),
       );
+      speak(FINISH_TEXT);
     },
 
     /**
