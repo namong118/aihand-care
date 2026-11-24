@@ -242,9 +242,11 @@ export default {
 
   mount(container, ctx) {
     // waits: 기다리는 중인 손 입력, timers: 어려움 손 내리기 타이머, answer: 화면 버튼을 기다리는 중이면 그 resolve
-    session = { alive: true, waits: new Set(), timers: new Set(), answer: null };
+    session = { alive: true, waits: new Set(), timers: new Set(), answer: null, screen: null };
     const s = session;
-    const screen = createScreen(container);
+    // ctx.hand 를 넘기면 동시에 가위바위보 화면에 "내 손" 캠 화면이 나온다 (웹캠이 켜져 있을 때만)
+    const screen = createScreen(container, ctx.hand);
+    s.screen = screen;
     const reveal = revealMs(ctx.settings.difficulty, ctx.settings.speed);
     const thinkIntro = () =>
       screen.intro({ total: QUESTIONS_PER_ROUND, revealSec: reveal ? reveal / 1000 : null }, () => start(ctx, screen, s));
@@ -267,6 +269,7 @@ export default {
     session.waits.forEach((w) => w.abort());
     session.timers.forEach((t) => clearTimeout(t));
     session.answer?.(null); // 버튼을 기다리던 흐름도 끝낸다
+    session.screen?.close(); // 캠 화면 연결 끊기
     session = null;
     stopSpeaking();
   },
