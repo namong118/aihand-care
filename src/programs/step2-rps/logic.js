@@ -18,23 +18,27 @@ const BEATS = {
 };
 
 /**
- * 조건 5종. target 은 사용자가 만들어야 하는 결과.
- * "이기지도 비기지도 마세요" 는 결국 져야 하고,
- * "지지도 비기지도 마세요" 는 결국 이겨야 한다 (정답은 항상 하나).
+ * 조건 7종. targets 는 사용자가 만들어야 하는 결과 (그중 하나가 되면 맞음).
+ * 원래 5종은 정답 손이 하나다:
+ *   "이기지도 비기지도 마세요" 는 결국 져야 하고, "지지도 비기지도 마세요" 는 결국 이겨야 한다.
+ * 어려움에만 나오는 2종은 정답 손이 둘이다 (#18, 2026-11-24 D 결정):
+ *   "이기지 마세요" = 지거나 비기면 된다, "지지 마세요" = 이기거나 비기면 된다.
  */
 export const CONDITIONS = [
-  { id: 'WIN', text: '이겨주세요', target: 'win' },
-  { id: 'LOSE', text: '져주세요', target: 'lose' },
-  { id: 'DRAW', text: '비겨주세요', target: 'draw' },
-  { id: 'NO_WIN_NO_DRAW', text: '이기지도 비기지도 마세요', target: 'lose' },
-  { id: 'NO_LOSE_NO_DRAW', text: '지지도 비기지도 마세요', target: 'win' },
+  { id: 'WIN', text: '이겨주세요', targets: ['win'] },
+  { id: 'LOSE', text: '져주세요', targets: ['lose'] },
+  { id: 'DRAW', text: '비겨주세요', targets: ['draw'] },
+  { id: 'NO_WIN_NO_DRAW', text: '이기지도 비기지도 마세요', targets: ['lose'] },
+  { id: 'NO_LOSE_NO_DRAW', text: '지지도 비기지도 마세요', targets: ['win'] },
+  { id: 'NO_WIN', text: '이기지 마세요', targets: ['lose', 'draw'] },
+  { id: 'NO_LOSE', text: '지지 마세요', targets: ['win', 'draw'] },
 ];
 
-/** 난이도별로 나올 수 있는 조건 */
+/** 난이도별로 나올 수 있는 조건. 어려움은 보통 5종 + 정답이 둘인 2종 */
 export const CONDITIONS_BY_DIFFICULTY = {
   easy: ['WIN', 'LOSE', 'DRAW'],
   normal: ['WIN', 'LOSE', 'DRAW', 'NO_WIN_NO_DRAW', 'NO_LOSE_NO_DRAW'],
-  hard: ['WIN', 'LOSE', 'DRAW', 'NO_WIN_NO_DRAW', 'NO_LOSE_NO_DRAW'],
+  hard: ['WIN', 'LOSE', 'DRAW', 'NO_WIN_NO_DRAW', 'NO_LOSE_NO_DRAW', 'NO_WIN', 'NO_LOSE'],
 };
 
 export function isRpsHand(name) {
@@ -59,24 +63,24 @@ export function outcome(user, robot) {
   return BEATS[user] === robot ? 'win' : 'lose';
 }
 
-/** 조건과 로봇 손이 주어졌을 때 정답 손 (항상 하나) */
-export function answerFor(conditionId, robotHand) {
-  const { target } = findCondition(conditionId);
-  return HANDS.find((h) => outcome(h, robotHand) === target);
+/** 조건과 로봇 손이 주어졌을 때 정답 손 목록 (HANDS 순서). 원래 5종은 하나, NO_WIN·NO_LOSE 는 둘 */
+export function answersFor(conditionId, robotHand) {
+  const { targets } = findCondition(conditionId);
+  return HANDS.filter((h) => targets.includes(outcome(h, robotHand)));
 }
 
 /**
  * 판정.
- * 반환: { correct, outcome, answer }
- *   outcome: 사용자 기준 승패, answer: 정답 손
+ * 반환: { correct, outcome, answers }
+ *   outcome: 사용자 기준 승패, answers: 정답 손 목록 (하나 또는 둘)
  */
 export function judge(conditionId, robotHand, userHand) {
   const result = outcome(userHand, robotHand);
-  const { target } = findCondition(conditionId);
+  const { targets } = findCondition(conditionId);
   return {
-    correct: result === target,
+    correct: targets.includes(result),
     outcome: result,
-    answer: answerFor(conditionId, robotHand),
+    answers: answersFor(conditionId, robotHand),
   };
 }
 
@@ -175,19 +179,39 @@ export function hintFor(conditionId) {
   const c = findCondition(conditionId);
   if (c.id === 'NO_WIN_NO_DRAW') return `도움말: “${c.text}”는 “져주세요”와 같은 뜻이에요.`;
   if (c.id === 'NO_LOSE_NO_DRAW') return `도움말: “${c.text}”는 “이겨주세요”와 같은 뜻이에요.`;
+  if (c.id === 'NO_WIN') return `도움말: “${c.text}”는 지거나 비기면 된다는 뜻이에요.`;
+  if (c.id === 'NO_LOSE') return `도움말: “${c.text}”는 이기거나 비기면 된다는 뜻이에요.`;
   return '도움말: 로봇이 낸 손을 다시 잘 보고 생각해 보세요.';
 }
 
-const TARGET_WORD = { win: '이기려면', lose: '지려면', draw: '비기려면' };
+// 조건의 targets 를 이어 붙인 것 → 설명 앞말
+const TARGET_WORD = {
+  win: '이기려면',
+  lose: '지려면',
+  draw: '비기려면',
+  'lose,draw': '지거나 비기려면',
+  'win,draw': '이기거나 비기려면',
+};
 
-/** 두 번째도 맞지 않았을 때 함께 확인하는 설명. 예: "로봇이 ✊ 바위를 냈어요. 이기려면 ✋ 보를 내면 돼요." */
+/** 손 목록을 말로: ['ROCK'] → "✊ 바위", ['ROCK', 'V'] → "✊ 바위나 ✌️ 가위" (가위·바위·보 모두 받침이 없어 "나") */
+export function handsText(names) {
+  return names.map(handText).join('나 ');
+}
+
+/**
+ * 두 번째도 맞지 않았을 때 함께 확인하는 설명.
+ *   예: "로봇이 ✊ 바위를 냈어요. 이기려면 ✋ 보를 내면 돼요."
+ *   정답이 둘: "로봇이 ✊ 바위를 냈어요. “이기지 마세요”는 지거나 비기면 된다는 뜻이에요. 지거나 비기려면 ✊ 바위나 ✌️ 가위를 내면 돼요."
+ */
 export function explain(conditionId, robotHand) {
   const c = findCondition(conditionId);
-  const answer = answerFor(conditionId, robotHand);
+  const answers = answersFor(conditionId, robotHand);
   const lines = [`로봇이 ${handText(robotHand)}를 냈어요.`];
   if (c.id === 'NO_WIN_NO_DRAW') lines.push(`“${c.text}”는 져 주라는 뜻이에요.`);
   if (c.id === 'NO_LOSE_NO_DRAW') lines.push(`“${c.text}”는 이기라는 뜻이에요.`);
-  lines.push(`${TARGET_WORD[c.target]} ${handText(answer)}를 내면 돼요.`);
+  if (c.id === 'NO_WIN') lines.push(`“${c.text}”는 지거나 비기면 된다는 뜻이에요.`);
+  if (c.id === 'NO_LOSE') lines.push(`“${c.text}”는 이기거나 비기면 된다는 뜻이에요.`);
+  lines.push(`${TARGET_WORD[c.targets.join(',')]} ${handsText(answers)}를 내면 돼요.`);
   return lines.join(' ');
 }
 
