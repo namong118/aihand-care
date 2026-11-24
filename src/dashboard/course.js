@@ -238,8 +238,9 @@ function dateText(date) {
  * @param o.who        지금 하시는 분 (#82)
  * @param o.onHome     "처음으로"
  * @param o.onResults  "활동 기록 보기"
+ * @param o.onVoiceMemo "가족에게 한마디 남기기" (시제품, 로그인한 분만. 없으면 버튼을 그리지 않는다)
  */
-export function renderCourseSummary(container, { summary, who, onHome, onResults }) {
+export function renderCourseSummary(container, { summary, who, onHome, onResults, onVoiceMemo = null }) {
   const playedAll = summary.activities.every((a) => a.status === 'played');
   container.innerHTML = '';
   container.append(
@@ -275,7 +276,13 @@ export function renderCourseSummary(container, { summary, who, onHome, onResults
           ),
         ),
       ),
-      h('div', { class: 'row' }, button('처음으로', onHome), button('활동 기록 보기', onResults, { variant: 'secondary' })),
+      h(
+        'div',
+        { class: 'row' },
+        button('처음으로', onHome),
+        onVoiceMemo ? button('가족에게 한마디 남기기', onVoiceMemo, { variant: 'secondary' }) : null,
+        button('활동 기록 보기', onResults, { variant: 'secondary' }),
+      ),
     ),
   );
 }

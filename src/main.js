@@ -10,7 +10,7 @@ import { renderResults } from './dashboard/results.js';
 import { CATALOG, findProgramInfo } from './dashboard/catalog.js';
 import { loadCourse, newCourseId, tagRecord, stepInfo, courseProgress, courseOf, summarizeCourse } from './dashboard/course-logic.js';
 import { createCourseStore } from './dashboard/course-store.js';
-import { renderCourseIntro, renderStepIntro, createCourseBar, renderCourseSummary } from './dashboard/course.js';
+import { renderCourseIntro, renderStepIntro, createCourseBar, renderCourseSummary, whoPill } from './dashboard/course.js';
 import courseJson from './data/course.json';
 import { loadSavedSettings, saveSettings, removeOldUsers } from './dashboard/prefs.js';
 import { h, button, message } from './ui/components.js';
@@ -18,6 +18,8 @@ import { PROGRAMS } from './programs/index.js';
 import login from './login/index.js';
 import { createUserStore } from './login/users.js';
 import { sendCourseSummary } from './guardian/index.js';
+import { canOfferMemo } from './voice-memo/logic.js';
+import { renderVoiceMemo } from './voice-memo/screen.js';
 
 const appEl = document.querySelector('#app');
 const statusEl = document.querySelector('#statusbar');
@@ -104,7 +106,12 @@ function updateRobotBox() {
   layoutEl.classList.toggle('with-side', show);
 }
 
+// "가족에게 한마디 남기기" 화면 (시제품). 다른 화면으로 가면 녹음·재생을 멈춘다
+let memoScreen = null;
+
 function setScreen(name) {
+  memoScreen?.close();
+  memoScreen = null;
   screen = name;
   document.body.dataset.screen = name;
   updateRobotBox();
@@ -358,7 +365,22 @@ function finishCourse() {
   course = null;
   setScreen('course');
   const summary = summarizeCourse(courseStore.get(id), devices.log.list());
-  renderCourseSummary(appEl, { summary, who: whoText(), onHome: showHome, onResults: () => showResults() });
+  const whoNow = whoText();
+  const showSummary = () =>
+    renderCourseSummary(appEl, {
+      summary,
+      who: whoNow,
+      onHome: showHome,
+      onResults: () => showResults(),
+      // 가족에게 한마디 남기기 (시제품, 로그인한 분만): 녹음은 이 기기에만 저장, 보호자 폰으로 보내지 않음
+      onVoiceMemo: canOfferMemo(summary)
+        ? () => {
+            setScreen('course');
+            memoScreen = renderVoiceMemo(appEl, { summary, who: whoPill(whoNow), onDone: showSummary });
+          }
+        : null,
+    });
+  showSummary();
   sendCourseSummary(summary); // 보호자 앱(#62). 기다리지 않고, 손님·연결 안 한 분은 알아서 보내지 않는다
   ctx.robot
     .hello()
