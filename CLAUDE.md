@@ -98,6 +98,7 @@ export default {
   - `signal`(AbortController)을 abort 하면 `null`로 resolve. 화면 버튼과 `Promise.race`로 함께 쓴다
   - 입력 확정 규칙을 프로그램 안에 따로 만들지 않는다. `holdMs` 값은 각 프로그램이 정한다
   - 자세한 내용은 `docs/hand-api.md`
+- `ctx.hand.preview(video, onActive)` → 연결 끊기 함수 반환. 프로그램 화면의 `<video>`에 웹캠 영상을 이어 준다 (사용자가 자기 손 보기). 웹캠이 꺼져 있으면 `onActive(false)`
 - `ctx.robot.showPose(name)`, `ctx.robot.react('ok' | 'retry')`, `ctx.robot.hello()`, `ctx.robot.rest()`
   - 모두 Promise를 반환하고, 로봇이 `DONE`을 보내면 resolve 된다
 - `ctx.card.onCard(cb)` → `cb({ color })`, 구독 해제 함수 반환
