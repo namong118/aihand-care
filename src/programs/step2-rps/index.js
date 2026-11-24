@@ -180,13 +180,17 @@ async function playQuestion(ctx, screen, s, q, index, total) {
       continue;
     }
 
-    // 두 번째도 맞지 않음: 답을 함께 확인하고 로봇이 그 손을 보여 준다
+    // 두 번째도 맞지 않음: 답을 함께 확인하고 로봇이 그 손을 보여 준다.
+    // 정답이 둘인 조건(어려움의 "이기지 마세요"·"지지 마세요")은 두 손을 차례로 보여 준다 (#18)
     const text = explain(q.conditionId, q.robotHand);
     speak(text);
     const next = waitClick(s, (onNext) =>
-      screen.reveal({ text, answer: result.answer, isLast: index === total }, onNext),
+      screen.reveal({ text, answers: result.answers, isLast: index === total }, onNext),
     );
-    await robot(ctx.robot.showPose(result.answer));
+    for (let i = 0; i < result.answers.length && s.alive; i++) {
+      if (i > 0) await wait(restMs(ctx)); // 앞 손을 볼 시간
+      await robot(ctx.robot.showPose(result.answers[i]));
+    }
     if (!(await next)) return null;
   }
 
