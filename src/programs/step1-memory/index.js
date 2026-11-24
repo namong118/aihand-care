@@ -22,6 +22,7 @@ import {
   summarizeRound,
 } from './logic.js';
 import { createScreen } from './screen.js';
+import { stopSpeaking } from '../../ui/voice.js';
 
 const ID = 'step1-memory';
 
@@ -250,6 +251,7 @@ export default {
     if (!session) return;
     const s = session;
     s.alive = false;
+    stopSpeaking();
     s.pending?.(null);
     s.click?.(false); // 버튼을 기다리던 흐름도 끝낸다
     s.offNumber?.();

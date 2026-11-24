@@ -107,3 +107,46 @@ export function judgeSequence(expected, given) {
     matched,
   };
 }
+
+// ---------- 음성 안내 (#61) ----------
+// 화면과 음성이 같은 문구를 쓰도록 여기 모아 둔다. 음성 파일은 voiceLines() 의 문장으로 만든다 (npm run voice).
+// 로봇이 보여 주는 숫자는 읽지 않는다 (로봇 손을 보고 기억하는 활동).
+
+/** 시작 화면 */
+export const INTRO_VOICE = '로봇이 손가락으로 숫자를 차례로 보여 줘요. 잘 보고 기억했다가, 같은 순서로 숫자 카드를 보여 주세요.';
+
+/** 로봇이 보여 주기 전: 몇 개를 기억할지. attempt 2 = 같은 숫자를 한 번 더 */
+export function announceLine(count, attempt = 1) {
+  const head = attempt > 1 ? '같은 숫자를 한 번 더 보여 드릴게요.' : `이번에는 숫자 ${count}개예요.`;
+  return `${head} 로봇을 잘 보고 기억해 주세요.`;
+}
+
+/** 카드로 답할 차례 */
+export function recallLine(count) {
+  return `숫자 ${count}개를 순서대로 보여 주세요`;
+}
+
+/** 해냈을 때. attempt 2 = 다시 보고 해냄 */
+export function goodLine(attempt) {
+  return attempt > 1 ? '잘하셨어요! 다시 보고 해내셨어요.' : '잘하셨어요! 순서까지 똑같아요.';
+}
+
+/** 처음 해내지 못했을 때 */
+export const RETRY_TEXT = '다시 해 볼까요? 로봇이 같은 순서를 한 번 더 보여 줄게요.';
+
+/** 두 번째도 해내지 못했을 때 */
+export const REVEAL_TEXT = '함께 순서를 확인해 볼까요?';
+
+/** 회차 끝 */
+export function summaryLine(count) {
+  return `${count}문제를 모두 함께 해 주셨어요. 수고하셨어요!`;
+}
+
+/** STEP 1에서 음성으로 읽을 수 있는 문구 전부 (음성 파일 만들기용) */
+export function voiceLines() {
+  const lines = [INTRO_VOICE, goodLine(1), goodLine(2), RETRY_TEXT, REVEAL_TEXT, summaryLine(QUESTIONS_PER_ROUND)];
+  const most = Math.max(...Object.values(MAX_LENGTH_BY_DIFFICULTY));
+  for (let n = 1; n <= most; n++) lines.push(announceLine(n, 1), recallLine(n));
+  lines.push(announceLine(1, 2));
+  return lines;
+}
