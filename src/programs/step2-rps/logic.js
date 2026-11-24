@@ -275,12 +275,15 @@ export function timingOf(formedAt, goAt, lateMs) {
 /**
  * 한 판 결과.
  *   input: { hand, formedAt } | null(손이 확정되지 않음)
- *   lastPose: 판이 끝날 때 마지막으로 보인 손 { name, stableMs } (확정되지 않았을 때 이유(early/late/none)를 알려 주는 데만 쓴다)
+ *   lastPose: 판이 끝날 때 마지막으로 보인 손 { name, stableMs } (확정되지 않았을 때 이유(early/late/unclear/none)를 알려 주는 데만 쓴다)
+ *   sawHand: 손 입력을 받기 시작한 뒤(since) 손이 한 번이라도 보였는지
  *   now: 판이 끝난 시각
- * 반환: { timing: 'ontime'|'early'|'late'|'none', timingMs, outcome: 'win'|'draw'|'lose'|null }
+ * 반환: { timing: 'ontime'|'early'|'late'|'unclear'|'none', timingMs, outcome: 'win'|'draw'|'lose'|null }
+ *   unclear: 손은 보였지만 가위·바위·보로 확정되지 않음 (다른 모양으로 인식됨, 또는 확정 전에 손을 내림)
+ *   none: 손이 한 번도 보이지 않음
  *   outcome 은 제때 냈을 때만 정한다 (늦게 내면 로봇 손을 보고 낼 수 있어서 승패를 따지지 않는다)
  */
-export function quickResult({ robotHand, input, goAt, lateMs, lastPose = null, now = goAt }) {
+export function quickResult({ robotHand, input, goAt, lateMs, lastPose = null, sawHand = false, now = goAt }) {
   if (input) {
     const timing = timingOf(input.formedAt, goAt, lateMs);
     return {
@@ -296,6 +299,8 @@ export function quickResult({ robotHand, input, goAt, lateMs, lastPose = null, n
     const timing = formedAt < goAt - EARLY_MS ? 'early' : 'late';
     return { timing, timingMs: timing === 'late' ? Math.round(formedAt - goAt) : null, outcome: null };
   }
+  // 손은 보였는데 가위·바위·보로 확정되지 않음: "손이 보이지 않았어요"라고 하면 사실과 다르다
+  if (sawHand) return { timing: 'unclear', timingMs: null, outcome: null };
   return { timing: 'none', timingMs: null, outcome: null };
 }
 
@@ -308,7 +313,20 @@ export function quickMessage({ timing, outcome: result }) {
   }
   if (timing === 'early') return { tone: 'retry', text: '조금 빨랐어요. “보!” 소리에 맞춰 내 볼까요?' };
   if (timing === 'late') return { tone: 'retry', text: '조금 늦었어요. “보!” 소리에 맞춰 내 볼까요?' };
+  if (timing === 'unclear') {
+    return { tone: 'retry', text: '손 모양을 알아보지 못했어요. 다음 판에는 가위·바위·보를 카메라에 잠깐 멈춰서 보여 주세요.' };
+  }
   return { tone: 'retry', text: '손이 보이지 않았어요. 다음 판에는 “보!”에 맞춰 손을 내 주세요.' };
+}
+
+/**
+ * 캠 화면 아래 "지금 보이는 손" 글자. 사용자가 손이 어떻게 인식되는지 바로 볼 수 있게 한다.
+ *   pose: ctx.hand.onPose 로 받은 값 { code, name }
+ */
+export function seenText(pose) {
+  if (!pose || !pose.code) return '손이 안 보여요';
+  if (isRpsHand(pose.name)) return `${handText(pose.name)}`;
+  return '가위·바위·보가 아닌 모양';
 }
 
 /** "보!"에서 손을 낼 때까지 걸린 시간 글자. 먼저 낸 경우(0 이하)는 "거의 동시에" */

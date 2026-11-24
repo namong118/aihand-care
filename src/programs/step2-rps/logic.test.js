@@ -279,6 +279,7 @@ import {
   quickMessage,
   timingText,
   summarizeQuick,
+  seenText,
 } from './logic.js';
 
 describe('quickTiming: 동시에 가위바위보 시간 값', () => {
@@ -372,6 +373,26 @@ describe('quickResult: 한 판 결과', () => {
     expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose, now }).timing).toBe('none');
     expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, now }).timing).toBe('none');
   });
+
+  it('손은 보였지만 가위·바위·보로 확정되지 않으면 unclear ("손이 안 보였어요"가 아님)', () => {
+    const now = goAt + 2000;
+    // 다른 모양(검지 하나)으로 인식됨
+    const other = { name: 'INDEX', code: '01000', stableMs: 500 };
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose: other, sawHand: true, now })).toEqual({
+      timing: 'unclear',
+      timingMs: null,
+      outcome: null,
+    });
+    // 손을 냈다가 확정 전에 내림 → 마지막은 손 없음
+    const gone = { name: null, code: null, stableMs: 0 };
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose: gone, sawHand: true, now }).timing).toBe('unclear');
+  });
+
+  it('마지막 손이 가위·바위·보면 손을 봤어도 early·late 로 알려 준다', () => {
+    const now = goAt + 2000;
+    const lastPose = { name: 'ROCK', code: '00000', stableMs: 3000 }; // "보!" 훨씬 전부터
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose, sawHand: true, now }).timing).toBe('early');
+  });
 });
 
 describe('quickMessage: 결과 문구', () => {
@@ -382,6 +403,7 @@ describe('quickMessage: 결과 문구', () => {
       { timing: 'ontime', outcome: 'lose' },
       { timing: 'early', outcome: null },
       { timing: 'late', outcome: null },
+      { timing: 'unclear', outcome: null },
       { timing: 'none', outcome: null },
     ];
     for (const c of cases) {
@@ -393,6 +415,21 @@ describe('quickMessage: 결과 문구', () => {
 
   it('이기면 good', () => {
     expect(quickMessage({ timing: 'ontime', outcome: 'win' }).tone).toBe('good');
+  });
+
+  it('손이 안 보인 것과 모양을 알아보지 못한 것은 다른 문구', () => {
+    expect(quickMessage({ timing: 'none', outcome: null }).text).toContain('손이 보이지 않았어요');
+    expect(quickMessage({ timing: 'unclear', outcome: null }).text).toContain('손 모양을 알아보지 못했어요');
+  });
+});
+
+describe('seenText: 캠 화면 아래 "지금 보이는 손"', () => {
+  it('손 없음 / 가위·바위·보 / 다른 모양', () => {
+    expect(seenText(null)).toBe('손이 안 보여요');
+    expect(seenText({ code: null, name: null })).toBe('손이 안 보여요');
+    expect(seenText({ code: '00000', name: 'ROCK' })).toBe('✊ 바위');
+    expect(seenText({ code: '01000', name: 'INDEX' })).toBe('가위·바위·보가 아닌 모양');
+    expect(seenText({ code: '11001', name: null })).toBe('가위·바위·보가 아닌 모양');
   });
 });
 
@@ -430,5 +467,13 @@ describe('summarizeQuick: 회차 요약', () => {
 
   it('제때 낸 판이 없으면 평균은 null', () => {
     expect(summarizeQuick([{ timing: 'none', timingMs: null, outcome: null }]).avgReactionMs).toBeNull();
+  });
+
+  it('손 모양을 알아보지 못한 판(unclear)은 건너뜀(skipped)에 넣지 않는다', () => {
+    const games = [
+      { timing: 'unclear', timingMs: null, outcome: null },
+      { timing: 'none', timingMs: null, outcome: null },
+    ];
+    expect(summarizeQuick(games)).toMatchObject({ total: 2, done: 0, skipped: 1 });
   });
 });
