@@ -1,6 +1,10 @@
 {
   "voice": "Microsoft Heami Desktop",
   "rate": -1,
+  "trim": {
+    "leadMs": 30,
+    "tailMs": 300
+  },
   "files": {
     "“보!” 소리에 맞춰 내 볼까요?": "7da2ad80.wav",
     "“이기지도 비기지도 마세요”는 져 주라는 뜻이에요.": "e3a0054f.wav",
