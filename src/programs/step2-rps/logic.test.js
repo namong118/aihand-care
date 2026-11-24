@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { voiceLines as step2VoiceLines, COUNTDOWN_WORDS, GOOD_TEXT, retryText, roundEndText, quickEndText, QUICK_GAMES } from './logic.js';
 import {
   HANDS,
   CONDITIONS,
@@ -430,5 +431,24 @@ describe('summarizeQuick: 회차 요약', () => {
 
   it('제때 낸 판이 없으면 평균은 null', () => {
     expect(summarizeQuick([{ timing: 'none', timingMs: null, outcome: null }]).avgReactionMs).toBeNull();
+  });
+});
+
+describe('음성 문구 (#61)', () => {
+  it('읽을 수 있는 문구가 voiceLines 에 모두 들어 있다', () => {
+    const lines = step2VoiceLines();
+    for (const w of COUNTDOWN_WORDS) expect(lines).toContain(w);
+    expect(lines).toContain(GOOD_TEXT);
+    expect(lines).toContain(roundEndText(QUESTIONS_PER_ROUND));
+    expect(lines).toContain(quickEndText(QUICK_GAMES));
+    for (const c of CONDITIONS) {
+      expect(lines).toContain(c.text);
+      expect(lines).toContain(retryText(c.id));
+      for (const hand of HANDS) expect(lines).toContain(explain(c.id, hand));
+    }
+  });
+
+  it('다시 할 때 문구는 "다시 해 볼까요?" + 도움말', () => {
+    expect(retryText('WIN')).toBe(`다시 해 볼까요? ${hintFor('WIN')}`);
   });
 });

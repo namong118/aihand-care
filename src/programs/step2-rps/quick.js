@@ -7,8 +7,19 @@
 //   → 손을 만든 시각이 "보!"에 맞았는지(timingOf) + 승패(outcome) → 결과 화면 → 다음 판
 // 손 입력은 "가위"부터 받기 시작한다. 너무 먼저 낸 손은 waitForPose 의 since 규칙으로 걸러진다.
 
-import { HANDS, QUICK_GAMES, EARLY_MS, quickTiming, makeQuickRound, quickResult, quickMessage, summarizeQuick } from './logic.js';
-import { speak } from './voice.js';
+import {
+  HANDS,
+  QUICK_GAMES,
+  EARLY_MS,
+  COUNTDOWN_WORDS,
+  quickTiming,
+  makeQuickRound,
+  quickResult,
+  quickMessage,
+  quickEndText,
+  summarizeQuick,
+} from './logic.js';
+import { speak } from '../../ui/voice.js';
 
 const ID = 'step2-rps';
 
@@ -61,7 +72,7 @@ async function playGame(ctx, screen, s, robotHand, index, total) {
   );
 
   // 2) "가위" → "바위" → "보!". 먼저 손을 내도 구호는 끝까지 하고 로봇도 낸다 (진짜 가위바위보처럼)
-  const words = ['가위', '바위', '보!'];
+  const words = COUNTDOWN_WORDS;
   for (let i = 0; i < words.length; i++) {
     if (!s.alive) return null;
     screen.quickWord(words[i]);
@@ -132,7 +143,7 @@ export async function playQuickRound(ctx, screen, s) {
     },
   });
 
-  speak(`${games.length}판을 모두 함께 해 주셨어요. 수고하셨어요!`);
+  speak(quickEndText(games.length));
   screen.quickSummary({ games, sum: { wins, draws, losses, ...common } }, () =>
     playQuickRound(ctx, screen, s).catch((err) => console.error(err)),
   );

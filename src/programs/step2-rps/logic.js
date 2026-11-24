@@ -339,3 +339,41 @@ export function summarizeQuick(games) {
     losses: count('lose'),
   };
 }
+
+// ---------- 음성 안내 (#61) ----------
+// 화면과 음성이 같은 문구를 쓰도록 여기 모아 둔다. 음성 파일은 voiceLines() 의 문장으로 만든다 (npm run voice).
+// 문구를 고치면 npm run voice 로 음성 파일을 다시 만든다.
+
+/** "가위, 바위, 보!" 구호 (사고력·동시에 모드 공통) */
+export const COUNTDOWN_WORDS = ['가위', '바위', '보!'];
+
+/** 맞게 냈을 때 */
+export const GOOD_TEXT = '잘하셨어요!';
+
+/** 처음 맞지 않았을 때: "다시 해 볼까요?" + 도움말 */
+export function retryText(conditionId) {
+  return `다시 해 볼까요? ${hintFor(conditionId)}`;
+}
+
+/** 사고력 모드 회차 끝 */
+export function roundEndText(count) {
+  return `${count}문제를 모두 함께 해 주셨어요. 수고하셨어요!`;
+}
+
+/** 동시에 모드 회차 끝 */
+export function quickEndText(count) {
+  return `${count}판을 모두 함께 해 주셨어요. 수고하셨어요!`;
+}
+
+/** STEP 2에서 음성으로 읽을 수 있는 문구 전부 (음성 파일 만들기용) */
+export function voiceLines() {
+  const lines = [...COUNTDOWN_WORDS, GOOD_TEXT, roundEndText(QUESTIONS_PER_ROUND), quickEndText(QUICK_GAMES)];
+  for (const c of CONDITIONS) {
+    lines.push(c.text, retryText(c.id));
+    for (const hand of HANDS) lines.push(explain(c.id, hand));
+  }
+  for (const timing of ['ontime', 'early', 'late', 'none']) {
+    for (const result of ['win', 'draw', 'lose']) lines.push(quickMessage({ timing, outcome: result }).text);
+  }
+  return lines;
+}
