@@ -10,6 +10,10 @@ function fakeModule({ fail = null } = {}) {
       const listeners = new Set();
       const cam = {
         running: false,
+        paused: false,
+        setPaused(on) {
+          cam.paused = on;
+        },
         onPose(cb) {
           listeners.add(cb);
           return () => listeners.delete(cb);
@@ -100,5 +104,33 @@ describe('손 인식 전환기', () => {
     expect(await hand.listCameras()).toEqual([]); // 켜기 전
     await hand.startWebcam();
     expect(await hand.listCameras()).toEqual([{ deviceId: 'a', label: 'C270' }]);
+  });
+});
+
+describe('손 인식 쉬기 (활동 화면이 아닐 때, 라즈베리파이 열 줄이기)', () => {
+  it('웹캠이 꺼져 있으면 늘 쉬는 중', () => {
+    const hand = createHand({ poses, loadWebcam: async () => ({}) });
+    expect(hand.isResting()).toBe(true);
+  });
+
+  it('쉬기를 켜면 웹캠 인식이 멈추고, 끄면 다시 한다', async () => {
+    const f = fakeModule();
+    const hand = createHand({ poses, loadWebcam: f.load });
+    await hand.startWebcam();
+    expect(hand.isResting()).toBe(false);
+    hand.rest(true);
+    expect(f.made.cam.paused).toBe(true);
+    expect(hand.isResting()).toBe(true);
+    hand.rest(false);
+    expect(f.made.cam.paused).toBe(false);
+    expect(hand.isResting()).toBe(false);
+  });
+
+  it('쉬는 중에 웹캠을 켜도 쉬는 상태를 따른다', async () => {
+    const f = fakeModule();
+    const hand = createHand({ poses, loadWebcam: f.load });
+    hand.rest(true);
+    await hand.startWebcam();
+    expect(f.made.cam.paused).toBe(true);
   });
 });
