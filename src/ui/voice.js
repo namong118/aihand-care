@@ -16,8 +16,34 @@ const BASE = `${import.meta.env.BASE_URL}voice/`;
 let token = 0; // 새 문구를 말하거나 멈추면 하나 늘린다. 이전 문구의 남은 문장은 이어서 재생하지 않는다
 let current = null; // 지금 재생 중인 Audio
 
+// 파일마다 Audio 하나를 만들어 두고 다시 쓴다. 매번 새로 만들면 불러오기·풀기 시간만큼 소리가 늦게 난다
+// ("가위, 바위, 보!"처럼 박자가 중요한 구호에서 어긋난다)
+const audios = new Map();
+function audioFor(file) {
+  let audio = audios.get(file);
+  if (!audio) {
+    audio = new Audio(BASE + file);
+    audio.preload = 'auto';
+    audios.set(file, audio);
+  }
+  return audio;
+}
+
 function synth() {
   return typeof window !== 'undefined' && window.speechSynthesis ? window.speechSynthesis : null;
+}
+
+/**
+ * 곧 읽을 문구의 음성 파일을 미리 불러 둔다 (박자가 중요한 구호 등).
+ * 화면을 열 때 부르면 첫 재생부터 바로 소리가 난다. 파일이 없는 문장은 넘어간다.
+ */
+export function preloadVoice(...texts) {
+  for (const text of texts) {
+    for (const s of splitSentences(text)) {
+      const file = manifest.files[s];
+      if (file) audioFor(file);
+    }
+  }
 }
 
 /** 파일들을 차례로 재생한다. 하나가 끝나거나 실패하면 다음 파일 */
@@ -26,7 +52,8 @@ function playFiles(files) {
   let i = 0;
   const next = () => {
     if (my !== token || i >= files.length) return;
-    const audio = new Audio(BASE + files[i++]);
+    const audio = audioFor(files[i++]);
+    audio.currentTime = 0;
     current = audio;
     audio.onended = next;
     audio.onerror = next;

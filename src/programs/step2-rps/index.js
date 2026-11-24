@@ -31,7 +31,7 @@ import {
   roundEndText,
 } from './logic.js';
 import { createScreen } from './screen.js';
-import { speak, stopSpeaking } from '../../ui/voice.js';
+import { speak, stopSpeaking, preloadVoice } from '../../ui/voice.js';
 import { playQuickRound } from './quick.js';
 
 const ID = 'step2-rps';
@@ -248,6 +248,8 @@ export default {
     // waits: 기다리는 중인 손 입력, timers: 어려움 손 내리기 타이머, answer: 화면 버튼을 기다리는 중이면 그 resolve
     session = { alive: true, waits: new Set(), timers: new Set(), answer: null };
     const s = session;
+    // "가위, 바위, 보!"는 박자가 중요해서 화면을 열 때 음성 파일을 미리 불러 둔다 (사고력·동시에 모드 공통)
+    preloadVoice(...COUNTDOWN_WORDS);
     const screen = createScreen(container);
     const reveal = revealMs(ctx.settings.difficulty, ctx.settings.speed);
     const thinkIntro = () =>
