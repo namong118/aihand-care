@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { voiceLines as step2VoiceLines, COUNTDOWN_WORDS, GOOD_TEXT, retryText, roundEndText, quickEndText, QUICK_GAMES } from './logic.js';
+import {
+  voiceLines as step2VoiceLines,
+  COUNTDOWN_WORDS,
+  retryText,
+  roundEndText,
+  quickEndText,
+  QUICK_GAMES,
+  pickLine,
+  START_LINES,
+  GOOD_LINES,
+  SECOND_TRY_TEXT,
+  QUICK_WIN_LINES,
+  QUICK_DRAW_LINES,
+  QUICK_LOSE_LINES,
+  startLine,
+  goodLine,
+} from './logic.js';
 import {
   HANDS,
   CONDITIONS,
@@ -438,7 +454,9 @@ describe('음성 문구 (#61)', () => {
   it('읽을 수 있는 문구가 voiceLines 에 모두 들어 있다', () => {
     const lines = step2VoiceLines();
     for (const w of COUNTDOWN_WORDS) expect(lines).toContain(w);
-    expect(lines).toContain(GOOD_TEXT);
+    for (const l of [...START_LINES, ...GOOD_LINES, SECOND_TRY_TEXT, ...QUICK_WIN_LINES, ...QUICK_DRAW_LINES, ...QUICK_LOSE_LINES]) {
+      expect(lines).toContain(l);
+    }
     expect(lines).toContain(roundEndText(QUESTIONS_PER_ROUND));
     expect(lines).toContain(quickEndText(QUICK_GAMES));
     for (const c of CONDITIONS) {
@@ -450,5 +468,36 @@ describe('음성 문구 (#61)', () => {
 
   it('다시 할 때 문구는 "다시 해 볼까요?" + 도움말', () => {
     expect(retryText('WIN')).toBe(`다시 해 볼까요? ${hintFor('WIN')}`);
+  });
+});
+
+describe('멘트 (여러 가지 중 무작위)', () => {
+  const FORBIDDEN = /정답|틀렸|틀린|실패|점수|맞히|빠르|머리/;
+  const ALL = [...START_LINES, ...GOOD_LINES, SECOND_TRY_TEXT, ...QUICK_WIN_LINES, ...QUICK_DRAW_LINES, ...QUICK_LOSE_LINES];
+
+  it('pickLine: rand 로 고르고, 1에 가까워도 범위를 넘지 않는다', () => {
+    expect(pickLine(['a', 'b', 'c'], () => 0)).toBe('a');
+    expect(pickLine(['a', 'b', 'c'], () => 0.5)).toBe('b');
+    expect(pickLine(['a', 'b', 'c'], () => 0.999999)).toBe('c');
+  });
+
+  it('칭찬: 다시 해서 해냈으면 "다시 생각해서 해내셨어요." 가 붙는다', () => {
+    expect(goodLine(1, () => 0)).toBe(GOOD_LINES[0]);
+    expect(goodLine(2, () => 0)).toBe(`${GOOD_LINES[0]} ${SECOND_TRY_TEXT}`);
+    expect(startLine(() => 0)).toBe(START_LINES[0]);
+  });
+
+  it('동시에 모드 결과 문구도 목록에서 고른다', () => {
+    expect(QUICK_WIN_LINES).toContain(quickMessage({ timing: 'ontime', outcome: 'win' }, () => 0.5).text);
+    expect(QUICK_DRAW_LINES).toContain(quickMessage({ timing: 'ontime', outcome: 'draw' }, () => 0.5).text);
+    expect(QUICK_LOSE_LINES).toContain(quickMessage({ timing: 'ontime', outcome: 'lose' }, () => 0.5).text);
+  });
+
+  it('평가·점수처럼 들리는 말을 쓰지 않는다', () => {
+    for (const line of ALL) expect(line).not.toMatch(FORBIDDEN);
+  });
+
+  it('겹치는 멘트가 없다', () => {
+    expect(new Set(ALL).size).toBe(ALL.length);
   });
 });

@@ -300,11 +300,11 @@ export function quickResult({ robotHand, input, goAt, lateMs, lastPose = null, n
 }
 
 /** 한 판 결과 문구. "실패", "틀렸습니다" 같은 말은 쓰지 않는다 */
-export function quickMessage({ timing, outcome: result }) {
+export function quickMessage({ timing, outcome: result }, rand = Math.random) {
   if (timing === 'ontime') {
-    if (result === 'win') return { tone: 'good', text: '이기셨어요!' };
-    if (result === 'draw') return { tone: 'info', text: '비겼어요!' };
-    return { tone: 'info', text: '로봇이 이겼어요! 다음 판에 이겨 볼까요?' };
+    if (result === 'win') return { tone: 'good', text: pickLine(QUICK_WIN_LINES, rand) };
+    if (result === 'draw') return { tone: 'info', text: pickLine(QUICK_DRAW_LINES, rand) };
+    return { tone: 'info', text: pickLine(QUICK_LOSE_LINES, rand) };
   }
   if (timing === 'early') return { tone: 'retry', text: '조금 빨랐어요. “보!” 소리에 맞춰 내 볼까요?' };
   if (timing === 'late') return { tone: 'retry', text: '조금 늦었어요. “보!” 소리에 맞춰 내 볼까요?' };
@@ -347,8 +347,58 @@ export function summarizeQuick(games) {
 /** "가위, 바위, 보!" 구호 (사고력·동시에 모드 공통) */
 export const COUNTDOWN_WORDS = ['가위', '바위', '보!'];
 
-/** 맞게 냈을 때 */
-export const GOOD_TEXT = '잘하셨어요!';
+/**
+ * 멘트 목록. 같은 말이 반복되지 않게 여러 가지 중 무작위로 고른다 (화면 글자와 음성이 같다).
+ * 쓰지 않는 말: "정답·틀렸·실패·점수·맞히", 빠르기·능력을 평가하는 말 ("빠르시네요", "머리가 좋으세요" 등)
+ */
+
+/** 목록에서 하나 고르기. rand 는 0 이상 1 미만 (테스트에서 고정값을 넣는다) */
+export function pickLine(lines, rand = Math.random) {
+  return lines[Math.min(lines.length - 1, Math.floor(rand() * lines.length))];
+}
+
+/** 사고력 모드 시작 인사 */
+export const START_LINES = [
+  '같이 가위바위보 해 볼까요?',
+  '반가워요! 오늘도 함께해요.',
+  '천천히 생각해서 손을 내 주세요.',
+  '준비되셨어요? 로봇과 함께 시작해요.',
+];
+
+/** 조건에 맞게 냈을 때 */
+export const GOOD_LINES = [
+  '잘하셨어요!',
+  '바로 그거예요!',
+  '잘 생각하셨어요!',
+  '멋져요!',
+  '훌륭해요!',
+  '말에 꼭 맞게 내셨어요!',
+  '좋아요, 정말 잘하셨어요!',
+  '역시 잘하시네요!',
+];
+
+/** 다시 해서 맞게 냈을 때 (칭찬 뒤에 붙는다) */
+export const SECOND_TRY_TEXT = '다시 생각해서 해내셨어요.';
+
+/** 동시에 모드: 제때 내서 이겼을 때 / 비겼을 때 / 로봇이 이겼을 때 */
+export const QUICK_WIN_LINES = ['이기셨어요!', '와, 로봇을 이기셨어요!', '멋져요, 이기셨어요!'];
+export const QUICK_DRAW_LINES = ['비겼어요!', '똑같이 내셨네요! 비겼어요.', '마음이 통했네요! 비겼어요.'];
+export const QUICK_LOSE_LINES = [
+  '로봇이 이겼어요! 다음 판에 이겨 볼까요?',
+  '이번에는 로봇이 이겼어요. 다음 판도 함께해요!',
+  '로봇이 이겼어요. 괜찮아요, 다음 판이 있어요!',
+];
+
+/** 시작 인사 */
+export function startLine(rand = Math.random) {
+  return pickLine(START_LINES, rand);
+}
+
+/** 맞게 냈을 때 멘트. attempt 2 = 다시 해서 해냄 */
+export function goodLine(attempt = 1, rand = Math.random) {
+  const line = pickLine(GOOD_LINES, rand);
+  return attempt > 1 ? `${line} ${SECOND_TRY_TEXT}` : line;
+}
 
 /** 처음 맞지 않았을 때: "다시 해 볼까요?" + 도움말 */
 export function retryText(conditionId) {
@@ -367,13 +417,22 @@ export function quickEndText(count) {
 
 /** STEP 2에서 음성으로 읽을 수 있는 문구 전부 (음성 파일 만들기용) */
 export function voiceLines() {
-  const lines = [...COUNTDOWN_WORDS, GOOD_TEXT, roundEndText(QUESTIONS_PER_ROUND), quickEndText(QUICK_GAMES)];
+  const lines = [
+    ...COUNTDOWN_WORDS,
+    ...START_LINES,
+    ...GOOD_LINES,
+    SECOND_TRY_TEXT,
+    ...QUICK_WIN_LINES,
+    ...QUICK_DRAW_LINES,
+    ...QUICK_LOSE_LINES,
+    roundEndText(QUESTIONS_PER_ROUND),
+    quickEndText(QUICK_GAMES),
+  ];
   for (const c of CONDITIONS) {
     lines.push(c.text, retryText(c.id));
     for (const hand of HANDS) lines.push(explain(c.id, hand));
   }
-  for (const timing of ['ontime', 'early', 'late', 'none']) {
-    for (const result of ['win', 'draw', 'lose']) lines.push(quickMessage({ timing, outcome: result }).text);
-  }
+  // 제때 낸 판의 문구는 위 목록. 그 밖(너무 먼저·늦게·안 보임)은 한 가지씩
+  for (const timing of ['early', 'late', 'none']) lines.push(quickMessage({ timing, outcome: null }).text);
   return lines;
 }
