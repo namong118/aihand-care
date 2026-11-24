@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanText, splitSentences, toSpoken, fileNameFor, uniqueSentences } from './voice-text.js';
+import { cleanText, splitSentences, toSpoken, sinoNumber, fileNameFor, uniqueSentences } from './voice-text.js';
 
 describe('cleanText', () => {
   it('그림 글자를 빼고 띄어쓰기를 하나로 줄인다', () => {
@@ -34,8 +34,20 @@ describe('toSpoken', () => {
     expect(toSpoken('이번에는 숫자 3개예요.')).toBe('이번에는 숫자 세 개예요.');
     expect(toSpoken('5판을 모두 함께 해 주셨어요.')).toBe('다섯 판을 모두 함께 해 주셨어요.');
   });
-  it('번호(번)는 그대로 둔다', () => {
-    expect(toSpoken('문제 3번.')).toBe('문제 3번.');
+  it('번호·시간(번·초·분)은 한자어 수로 ("1번"을 "한 번"으로 읽지 않게)', () => {
+    expect(toSpoken('문제 1번.')).toBe('문제 일 번.');
+    expect(toSpoken('문제 3번.')).toBe('문제 삼 번.');
+    expect(toSpoken('3초 동안 해 주세요.')).toBe('삼 초 동안 해 주세요.');
+    expect(toSpoken('숫자 1개를 순서대로 보여 주세요')).toBe('숫자 한 개를 순서대로 보여 주세요');
+  });
+
+  it('sinoNumber: 한자어 수', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 8, 9].map(sinoNumber)).toEqual(['일', '이', '삼', '사', '오', '육', '칠', '팔', '구']);
+    expect(sinoNumber(10)).toBe('십');
+    expect(sinoNumber(12)).toBe('십이');
+    expect(sinoNumber(25)).toBe('이십오');
+    expect(sinoNumber(0)).toBeNull();
+    expect(sinoNumber(100)).toBeNull();
   });
 });
 

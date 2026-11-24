@@ -39,10 +39,30 @@ const COUNTERS = ['개', '문제', '판'];
  */
 export function toSpoken(sentence) {
   const counters = COUNTERS.join('|');
-  return sentence.replace(new RegExp(`(\\d+)\\s*(${counters})`, 'g'), (whole, num, counter) => {
-    const n = Number(num);
-    return NATIVE[n] ? `${NATIVE[n]} ${counter}` : whole;
-  });
+  const sinoCounters = SINO_COUNTERS.join('|');
+  return sentence
+    .replace(new RegExp(`(\\d+)\\s*(${counters})`, 'g'), (whole, num, counter) => {
+      const n = Number(num);
+      return NATIVE[n] ? `${NATIVE[n]} ${counter}` : whole;
+    })
+    .replace(new RegExp(`(\\d+)\\s*(${sinoCounters})`, 'g'), (whole, num, counter) => {
+      const word = sinoNumber(Number(num));
+      return word ? `${word} ${counter}` : whole;
+    });
+}
+
+// 번호·시간을 세는 말 앞의 숫자는 한자어 수로 읽는다 ("1번" → "일 번", "3초" → "삼 초").
+// 숫자 그대로 두면 Supertonic 이 "1번"을 "한 번"으로 읽는다 (2026-11-25 들어 보고 확인)
+const SINO_COUNTERS = ['번', '초', '분'];
+const SINO_DIGITS = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+
+/** 1~99 를 한자어 수로: 1 → 일, 10 → 십, 12 → 십이, 25 → 이십오. 범위 밖이면 null */
+export function sinoNumber(n) {
+  if (!Number.isInteger(n) || n < 1 || n > 99) return null;
+  const tens = Math.floor(n / 10);
+  const ones = n % 10;
+  const tenWord = tens === 0 ? '' : `${tens === 1 ? '' : SINO_DIGITS[tens]}십`;
+  return `${tenWord}${SINO_DIGITS[ones]}`;
 }
 
 /**
