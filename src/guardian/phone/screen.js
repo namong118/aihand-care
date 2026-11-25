@@ -13,6 +13,7 @@ import {
   chartMax,
   activityView,
   radarData,
+  recordText,
   monthlyDays,
   activityCounts,
   reactionByDate,
@@ -404,7 +405,8 @@ function stackedChart(acts) {
         hgt >= 18 ? svg('text', { x: cx + bw / 2 + 4, y: top + hgt / 2 + 5, class: 't-seg' }, sgm.value) : null,
       ];
     });
-    return [...parts, svg('text', { x: cx, y: y(a.total) - 8, 'text-anchor': 'middle', class: 't-val' }, `${a.done} / ${a.total}`)];
+    // 막대 위 "15 / 16" 같은 분수 글자는 점수처럼 읽혀서 두지 않는다 (PR #152 리뷰). 개수는 칸 옆 숫자와 ③ 카드에
+    return parts;
   });
 
   const label = acts
@@ -443,7 +445,11 @@ function stackedChart(acts) {
   return [h('p', { class: 'chart-cap' }, '세로: 문제·동작 수 (개)'), h('div', { class: 'chart' }, chart, names), legend];
 }
 
-/** 방사형 (6-9 B, 경민 선택 · 팀 확인 필요): 축 = 활동, 값 = 완료 수. 목업 radarSVG 와 같은 모양 */
+/**
+ * 방사형 (6-9 B, 경민 선택 · 팀 확인 필요): 축 = 활동 이름, 끝값 5 고정 (손운동은 5칸으로 환산, logic.js radarValue).
+ * 그림은 환산값, 글자는 실제 기록 ("5동작 따라 함"). 능력 표시(손 움직임·생각…)·지난 회차 겹치기·
+ * "넓을수록 좋아요" 같은 말은 넣지 않는다 (PR #152 리뷰)
+ */
 function radarChart(acts) {
   const { values, max } = radarData(acts);
   // 가로를 넓게: 왼쪽·오른쪽 활동 이름(가위바위보 등)이 잘리지 않게
@@ -455,7 +461,8 @@ function radarChart(acts) {
   const n = acts.length;
   const ang = acts.map((_, i) => ((-90 + (360 / n) * i) * Math.PI) / 180);
   const pt = (r, i) => [cx + r * Math.cos(ang[i]), cy + r * Math.sin(ang[i])];
-  const rings = [0.25, 0.5, 0.75, 1].map((f) =>
+  // 둥근 선은 1칸마다 (끝값 5 → 선 5개)
+  const rings = Array.from({ length: max }, (_, k) => (k + 1) / max).map((f) =>
     svg('polygon', { points: ang.map((_, i) => pt(R * f, i).join(',')).join(' '), class: 'radar-ring' }),
   );
   const spokes = ang.map((_, i) => {
@@ -477,14 +484,14 @@ function radarChart(acts) {
     const y0 = top ? y - 26 : bottom ? y + 12 : y - 6;
     return [
       svg('text', { x, y: y0, 'text-anchor': anchor, class: 't-lab' }, programInfo(a.program).name),
-      svg('text', { x, y: y0 + 19, 'text-anchor': anchor, class: 't-val' }, a.status === 'played' ? `${values[i]}개` : '–'),
+      svg('text', { x, y: y0 + 19, 'text-anchor': anchor, class: 't-val' }, recordText(a).short),
     ];
   });
-  const label = acts.map((a, i) => `${programInfo(a.program).name} ${a.status === 'played' ? `완료 ${values[i]}개` : '하지 않음'}`).join(', ');
+  const label = acts.map((a) => `${programInfo(a.program).name} ${recordText(a).long}`).join(', ');
   return h(
     'div',
     { class: 'radar' },
-    svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': `활동별 완료 수 방사형: ${label}` }, rings, spokes, shape, dots, labels),
+    svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': `활동별 기록 방사형: ${label}` }, rings, spokes, shape, dots, labels),
   );
 }
 

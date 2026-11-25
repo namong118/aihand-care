@@ -28,6 +28,10 @@ import {
   routineNames,
   activityView,
   radarData,
+  radarValue,
+  toFive,
+  recordText,
+  RADAR_MAX,
   monthlyDays,
   activityCounts,
   reactionByDate,
@@ -216,6 +220,23 @@ describe('예시 데이터 (#demo)', () => {
     }
   });
 
+  it('실제 앱 숫자와 같다: 손운동 = 루틴 동작 수 × 반복의 합, 나머지 = 한 회차 5문제 (PR #152 리뷰)', async () => {
+    const routines = (await import('../../data/routines.json')).default;
+    const motions = (id) => {
+      const r = routines.find((x) => x.id === id);
+      return r.steps.length * Math.max(1, r.repeat ?? 1);
+    };
+    expect(motions('basic-grip')).toBe(6); // 2동작 × 3번
+    for (const s of list) {
+      for (const a of s.activities) {
+        if (a.status !== 'played') continue;
+        if (a.program === 'step4-coach') expect(a.total).toBe(a.routines.reduce((n, id) => n + motions(id), 0));
+        else expect(a.total).toBe(5 * a.rounds);
+      }
+    }
+    expect(list.some((s) => s.activities.some((a) => a.rounds > 1))).toBe(true); // "한 번 더" 회차도 있다
+  });
+
   it('손운동 루틴은 routines.json 에 있는 id', async () => {
     const routines = (await import('../../data/routines.json')).default;
     const ids = new Set(routines.map((r) => r.id));
@@ -326,11 +347,58 @@ describe('② 쌓은 세로 막대 (6-8 C, 목업 모양)', () => {
   });
 });
 
-describe('방사형 (6-9 B)', () => {
-  it('축 = 활동, 값 = 완료 수, 하지 않은 활동은 0, 끝값은 가장 큰 전체 수', () => {
-    const acts = [played({ total: 16, done: 15 }), played({ total: 5, done: 4 }), { status: 'skipped', total: 0 }, { status: 'notPlayed' }];
-    expect(radarData(acts)).toEqual({ values: [15, 4, 0, 0], max: 16 });
-    expect(radarData([{ status: 'notPlayed' }]).max).toBe(1);
+describe('방사형 (6-9 B, PR #152 리뷰: 끝값 5 고정)', () => {
+  it('toFive: 안 했으면 0, 다 했으면 5, 그 사이는 1~4', () => {
+    expect(toFive(0, 6)).toBe(0);
+    expect(toFive(3, 0)).toBe(0); // 전체가 없으면 0
+    expect(toFive(6, 6)).toBe(5);
+    expect(toFive(7, 6)).toBe(5); // 넘쳐도 5
+    expect(toFive(1, 6)).toBe(1); // 내림이면 0 이 되는 경우 → 1
+    expect(toFive(1, 16)).toBe(1); // 반올림이면 0 → 1
+    expect(toFive(3, 6)).toBe(3);
+    expect(toFive(5, 6)).toBe(4);
+  });
+
+  it('toFive: 루틴 여러 개를 해서 동작이 많아도 다 하지 않았으면 4까지', () => {
+    expect(toFive(15, 16)).toBe(4); // 반올림이면 5 → 4
+    expect(toFive(8, 9)).toBe(4); // 손 깨우기 6 + 하루 마무리 3
+    expect(toFive(9, 9)).toBe(5);
+  });
+
+  it('손운동은 toFive, 나머지는 회차 평균(done ÷ rounds)을 반올림해 5를 넘지 않게', () => {
+    expect(radarValue(played({ program: 'step4-coach', total: 6, done: 5 }))).toBe(4);
+    expect(radarValue(played({ program: 'step2-rps', total: 5, done: 4 }))).toBe(4);
+    expect(radarValue(played({ program: 'step1-memory', total: 10, done: 7, rounds: 2 }))).toBe(4); // 3.5 → 4
+    expect(radarValue(played({ program: 'step1-memory', total: 10, done: 10, rounds: 2 }))).toBe(5);
+    expect(radarValue(played({ program: 'step3-stroop', total: 5, done: 5 }))).toBe(5);
+    expect(radarValue({ status: 'skipped', program: 'step1-memory' })).toBe(0);
+    expect(radarValue({ status: 'notPlayed', program: 'step4-coach' })).toBe(0);
+  });
+
+  it('radarData: 끝값은 늘 5, 활동 순서대로', () => {
+    const acts = [
+      played({ program: 'step4-coach', total: 16, done: 15 }),
+      played({ program: 'step2-rps', total: 5, done: 4 }),
+      { status: 'skipped', program: 'step1-memory' },
+      { status: 'notPlayed', program: 'step3-stroop' },
+    ];
+    expect(radarData(acts)).toEqual({ values: [4, 4, 0, 0], max: RADAR_MAX });
+    expect(RADAR_MAX).toBe(5);
+  });
+
+  it('예시 데이터의 칸 값은 모두 0~5', () => {
+    for (const s of demoSummaries('2026-11-18')) for (const v of radarData(orderedActivities(s)).values) expect(v >= 0 && v <= 5).toBe(true);
+  });
+
+  it('글자는 실제 기록 (환산 숫자를 쓰지 않음, 분수 모양도 아님)', () => {
+    expect(recordText(played({ program: 'step4-coach', total: 6, done: 5 }))).toEqual({
+      short: '5동작 따라 함',
+      long: '6동작 중 5동작 따라 하셨어요',
+    });
+    expect(recordText(played({ program: 'step2-rps', total: 5, done: 4 }))).toEqual({ short: '4문제 완료', long: '5문제 중 4문제 완료' });
+    expect(recordText({ status: 'skipped' }).short).toBe('건너뜀');
+    expect(recordText({ status: 'notPlayed' }).short).toBe('하지 않음');
+    expect(recordText(played({ program: 'step2-rps', total: 5, done: 4 })).short).not.toMatch(/\//);
   });
 });
 

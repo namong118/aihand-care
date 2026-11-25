@@ -297,14 +297,52 @@ export function activityView(activity, routines = []) {
   return { played: true, off: '', tiles, facts };
 }
 
+/** 방사형 끝값: 숫자 기억·가위바위보·색깔손은 한 회차가 늘 5문제라 5로 고정 (PR #152 리뷰) */
+export const RADAR_MAX = 5;
+
 /**
- * 방사형 (6-9 B, 2026-11-23 경민 선택 · 팀 확인 필요): 축 = 활동, 값 = 완료 수.
- * 하지 않은 활동은 0. 끝값은 그 회차에서 가장 큰 전체 수 (최소 1)
+ * 손운동 동작 수를 5칸으로 환산 (루틴마다 동작 수가 2·6·5·3… 으로 달라서).
+ * 안 했으면 0, 다 했으면 5, 그 사이는 반올림해서 1~4 로 묶는다
+ * (내림이면 6동작 중 1개가 0이 되고, 반올림만 하면 16개 중 15개가 5가 된다)
+ */
+export function toFive(done, total) {
+  if (!total || done <= 0) return 0;
+  if (done >= total) return 5;
+  return Math.min(4, Math.max(1, Math.round((done / total) * 5)));
+}
+
+/**
+ * 방사형 한 활동의 칸 값 (0~5). 그림에만 쓰고 글자로는 쓰지 않는다 (글자는 실제 기록).
+ *   손운동: toFive(따라 한 수, 전체 동작)
+ *   나머지: 한 번 더 해서 10문제면 회차 평균(done ÷ rounds)을 반올림, 5를 넘지 않게
+ *   하지 않았거나 건너뛴 활동은 0
+ */
+export function radarValue(activity) {
+  if (activity?.status !== 'played') return 0;
+  if (activity.program === 'step4-coach') return toFive(activity.done ?? 0, activity.total ?? 0);
+  const perRound = (activity.done ?? 0) / Math.max(1, activity.rounds ?? 1);
+  return Math.min(RADAR_MAX, Math.max(0, Math.round(perRound)));
+}
+
+/**
+ * 방사형 (6-9 B, 2026-11-23 경민 선택 · 팀 확인 필요): 축 = 활동 이름, 칸 = radarValue, 끝값 5 고정.
+ * 지난 회차 모양 겹치기, "넓을수록 좋아요" 같은 말은 두지 않는다 (PR #152 리뷰).
  */
 export function radarData(activities) {
-  const values = activities.map((a) => (a.status === 'played' ? a.done ?? 0 : 0));
-  const max = Math.max(1, ...activities.map((a) => (a.status === 'played' ? a.total ?? 0 : 0)));
-  return { values, max };
+  return { values: activities.map(radarValue), max: RADAR_MAX };
+}
+
+/**
+ * 방사형·막대 옆에 쓸 실제 기록 글자 (환산 숫자는 쓰지 않는다)
+ *   short: '5동작 따라 함' / '4문제 완료' / '건너뜀' / '하지 않음'
+ *   long:  '6동작 중 5동작 따라 하셨어요' / '5문제 중 4문제 완료' (화면 읽기용)
+ */
+export function recordText(activity) {
+  if (activity?.status === 'skipped') return { short: '건너뜀', long: '건너뛰었어요' };
+  if (activity?.status !== 'played') return { short: '하지 않음', long: '하지 않았어요' };
+  if (activity.program === 'step4-coach')
+    return { short: `${activity.done}동작 따라 함`, long: `${activity.total}동작 중 ${activity.done}동작 따라 하셨어요` };
+  return { short: `${activity.done}문제 완료`, long: `${activity.total}문제 중 ${activity.done}문제 완료` };
 }
 
 // ---- 모아 보기 (6-11 A·B) ----
