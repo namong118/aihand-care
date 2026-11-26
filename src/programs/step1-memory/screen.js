@@ -82,7 +82,8 @@ export function createScreen(container) {
           h('p', { class: 'act-text', style: { 'text-align': 'center' } }, '로봇을 잘 보고 기억해 주세요'),
         ),
       );
-      speak(announceLine(count, attempt));
+      // 안내 음성이 끝나면 끝나는 Promise. 로봇이 숫자를 보여 주기 전에 기다린다 (index.js)
+      return speak(announceLine(count, attempt));
     },
 
     /** 로봇이 보여주는 동안. 정답 숫자는 화면에 쓰지 않는다 */

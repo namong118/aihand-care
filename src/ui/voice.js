@@ -46,54 +46,86 @@ export function preloadVoice(...texts) {
   }
 }
 
-/** 파일들을 차례로 재생한다. 하나가 끝나거나 실패하면 다음 파일 */
-function playFiles(files) {
+// 지금 읽는 문구가 끝났다고 알리는 함수 (speak 가 돌려준 Promise 를 끝낸다). 멈추거나 새 문구를 말해도 끝낸다
+let finishCurrent = null;
+
+/** 파일들을 차례로 재생한다. 하나가 끝나거나 실패하면 다음 파일. 다 읽으면 done() */
+function playFiles(files, done) {
   const my = token;
   let i = 0;
   const next = () => {
-    if (my !== token || i >= files.length) return;
+    if (my !== token) return;
+    if (i >= files.length) {
+      done();
+      return;
+    }
     const audio = audioFor(files[i++]);
     audio.currentTime = 0;
     current = audio;
     audio.onended = next;
     audio.onerror = next;
-    // 화면을 한 번도 누르기 전이면 브라우저가 자동 재생을 막을 수 있다 (키오스크는 허용해 둠, scripts/kiosk.sh)
-    audio.play().catch(() => {});
+    // 화면을 한 번도 누르기 전이면 브라우저가 자동 재생을 막을 수 있다 (키오스크는 허용해 둠, scripts/kiosk.sh).
+    // 막히면 소리 없이 다음으로 넘어가서, 기다리는 쪽이 멈춰 있지 않게 한다
+    audio.play().catch(() => next());
   };
   next();
 }
 
-/** 브라우저 음성으로 읽기. 한국어 음성이 없으면 소리 없이 넘어간다 */
-function speakSynth(text) {
+/** 브라우저 음성으로 읽기. 한국어 음성이 없으면 소리 없이 넘어간다. 다 읽으면 done() */
+function speakSynth(text, done) {
   const s = synth();
-  if (!s || typeof SpeechSynthesisUtterance === 'undefined') return;
+  if (!s || typeof SpeechSynthesisUtterance === 'undefined') {
+    done();
+    return;
+  }
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'ko-KR';
   u.rate = 0.95; // 어르신이 알아듣기 쉽게 조금 천천히
   const ko = s.getVoices().find((v) => (v.lang || '').toLowerCase().startsWith('ko'));
   if (ko) u.voice = ko;
+  u.onend = done;
+  u.onerror = done;
   s.speak(u);
 }
 
-/** 문구 읽기. 말하던 것은 멈추고 새 문구를 읽는다 */
+/**
+ * 문구 읽기. 말하던 것은 멈추고 새 문구를 읽는다.
+ * 반환: 다 읽었거나, 멈췄거나, 읽을 수 없을 때 끝나는 Promise (실패하지 않는다).
+ *   기다리지 않아도 된다. 다음 동작을 음성 뒤로 미루고 싶을 때만 await 한다 (STEP 1 안내 → 로봇)
+ *   소리가 막혀 끝 소식이 오지 않을 수도 있으니, 기다릴 때는 최대 시간을 함께 둔다
+ */
 export function speak(text) {
   stopSpeaking();
-  const sentences = splitSentences(text);
-  if (sentences.length === 0) return;
-  const files = sentences.map((s) => manifest.files[s]);
-  if (files.every(Boolean)) {
-    playFiles(files);
-    return;
-  }
-  if (import.meta.env.DEV) {
-    console.warn('[음성] 음성 파일 없음 → npm run voice 로 다시 만들어 주세요:', sentences.filter((_, i) => !files[i]));
-  }
-  speakSynth(sentences.join(' '));
+  return new Promise((resolve) => {
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      if (finishCurrent === done) finishCurrent = null;
+      resolve();
+    };
+    finishCurrent = done;
+    const sentences = splitSentences(text);
+    if (sentences.length === 0) {
+      done();
+      return;
+    }
+    const files = sentences.map((s) => manifest.files[s]);
+    if (files.every(Boolean)) {
+      playFiles(files, done);
+      return;
+    }
+    if (import.meta.env.DEV) {
+      console.warn('[음성] 음성 파일 없음 → npm run voice 로 다시 만들어 주세요:', sentences.filter((_, i) => !files[i]));
+    }
+    speakSynth(sentences.join(' '), done);
+  });
 }
 
-/** 말하던 것 멈추기 (화면을 닫을 때 부른다) */
+/** 말하던 것 멈추기 (화면을 닫을 때 부른다). 읽던 문구를 기다리던 쪽도 끝난다 */
 export function stopSpeaking() {
   token++;
+  finishCurrent?.();
   if (current) {
     current.onended = null;
     current.onerror = null;

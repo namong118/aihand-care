@@ -31,8 +31,13 @@ const isSlow = (ctx) => ctx.settings.speed === 'SLOW';
 
 /** 숫자 하나를 보여준 뒤 기억할 시간 */
 const showGapMs = (ctx) => (isSlow(ctx) ? 1500 : 800);
-/** 로봇이 보여 주기 전에 "숫자 N개" 안내를 보여 주는 시간 */
+/** 로봇이 보여 주기 전에 "숫자 N개" 안내를 보여 주는 시간 (안내 음성이 더 길면 음성이 끝날 때까지) */
 const announceMs = (ctx) => (isSlow(ctx) ? 3000 : 2000);
+/**
+ * 안내 음성을 기다리는 최대 시간. 음성(약 4.8초, 다시 할 때 5.8초)이 끝난 뒤에 로봇이 숫자를 보여 주게 하되,
+ * 소리가 막혀 끝 소식이 오지 않아도 멈추지 않게 (#153 리뷰: 로봇이 보여 주는 동안 음성이 겹쳐 기억에 방해)
+ */
+const ANNOUNCE_VOICE_MAX_MS = 8000;
 /** 칭찬을 보여 준 뒤 다음 문제로 넘어가기 전 쉬는 시간 */
 const restMs = (ctx) => (isSlow(ctx) ? 2000 : 1200);
 
@@ -134,8 +139,9 @@ async function playQuestion(ctx, screen, s, count, index, total) {
 
   for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
     // 0) 이번에 몇 개를 기억할지 먼저 알려 주기
-    screen.announce({ ...progress, count, attempt });
-    await wait(announceMs(ctx));
+    //    안내 시간과 안내 음성 중 늦게 끝나는 쪽까지 기다린다 (음성이 로봇의 숫자 보여 주기와 겹치지 않게)
+    const spoken = screen.announce({ ...progress, count, attempt });
+    await Promise.all([wait(announceMs(ctx)), Promise.race([spoken, wait(ANNOUNCE_VOICE_MAX_MS)])]);
     if (!s.alive) return null;
 
     // 1) 로봇이 보여 주기 (다시 할 때도 같은 순서를 다시 보여 준다)
