@@ -197,7 +197,7 @@ export function renderSettings(root, { conn, codeText, saved, onSaveName, onDisc
         { class: 'card' },
         h('h2', {}, '연결'),
         h('p', {}, '연결 코드 ', h('b', { class: 'code' }, codeText)),
-        h('p', { class: 'sub' }, '연결을 해제하면 이 폰에서 코드가 지워져요. 다시 보려면 QR을 다시 찍거나 코드를 넣어 주세요. 스테이션 쪽 연결까지 끊으려면 담당 선생님께 말씀해 주세요.'),
+        h('p', { class: 'sub' }, '연결을 해제하면 이 폰에서 코드가 지워져요. 다시 보려면 QR을 다시 찍거나 코드를 넣어 주세요. 스테이션 쪽 연결까지 끊으려면 이용하시는 곳에 말씀해 주세요.'),
         h('button', { type: 'button', class: 'btn danger', onClick: onDisconnect }, '연결 해제'),
       ),
     ),

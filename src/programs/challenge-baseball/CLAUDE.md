@@ -22,7 +22,8 @@
 | 2단계 | 3개 | 없음 | 8번 |
 | 3단계 | 4개 | 없음 | 8번 |
 
-- 미리 고른 단계: `ctx.settings.challengeLevel`(1·2·3)이 있으면 그 단계, 없으면 1단계 (`defaultLevel`). 이 값은 "나의 시작 찾기"와 함께 대시보드가 넣을 예정
+- 미리 고른 단계: `ctx.settings.challengeLevel`(1·2·3)이 있으면 그 단계, 없으면 1단계 (`defaultLevel`). "나의 시작 찾기"로 시작 단계를 정해 두면 대시보드가 이 값을 넣는다
+- **나의 시작 찾기 짧은 판** (`ctx.settings.findStart`가 `true`): 단계 고르기 없이 바로 1단계, 낼 수 있는 횟수 5번 (`gameSpec`, `FIND_START_GAME`). 기록은 평소와 같고, 대시보드가 `detail.findStart`를 붙인다
 - `ctx.settings.difficulty`(기본 활동용 쉬움·보통·어려움)는 쓰지 않는다. 속도 느리게(`SLOW`)는 로봇이 힌트를 들고 있는 시간만 늘린다
 
 ## 흐름 (한 회차 = 한 판)

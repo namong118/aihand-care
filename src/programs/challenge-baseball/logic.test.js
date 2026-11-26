@@ -10,6 +10,8 @@ import {
   excludedDigits,
   countPose,
   summarizeGame,
+  gameSpec,
+  FIND_START_GAME,
 } from './logic.js';
 
 /** 정해진 값을 차례로 돌려주는 rand */
@@ -163,5 +165,16 @@ describe('summarizeGame', () => {
 
   it('낸 적 없음', () => {
     expect(summarizeGame({ solved: false, stopped: true, history: [] }).avgReactionMs).toBeNull();
+  });
+});
+
+describe('gameSpec (나의 시작 찾기 짧은 판)', () => {
+  it('보통 판은 고른 단계 그대로', () => {
+    expect(gameSpec(3)).toEqual(LEVELS[3]);
+    expect(gameSpec(2, false)).toEqual(LEVELS[2]);
+  });
+  it('나의 시작 찾기면 고른 단계와 관계없이 1단계, 5번까지', () => {
+    expect(FIND_START_GAME).toEqual({ level: 1, maxTries: 5 });
+    expect(gameSpec(3, true)).toEqual({ ...LEVELS[1], maxTries: 5 });
   });
 });

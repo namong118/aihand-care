@@ -27,6 +27,18 @@ export const LENGTH_BY_DIFFICULTY = { easy: 1, normal: 2, hard: 3 };
 /** 난이도별로 늘어날 수 있는 최대 개수 (카드가 1~5 한 장씩이라 5가 끝) */
 export const MAX_LENGTH_BY_DIFFICULTY = { easy: 3, normal: 4, hard: 5 };
 
+/** 나의 시작 찾기 짧은 판: 숫자 3개를 한 문제만 (ctx.settings.findStart) */
+export const FIND_START_ROUND = { questions: 1, length: 3 };
+
+/**
+ * 한 회차 계획: 문제 수와 첫 문제의 숫자 개수.
+ * 나의 시작 찾기면 난이도와 관계없이 FIND_START_ROUND
+ */
+export function roundPlan(difficulty, findStart = false) {
+  if (findStart) return { ...FIND_START_ROUND };
+  return { questions: QUESTIONS_PER_ROUND, length: sequenceLength(difficulty) };
+}
+
 export function sequenceLength(difficulty) {
   return LENGTH_BY_DIFFICULTY[difficulty] ?? LENGTH_BY_DIFFICULTY.easy;
 }

@@ -857,3 +857,107 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
 .course-table td, .course-table th { font-size: 24px; padding: 12px 16px; }
 .course-row.is-skipped td:last-child,
 .course-row.is-notPlayed td:last-child { color: var(--c-text); font-style: italic; }
+
+/* ---------- 나의 시작 찾기 (find-start.js, 홈 입구는 home.js) ---------- */
+.home-find {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 16px;
+  border-radius: 16px;
+  background: var(--c-surface);
+  font-size: 18px;
+  color: var(--c-text-sub);
+}
+.home-find-btn {
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 12px;
+  border: 2px solid var(--c-accent);
+  background: var(--c-surface);
+  color: var(--c-accent);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.home-find-btn:hover { background: var(--c-accent-soft); }
+/* 코스 요약: 이어서 해 볼 도전 활동 (그분의 단계로) */
+.course-challenges { display: flex; flex-direction: column; gap: 10px; }
+.course-challenges h2 { margin: 0; font-size: 26px; }
+/* 코스 시작 화면: 로그인한 분의 시작 단계 알약 ("보통부터"). 정해 두지 않은 활동은 알약 없음 */
+.course-level {
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-size: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.home-challenge-name { white-space: nowrap; }
+
+.find-start { display: flex; flex-direction: column; gap: 18px; }
+.find-start h1, .find-start p { margin: 0; }
+.find-note { font-size: 20px; color: var(--c-text-muted); }
+.find-pair {
+  background: var(--c-surface);
+  border-radius: var(--r-card);
+  padding: 22px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.find-pair h2 { margin: 0; font-size: 26px; color: var(--step-fg); }
+.find-pair-head { display: flex; align-items: baseline; gap: 14px; }
+.find-minutes { font-size: 20px; color: var(--c-text-muted); }
+.find-pair-flow { display: flex; align-items: stretch; gap: 16px; }
+.find-box {
+  flex: 1 1 0;
+  border-radius: 20px;
+  background: var(--step-bg);
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 22px;
+}
+.find-box strong { font-size: 28px; color: var(--step-fg); }
+.find-box-tag { font-size: 18px; font-weight: 600; color: var(--step-fg); }
+.find-box.is-challenge { background: var(--c-surface); border: 2px dashed var(--step-fg); }
+.find-arrow { align-self: center; font-size: 18px; color: var(--c-text-muted); white-space: nowrap; }
+.find-bar-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.find-bar-sub { font-size: 20px; font-weight: 500; color: var(--c-text-sub); }
+.find-done {
+  align-self: flex-start;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--step-bg);
+  color: var(--step-fg);
+  font-size: 24px;
+  font-weight: 600;
+}
+.find-level-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.find-level-name { width: 160px; font-size: 26px; font-weight: 600; color: var(--step-fg); }
+.find-level-tail { font-size: 20px; color: var(--c-text-muted); }
+.find-later-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; }
+.find-later {
+  flex: 1 1 280px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 20px;
+  background: var(--c-surface);
+  font-size: 20px;
+}
+.find-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--step-fg); flex: none; }
+.find-later-note { font-size: 17px; color: var(--c-text-muted); }
+.settings-levels { font-size: 20px; color: var(--c-text-sub); }
+@media (max-width: 640px) {
+  .find-pair-flow { flex-direction: column; }
+  .find-level-name { width: auto; }
+}
+/* 추천 화면은 7인치(1280×720)에 버튼까지 들어가게 조금 촘촘히 */
+.find-recommend { gap: 12px; }
+.find-recommend .find-pair { padding: 18px 28px; gap: 10px; }
