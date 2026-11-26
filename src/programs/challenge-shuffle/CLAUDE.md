@@ -33,7 +33,7 @@
 | 3단계 | 8 | 600 | 2곳 |
 
 - 시작 화면에서 고른다 (도전 활동 공통 부품 `src/ui/level-picker.js`의 `levelPicker`, A). **미리 선택**은 `ctx.settings.challengeLevel`(1·2·3, 나의 시작 찾기·사람별 시작 단계로 대시보드가 넣음), 없으면 1단계 (`defaultLevel`)
-- **나의 시작 찾기 짧은 판** (`ctx.settings.findStart`가 `true`, 2026-11-26 A): 단계 고르기 없이 **1단계 2판** (`roundCount`, `FIND_START_GAME`). 둘 다 같은 색을 고르셔야 "해냄". 기록은 평소와 같고 대시보드가 `detail.findStart`를 붙인다
+- **나의 시작 찾기 짧은 판** (`ctx.settings.findStart`가 `true`, 2026-11-26 A): 단계 고르기 없이 **1단계 1판** (`roundCount`, `FIND_START_GAME`, 2026-11-27 2판 → 1판). 같은 색을 고르시면 "해냄". 기록은 평소와 같고 대시보드가 `detail.findStart`를 붙인다
 - 홈의 난이도(`ctx.settings.difficulty`, 기본 활동용)는 **쓰지 않는다**. 속도 느리게(`ctx.settings.speed === 'SLOW'`)면 `moveMs` ×1.5 (`levelSpec`)
 - 바로 앞 섞기와 같은 쌍은 연달아 바꾸지 않는다 (`makeSwaps`)
 - 3단계가 너무 쉬우면 섞는 횟수를 10~12번으로 늘려 본다 (속도는 그대로)

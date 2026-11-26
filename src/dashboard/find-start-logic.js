@@ -54,7 +54,7 @@ export function readyGroups(groups) {
 
 /**
  * 짧은 판 기록 → 결과. 짧은 판의 문제·판을 모두 해냈으면 'done', 아니면 'tried'.
- * (색깔손·카드 섞기 짧은 판은 2문제·2판이라, 하나만 해내고 어려움을 추천하지 않게 "모두"로 본다)
+ * (짧은 판이 여러 문제일 때 하나만 해내고 어려움을 추천하지 않게 "모두"로 본다)
  */
 export function outcomeOf(record) {
   const total = record?.total ?? 0;

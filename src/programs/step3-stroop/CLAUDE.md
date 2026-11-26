@@ -24,7 +24,7 @@
 - [x] 문제 만들기 `makeQuestion` (쉬움: 뜻=색, 보통: 섞임, 어려움: 항상 다름), 판정 `judge` (테스트 있음)
 - [x] 문제 1개 → 입력(색깔 카드 또는 화면 버튼) → 판정 → 로봇 반응 → 기록
 - [x] 한 회차 여러 문제(`makeRound`, 기본 5문제, 같은 문제 연달아 안 나옴), 문제 사이 간격(`gapMs`), 진행 표시(예: 2 / 5)
-- [x] 나의 시작 찾기 짧은 판 (2026-11-26 A): `ctx.settings.findStart`가 `true`면 난이도와 관계없이 **글자 뜻과 색이 늘 다른 문제 2개** (`roundQuestions`, `FIND_START_ROUND`). 둘 다 해내야 "해냄". 기록은 평소와 같고 대시보드가 `detail.findStart`를 붙인다
+- [x] 나의 시작 찾기 짧은 판 (2026-11-26 A): `ctx.settings.findStart`가 `true`면 난이도와 관계없이 **글자 뜻과 색이 늘 다른 문제 1개** (`roundQuestions`, `FIND_START_ROUND`, 2026-11-27 2개 → 1개). 해내시면 "해냄". 기록은 평소와 같고 대시보드가 `detail.findStart`를 붙인다
 - [ ] 카드를 잠깐 스치듯 보여줬을 때도 답으로 칠지 정하기 (#17 종이 카드 실물 확인 때)
 - [x] 색 구분이 어려운 사용자를 위한 안내 (아래 참고)
 - [x] 로봇의 역할: 회차 시작 신호로 `ctx.robot.hello()`, 문제마다 `react('ok' | 'retry')`, 모두 맞히면 `hello()` 한 번 더 (`isPerfect`)

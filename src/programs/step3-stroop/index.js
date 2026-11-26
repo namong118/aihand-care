@@ -46,7 +46,7 @@ function pickOne(ctx, screen, s, q, progress) {
 async function playRound(ctx, screen, s) {
   const startedAt = new Date().toISOString();
   const difficulty = ctx.settings.difficulty;
-  // 나의 시작 찾기(ctx.settings.findStart)면 짧은 판: 뜻과 색이 늘 다른 문제 2개 (logic.js roundQuestions)
+  // 나의 시작 찾기(ctx.settings.findStart)면 짧은 판: 뜻과 색이 늘 다른 문제 1개 (logic.js roundQuestions)
   const questions = roundQuestions(colors, difficulty, ctx.settings.findStart);
   const answers = [];
 
