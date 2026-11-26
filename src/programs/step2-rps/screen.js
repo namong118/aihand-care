@@ -5,7 +5,7 @@
 
 import { h, button, message } from '../../ui/components.js';
 import { handIcon } from '../../ui/icons.js';
-import { handText, timingText, HAND_LABELS } from './logic.js';
+import { handText, timingText, seenText, HAND_LABELS } from './logic.js';
 
 // 화면 버튼은 익숙한 "가위, 바위, 보" 순서로
 const BUTTON_ORDER = ['V', 'ROCK', 'PAPER'];
@@ -25,13 +25,66 @@ const QUICK_TEXT = {
   lose: '◇ 로봇이 이겼어요',
   early: '→ 조금 빨랐어요',
   late: '→ 조금 늦었어요',
+  unclear: '→ 손 모양을 알아보지 못했어요',
   none: '→ 손이 안 보였어요',
 };
 
-export function createScreen(container) {
+/**
+ * hand: ctx.hand (캠 화면에 쓴다: preview, onPose). 없으면 캠 화면을 만들지 않는다
+ */
+export function createScreen(container, hand = null) {
   container.innerHTML = '';
   const area = h('div', { class: 'program-body' });
   container.append(area);
+
+  // 캠 화면 연결 끊기 함수들. 화면을 그릴 때 인자를 먼저 만들므로(camBox 가 먼저 불림)
+  // 새 화면 것(camNext)과 지금 화면 것(camNow)을 나눠 두고, set 에서 지금 것만 끊는다
+  let camNow = [];
+  let camNext = [];
+  function closeCam() {
+    camNow.forEach((off) => off());
+    camNow = [];
+  }
+
+  /**
+   * 내 손 캠 화면: 거울처럼 보이는 웹캠 영상 + "지금 보이는 손" 글자.
+   * 사용자가 손이 카메라에 잘 보이는지, 어떤 모양으로 인식되는지 바로 알 수 있게 한다.
+   * 웹캠이 꺼져 있으면(화면 버튼 모드) 칸은 그대로 두고 "카메라가 꺼져 있어요"를 보여 준다.
+   * (칸을 숨기면 왜 안 나오는지 알 수 없다. 페이지를 다시 불러오면 웹캠이 꺼진다)
+   */
+  function camBox() {
+    if (!hand?.preview) return null;
+    const video = h('video', { class: 'webcam-video', 'aria-hidden': 'true', hidden: true });
+    const off = h(
+      'p',
+      { class: 'act-text', style: { margin: '0', 'text-align': 'center', padding: '24px 0' } },
+      '카메라가 꺼져 있어요. 위쪽 “웹캠 켜기”를 누르면 내 손이 보여요.',
+    );
+    const seen = h('p', { class: 'act-label', 'aria-live': 'polite', hidden: true, style: { margin: '0', 'text-align': 'center', 'font-size': '24px' } }, '손이 안 보여요');
+    const box = h(
+      'div',
+      { class: 'act-card', style: { width: '240px', flex: 'none', gap: '8px', padding: '12px', 'justify-content': 'center' } },
+      video,
+      off,
+      seen,
+    );
+    camNext.push(
+      hand.preview(video, (on) => {
+        video.hidden = !on;
+        seen.hidden = !on;
+        off.hidden = on;
+      }),
+      hand.onPose((pose) => {
+        const text = seenText(pose);
+        if (seen.textContent !== text) seen.textContent = text;
+      }),
+    );
+    return box;
+  }
+
+  /** 왼쪽 내용 + 오른쪽 캠 화면 한 줄 */
+  const withCam = (main) =>
+    h('div', { style: { display: 'flex', gap: '16px', 'align-items': 'stretch' } }, h('div', { style: { flex: '1', 'min-width': '0', display: 'flex', 'flex-direction': 'column' } }, main), camBox());
 
   let robotArt = null; // 문제 화면의 "로봇이 낸 손" 그림 (어려움에서 숨길 때 바꾼다)
   let robotName = null; // 그 아래 손 이름
@@ -43,6 +96,9 @@ export function createScreen(container) {
   }
 
   function set(...children) {
+    closeCam();
+    camNow = camNext;
+    camNext = [];
     area.innerHTML = '';
     area.append(...children.flat().filter(Boolean));
   }
@@ -69,6 +125,13 @@ export function createScreen(container) {
   let quickWordEl = null; // 동시에 가위바위보 판 화면의 "가위/바위/보!" 큰 글자
 
   return {
+    /** 활동을 나갈 때 (unmount): 캠 화면 연결을 끊는다 */
+    close() {
+      closeCam();
+      camNext.forEach((off) => off());
+      camNext = [];
+    },
+
     /** "하나만 해 보기"로 들어왔을 때 첫 화면: 어떤 가위바위보를 할지 고르기 */
     modeChoice(onQuick, onThink) {
       set(
@@ -84,11 +147,15 @@ export function createScreen(container) {
     /** 동시에 가위바위보 안내 */
     quickIntro({ total, lateSec }, onStart) {
       set(
-        card(
-          h('p', { class: 'act-question' }, '“보!”에 맞춰 함께 내요'),
-          h('p', { class: 'act-text' }, '손을 카메라 밖으로 내리고 기다려 주세요.'),
-          h('p', { class: 'act-text' }, '“가위, 바위, 보!”의 “보!” 소리에 맞춰 가위·바위·보 중 하나를 내 주세요. 로봇도 같이 내요.'),
-          h('p', { class: 'act-text' }, `“보!” 뒤 ${lateSec}초 안에 내면 돼요. 모두 ${total}판이에요.`),
+        withCam(
+          card(
+            h('p', { class: 'act-question' }, '“보!”에 맞춰 함께 내요'),
+            // 캠 화면은 웹캠이 켜져 있을 때만 보인다. 시작 전에 손이 잘 보이는지 확인할 수 있게
+            hand?.preview ? h('p', { class: 'act-text' }, '먼저 손을 들어 카메라 화면에 손이 잘 보이는지 확인해 보세요.') : null,
+            h('p', { class: 'act-text' }, '시작하면 손을 카메라 밖으로 내리고 기다려 주세요.'),
+            h('p', { class: 'act-text' }, '“가위, 바위, 보!”의 “보!” 소리에 맞춰 가위·바위·보 중 하나를 내 주세요. 로봇도 같이 내요.'),
+            h('p', { class: 'act-text' }, `“보!” 뒤 ${lateSec}초 안에 내면 돼요. 모두 ${total}판이에요.`),
+          ),
         ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
@@ -99,7 +166,7 @@ export function createScreen(container) {
       quickWordEl = h('p', { class: 'act-prompt', 'aria-live': 'assertive', style: { 'font-size': '110px', padding: '24px 0' } }, '');
       set(
         h('div', { class: 'act-head' }, h('span', { class: 'act-progress', 'aria-label': `${total}판 중 ${index}번째` }, `${index}판 / ${total}`)),
-        card(quickWordEl),
+        withCam(h('div', { class: 'act-card', style: { flex: '1', 'justify-content': 'center' } }, quickWordEl)),
         h(
           'div',
           { class: 'act-answers', role: 'group', 'aria-label': '내 손 고르기', style: { 'grid-template-columns': 'repeat(3, minmax(0, 1fr))' } },

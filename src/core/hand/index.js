@@ -50,6 +50,32 @@ export function createHand({ poses, loadWebcam = () => import('./mediapipe.js') 
       return () => listeners.delete(cb);
     },
 
+    /**
+     * 웹캠 미리 보기 (ctx.hand.preview). 프로그램 화면에 사용자가 자기 손을 볼 수 있게 한다.
+     * 프로그램이 만든 <video> 에 지금 웹캠 영상을 이어 준다. 카메라를 새로 켜지 않고 같은 영상을 나눠 쓴다.
+     * 웹캠을 켜거나 끄거나 카메라를 바꾸면 알아서 따라간다.
+     *   onActive(true|false): 영상이 나오는지 (웹캠이 꺼져 있으면 false → 프로그램이 칸을 숨기면 된다)
+     * @returns 연결 끊기 함수 (화면을 바꿀 때 부른다)
+     */
+    attachPreview(video, onActive = () => {}) {
+      video.muted = true;
+      video.playsInline = true;
+      const update = () => {
+        const stream = webcamOn() ? webcam.video?.srcObject ?? null : null;
+        if (video.srcObject !== stream) {
+          video.srcObject = stream;
+          if (stream) video.play().catch(() => {});
+        }
+        onActive(Boolean(stream));
+      };
+      changeListeners.add(update);
+      update();
+      return () => {
+        changeListeners.delete(update);
+        video.srcObject = null;
+      };
+    },
+
     // ---- 대시보드 ----
     /**
      * "웹캠 켜기" 버튼, 개발자 입력의 카메라·해상도 고르기에서 부른다.

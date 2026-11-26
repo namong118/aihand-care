@@ -10,6 +10,7 @@ function fakeModule({ fail = null } = {}) {
       const listeners = new Set();
       const cam = {
         running: false,
+        video: { srcObject: 'stream-1' }, // 미리 보기 시험용 (진짜 MediaStream 대신)
         onPose(cb) {
           listeners.add(cb);
           return () => listeners.delete(cb);
@@ -100,5 +101,48 @@ describe('손 인식 전환기', () => {
     expect(await hand.listCameras()).toEqual([]); // 켜기 전
     await hand.startWebcam();
     expect(await hand.listCameras()).toEqual([{ deviceId: 'a', label: 'C270' }]);
+  });
+});
+
+describe('웹캠 미리 보기 (ctx.hand.preview)', () => {
+  const fakeVideo = () => ({ srcObject: null, play: vi.fn(() => Promise.resolve()) });
+
+  it('웹캠이 꺼져 있으면 영상 없이 onActive(false)', () => {
+    const hand = createHand({ poses, loadWebcam: async () => ({}) });
+    const video = fakeVideo();
+    const onActive = vi.fn();
+    hand.attachPreview(video, onActive);
+    expect(video.srcObject).toBeNull();
+    expect(onActive).toHaveBeenLastCalledWith(false);
+  });
+
+  it('웹캠을 켜면 같은 영상을 이어 주고, 끄면 뗀다', async () => {
+    const f = fakeModule();
+    const hand = createHand({ poses, loadWebcam: f.load });
+    const video = fakeVideo();
+    const onActive = vi.fn();
+    hand.attachPreview(video, onActive);
+
+    await hand.startWebcam();
+    expect(video.srcObject).toBe('stream-1');
+    expect(video.play).toHaveBeenCalled();
+    expect(onActive).toHaveBeenLastCalledWith(true);
+
+    f.made.cam.stop(null);
+    expect(video.srcObject).toBeNull();
+    expect(onActive).toHaveBeenLastCalledWith(false);
+  });
+
+  it('연결을 끊으면 더 따라가지 않는다', async () => {
+    const f = fakeModule();
+    const hand = createHand({ poses, loadWebcam: f.load });
+    const video = fakeVideo();
+    const onActive = vi.fn();
+    const detach = hand.attachPreview(video, onActive);
+    detach();
+    onActive.mockClear();
+    await hand.startWebcam();
+    expect(video.srcObject).toBeNull();
+    expect(onActive).not.toHaveBeenCalled();
   });
 });
