@@ -166,11 +166,27 @@ export function makeRound(difficulty = 'easy', count = QUESTIONS_PER_ROUND, rand
 }
 
 /**
- * 어려움 난이도: 로봇 손을 이 시간만 보여 주고 내린다 (기억해서 답하기).
- * 쉬움·보통은 null (계속 보여 준다). 속도 "천천히"(SLOW)면 1.5배.
+ * 나의 시작 찾기 짧은 판 (ctx.settings.findStart): 꼬인 조건 한 문제.
+ * "~지도 ~지도 마세요"를 "져/이겨 주세요"로 바꿔 생각하는 보통의 핵심만 본다. 로봇 손은 계속 보인다
  */
-export function revealMs(difficulty, speed) {
-  if (difficulty !== 'hard') return null;
+export const FIND_START_ROUND = { questions: 1, conditions: ['NO_WIN_NO_DRAW', 'NO_LOSE_NO_DRAW'] };
+
+/** 한 회차 문제 목록. 나의 시작 찾기면 FIND_START_ROUND, 아니면 난이도대로 5문제 */
+export function roundQuestions(difficulty, findStart = false, rand = Math.random) {
+  if (!findStart) return makeRound(difficulty, QUESTIONS_PER_ROUND, rand);
+  const pick = (list) => list[Math.min(list.length - 1, Math.floor(rand() * list.length))];
+  return Array.from({ length: FIND_START_ROUND.questions }, () => ({
+    robotHand: pick(HANDS),
+    conditionId: pick(FIND_START_ROUND.conditions),
+  }));
+}
+
+/**
+ * 어려움 난이도: 로봇 손을 이 시간만 보여 주고 내린다 (기억해서 답하기).
+ * 쉬움·보통과 나의 시작 찾기는 null (계속 보여 준다). 속도 "천천히"(SLOW)면 1.5배.
+ */
+export function revealMs(difficulty, speed, findStart = false) {
+  if (findStart || difficulty !== 'hard') return null;
   return speed === 'SLOW' ? 4500 : 3000;
 }
 

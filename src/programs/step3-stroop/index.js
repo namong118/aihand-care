@@ -1,7 +1,7 @@
 // STEP 3 색깔손: logic 과 screen 을 연결한다. core 는 import 하지 않고 ctx 만 쓴다.
 
 import colors from '../../data/colors.json';
-import { makeRound, judge, gapMs, summarizeRound, isPerfect, NO_ANSWER_HINT_MS } from './logic.js';
+import { roundQuestions, judge, gapMs, summarizeRound, isPerfect, NO_ANSWER_HINT_MS } from './logic.js';
 import { idleLine, hintLine } from './lines.js';
 import { createScreen } from './screen.js';
 import { stopSpeaking } from '../../ui/voice.js';
@@ -46,7 +46,8 @@ function pickOne(ctx, screen, s, q, progress) {
 async function playRound(ctx, screen, s) {
   const startedAt = new Date().toISOString();
   const difficulty = ctx.settings.difficulty;
-  const questions = makeRound(colors, difficulty);
+  // 나의 시작 찾기(ctx.settings.findStart)면 짧은 판: 뜻과 색이 늘 다른 문제 2개 (logic.js roundQuestions)
+  const questions = roundQuestions(colors, difficulty, ctx.settings.findStart);
   const answers = [];
 
   // 카메라를 태그 모드로 맞춘 다음 시작한다. STEP 1 다음이면 숫자 모드라 바꾸는 데 최대 약 5초 걸리고,

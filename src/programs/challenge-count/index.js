@@ -8,7 +8,7 @@
 //   → 끝 숫자를 부른 쪽이 생기면 끝. 로봇이 불렀으면 칭찬
 //   → ctx.log.record 로 한 번 기록
 
-import { levelSpec, defaultLevel, makeGame, allowedCounts, countFrom, robotCount, countPose, poseCount, summarizeGame } from './logic.js';
+import { gameSpec, FIND_START_GAME, defaultLevel, makeGame, allowedCounts, countFrom, robotCount, countPose, poseCount, summarizeGame } from './logic.js';
 import { createScreen } from './screen.js';
 
 const ID = 'challenge-count';
@@ -65,8 +65,9 @@ async function waitCount(ctx, screen, s, allowed) {
 }
 
 async function playGame(ctx, screen, s, level) {
-  const spec = levelSpec(level);
-  const { end, maxStep } = makeGame(level);
+  // 나의 시작 찾기(ctx.settings.findStart)면 1단계, 끝 숫자만 짧게 (logic.js gameSpec)
+  const spec = gameSpec(level, ctx.settings.findStart);
+  const { end, maxStep } = makeGame(level, Math.random, spec);
   const base = { level, end, maxStep };
 
   // 0) 이번 판 안내 → 시작하기
@@ -180,7 +181,9 @@ export default {
     session = { alive: true, answer: null, waits: new Set() };
     const s = session;
     const screen = createScreen(container);
-    showLevels(ctx, screen, s);
+    // 나의 시작 찾기면 단계 고르기 없이 짧은 판(1단계, 끝 숫자 10~13)으로 바로 시작
+    if (ctx.settings.findStart) start(ctx, screen, s, FIND_START_GAME.level);
+    else showLevels(ctx, screen, s);
   },
 
   unmount() {

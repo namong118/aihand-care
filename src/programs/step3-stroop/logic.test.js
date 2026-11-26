@@ -1,6 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { makeQuestion, judge, makeRound, gapMs, summarizeRound, QUESTIONS_PER_ROUND, isPerfect, NO_ANSWER_HINT_MS } from './logic.js';
+import { makeQuestion, judge, makeRound, roundQuestions, FIND_START_ROUND, gapMs, summarizeRound, QUESTIONS_PER_ROUND, isPerfect, NO_ANSWER_HINT_MS } from './logic.js';
 import colors from '../../data/colors.json';
+
+describe('roundQuestions: 나의 시작 찾기 짧은 판', () => {
+  it('평소에는 난이도대로 5문제', () => {
+    expect(roundQuestions(colors, 'easy')).toHaveLength(QUESTIONS_PER_ROUND);
+  });
+  it('나의 시작 찾기면 뜻과 색이 늘 다른 문제 2개 (난이도와 관계없이)', () => {
+    for (const difficulty of ['easy', 'normal', 'hard']) {
+      const list = roundQuestions(colors, difficulty, true);
+      expect(list).toHaveLength(FIND_START_ROUND.questions);
+      for (const q of list) expect(q.congruent).toBe(false);
+    }
+  });
+});
 
 describe('makeQuestion', () => {
   it('쉬움: 글자 뜻과 색이 같다', () => {

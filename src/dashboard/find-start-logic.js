@@ -52,9 +52,13 @@ export function readyGroups(groups) {
   return groups.filter((g) => g.ready);
 }
 
-/** 짧은 판 기록 → 결과. 하나라도 해냈으면 'done', 아니면 'tried' */
+/**
+ * 짧은 판 기록 → 결과. 짧은 판의 문제·판을 모두 해냈으면 'done', 아니면 'tried'.
+ * (색깔손·카드 섞기 짧은 판은 2문제·2판이라, 하나만 해내고 어려움을 추천하지 않게 "모두"로 본다)
+ */
 export function outcomeOf(record) {
-  return (record?.done ?? 0) >= 1 ? 'done' : 'tried';
+  const total = record?.total ?? 0;
+  return total > 0 && (record?.done ?? 0) >= total ? 'done' : 'tried';
 }
 
 /**

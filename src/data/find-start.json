@@ -14,7 +14,33 @@
         "none": { "basic": "easy", "challenge": 1 }
       }
     },
-    { "id": "rps", "basic": "step2-rps", "challenge": "challenge-count", "ready": false },
-    { "id": "color", "basic": "step3-stroop", "challenge": "challenge-shuffle", "ready": false }
+    {
+      "id": "rps",
+      "basic": "step2-rps",
+      "challenge": "challenge-count",
+      "ready": true,
+      "minutes": 3,
+      "basicText": "“이기지도 비기지도 마세요” 같은 문제를 하나 풀어요",
+      "challengeText": "끝 숫자가 짧은 판을 한 번 해 봐요",
+      "recommend": {
+        "both": { "basic": "hard", "challenge": 2 },
+        "basic": { "basic": "normal", "challenge": 1 },
+        "none": { "basic": "easy", "challenge": 1 }
+      }
+    },
+    {
+      "id": "color",
+      "basic": "step3-stroop",
+      "challenge": "challenge-shuffle",
+      "ready": true,
+      "minutes": 3,
+      "basicText": "글자 뜻과 색이 다른 문제를 두 개 풀어요",
+      "challengeText": "카드를 두 판 따라가 봐요",
+      "recommend": {
+        "both": { "basic": "hard", "challenge": 2 },
+        "basic": { "basic": "normal", "challenge": 1 },
+        "none": { "basic": "easy", "challenge": 1 }
+      }
+    }
   ]
 }
