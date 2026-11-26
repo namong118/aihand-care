@@ -74,5 +74,13 @@ export function createCourseStore({ storage = defaultStorage() } = {}) {
     list() {
       return load();
     },
+    /** 사용자 지우기: 그분(userId)의 코스를 모두 지운다. 지운 개수를 돌려준다. 손님(null)은 지우지 않는다 */
+    removeUser(userId) {
+      if (!userId) return 0;
+      const list = load();
+      const keep = list.filter((m) => m.userId !== userId);
+      if (keep.length !== list.length) save(keep);
+      return list.length - keep.length;
+    },
   };
 }

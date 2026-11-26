@@ -37,7 +37,8 @@ import { h, button, message } from './ui/components.js';
 import { PROGRAMS } from './programs/index.js';
 import login from './login/index.js';
 import { createUserStore } from './login/users.js';
-import { sendCourseSummary } from './guardian/index.js';
+import { sendCourseSummary, forgetUser } from './guardian/index.js';
+import { renderForgetList, renderForgetConfirm, renderForgetDone } from './dashboard/forget.js';
 
 const appEl = document.querySelector('#app');
 const statusEl = document.querySelector('#statusbar');
@@ -103,6 +104,7 @@ function updateSettings() {
     setSetting,
     close: () => toggleSettings(false),
     openRegister: showRegister,
+    openForget: showForgetList,
     openResults: () => {
       toggleSettings(false);
       showResults();
@@ -366,6 +368,44 @@ function showRegister() {
       showHome();
     },
   });
+}
+
+// ---- 사용자 지우기 (설정 → "사용자 지우기", 동의서 "지우는 방법") ----
+// 동의서대로 지워 달라고 하시면 바로 모두 지운다: 호칭·얼굴 번호(users.js), 시작 단계(user-levels.js),
+// 이 기계의 그분 코스 기록(log)·코스 진행 정보(course-store), 보호자 앱 연결과 보낸 요약(guardian forgetUser, 인터넷이 되면).
+// 얼굴은 로봇 카메라 안에만 있어서 앱이 지울 수 없다 → 다 지운 뒤 카메라에서 지워 달라고 안내.
+
+/** 이 분의 기록인지 (코스 기록의 detail.course.userId) */
+const isUserRecord = (userId) => (r) => courseOf(r)?.userId === userId;
+
+function showForgetList() {
+  toggleSettings(false);
+  leaveProgram();
+  course = null;
+  who = null;
+  setScreen('forget');
+  renderForgetList(appEl, { users: userStore.list(), onPick: showForgetConfirm, onHome: showHome });
+}
+
+function showForgetConfirm(user) {
+  setScreen('forget');
+  renderForgetConfirm(appEl, {
+    name: user.displayName,
+    records: devices.log.list().filter(isUserRecord(user.userId)).length,
+    hasFace: user.faceId !== null && user.faceId !== undefined,
+    onConfirm: () => forgetAll(user),
+    onCancel: showForgetList,
+  });
+}
+
+/** 그분의 정보를 모두 지운다 */
+function forgetAll(user) {
+  const removed = userStore.remove(user.userId);
+  levelStore.prune(userStore.list().map((u) => u.userId));
+  devices.log.removeWhere(isUserRecord(user.userId));
+  courseStore.removeUser(user.userId);
+  forgetUser(user.userId); // 보호자 앱 연결 끊기 + Supabase 의 그분 요약 지우기 (대기열, 인터넷이 되면 보냄)
+  renderForgetDone(appEl, { name: user.displayName, faceId: removed?.forgetFaceId ?? null, onHome: showHome });
 }
 
 /** 등록을 마친 뒤: 그분으로 바로 나의 시작 찾기 / 홈으로 */

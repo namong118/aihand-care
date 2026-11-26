@@ -31,6 +31,12 @@ describe('동의 화면 문구', () => {
     expect(text).toContain('사진은 남기지 않아요');
   });
 
+  it('지우는 방법을 알린다 (설정의 사용자 지우기, 얼굴은 카메라에서 따로)', () => {
+    const text = allText(FACE_CONSENT);
+    expect(text).toContain('사용자 지우기');
+    expect(text).toContain('얼굴은 이용하시는 곳에서');
+  });
+
   it('실명을 묻지 않는다', () => {
     expect(allText(FACE_CONSENT)).not.toMatch(/실명|성함|이름을/);
   });
