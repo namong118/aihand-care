@@ -26,7 +26,8 @@ import {
   QUICK_GAMES,
   quickTiming,
   COUNTDOWN_WORDS,
-  GOOD_TEXT,
+  goodLine,
+  startLine,
   retryText,
   roundEndText,
 } from './logic.js';
@@ -166,8 +167,9 @@ async function playQuestion(ctx, screen, s, q, index, total) {
     answers.push({ hand: picked.hand, via: picked.via, outcome: result.outcome, reactionMs });
 
     if (result.correct) {
-      screen.good({ userHand: picked.hand, attempt });
-      speak(GOOD_TEXT);
+      const line = goodLine(attempt); // 칭찬 멘트 무작위 (다시 해서 해냈으면 "다시 생각해서 해내셨어요." 붙음)
+      screen.good({ userHand: picked.hand, line });
+      speak(line);
       await robot(ctx.robot.react('ok'));
       if (!s.alive) return null;
       await wait(restMs(ctx));
@@ -258,8 +260,12 @@ export default {
     const screen = createScreen(container, ctx.hand);
     s.screen = screen;
     const reveal = revealMs(ctx.settings.difficulty, ctx.settings.speed);
-    const thinkIntro = () =>
-      screen.intro({ total: QUESTIONS_PER_ROUND, revealSec: reveal ? reveal / 1000 : null }, () => start(ctx, screen, s));
+    const thinkIntro = () => {
+      // 시작 인사: 화면에도 쓰고 읽어 준다 (음성만으로 알리지 않는다)
+      const hello = startLine();
+      screen.intro({ total: QUESTIONS_PER_ROUND, revealSec: reveal ? reveal / 1000 : null, hello }, () => start(ctx, screen, s));
+      speak(hello);
+    };
 
     // "하나만 해 보기"로 들어왔을 때(ctx.single)만 동시에 가위바위보를 고를 수 있다. 코스에서는 사고력 모드 그대로
     if (!ctx.single) {

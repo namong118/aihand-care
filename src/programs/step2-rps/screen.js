@@ -237,9 +237,10 @@ export function createScreen(container, hand = null) {
       );
     },
 
-    intro({ total, revealSec }, onStart) {
+    intro({ total, revealSec, hello = null }, onStart) {
       set(
         card(
+          hello ? h('p', { class: 'act-text' }, hello) : null,
           h('p', { class: 'act-question' }, '말에 맞게 손을 내 주세요'),
           h('p', { class: 'act-text' }, '로봇이 가위바위보를 내면, 화면의 말에 맞게 손을 내 주세요.'),
           h('p', { class: 'act-text' }, '예: 로봇이 바위를 내고 “이겨주세요”가 나오면 보를 내면 돼요.'),
@@ -326,11 +327,9 @@ export function createScreen(container, hand = null) {
       if (robotName) robotName.textContent = '기억해 보세요';
     },
 
-    good({ userHand, attempt }) {
-      set(
-        message(`잘하셨어요! ${handText(userHand)}를 내셨어요.`, 'good'),
-        attempt > 1 ? card(h('p', { class: 'act-text' }, '다시 생각해서 해내셨어요.')) : null,
-      );
+    /** 맞게 냈을 때. line = goodLine() 으로 고른 칭찬 (다시 해서 해냈으면 그 말도 들어 있다) */
+    good({ userHand, line }) {
+      set(message(line, 'good'), card(h('p', { class: 'act-text' }, `${handText(userHand)}를 내셨어요.`)));
     },
 
     /** 첫 번째 답이 조건에 맞지 않을 때 */
