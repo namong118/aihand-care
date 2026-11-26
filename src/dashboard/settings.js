@@ -110,11 +110,12 @@ function choiceRow(title, list, current, onPick, label = title) {
  * @param opts { open, settings, setSetting(key, value), close(), openRegister() }
  *   openRegister: 사용자 등록 화면(#84)으로. 없으면 버튼을 그리지 않는다
  *   openResults: 결과 화면("지난 기록 보기")으로. 없으면 버튼을 그리지 않는다
+ *   openForget: 사용자 지우기 화면(forget.js)으로. 없으면 버튼을 그리지 않는다
  *   people: 사람별 시작 단계 (없으면 그리지 않는다)
  *     { users: [{ userId, displayName }], levelsOf(userId), activities: [{ id, name, challenge }],
  *       editing: 바꾸는 중인 userId | null, onEdit(userId | null), onSetLevel(userId, 활동 id, 단계 | null) }
  */
-export function renderSettings(el, { open, settings, setSetting, close, openRegister, openResults = null, people = null }) {
+export function renderSettings(el, { open, settings, setSetting, close, openRegister, openForget = null, openResults = null, people = null }) {
   el.innerHTML = '';
   el.hidden = !open;
   if (!open) return;
@@ -147,7 +148,13 @@ export function renderSettings(el, { open, settings, setSetting, close, openRegi
             'div',
             { class: 'settings-row' },
             h('span', { class: 'settings-label' }, '사용자'),
-            h('div', { class: 'settings-choices' }, button('사용자 등록하기', openRegister, { variant: 'secondary' })),
+            h(
+              'div',
+              { class: 'settings-choices' },
+              button('사용자 등록하기', openRegister, { variant: 'secondary' }),
+              // 동의서 "지우는 방법": 화면에서 직접 지운다 (얼굴은 카메라에서 따로)
+              openForget ? button('사용자 지우기', openForget, { variant: 'secondary' }) : null,
+            ),
           )
         : null,
     ),

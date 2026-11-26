@@ -882,6 +882,8 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
   cursor: pointer;
 }
 .home-find-btn:hover { background: var(--c-accent-soft); }
+/* 사용자 지우기 확인: 지워지는 것 목록 (forget.js) */
+.forget-list { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; font-size: 24px; }
 /* 코스 요약: 이어서 해 볼 도전 활동 (그분의 단계로) */
 .course-challenges { display: flex; flex-direction: column; gap: 10px; }
 .course-challenges h2 { margin: 0; font-size: 26px; }

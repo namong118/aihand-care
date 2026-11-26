@@ -14,6 +14,19 @@ describe('createCourseStore', () => {
     expect(store.get('C1')).toEqual({ id: 'C1', userId: null, plan: PLAN, skipped: [2], finished: true, endedAt: '2026-11-13T05:30:00.000Z' });
   });
 
+  it('removeUser: 그분의 코스만 지운다 (사용자 지우기). 손님(null)은 지우지 않는다', () => {
+    const storage = createMemoryStorage();
+    const store = createCourseStore({ storage });
+    store.start({ id: 'C1', plan: PLAN, userId: 'u1' });
+    store.start({ id: 'C2', plan: PLAN, userId: 'u2' });
+    store.start({ id: 'C3', plan: PLAN, userId: 'u1' });
+    store.start({ id: 'C4', plan: PLAN });
+    expect(store.removeUser('u1')).toBe(2);
+    expect(createCourseStore({ storage }).list().map((m) => m.id)).toEqual(['C2', 'C4']);
+    expect(store.removeUser(null)).toBe(0);
+    expect(store.list()).toHaveLength(2);
+  });
+
   it('로그인한 분의 userId 를 저장한다 (손님은 null, #82)', () => {
     const store = createCourseStore({ storage: createMemoryStorage() });
     store.start({ id: 'C1', plan: PLAN, userId: 'u-2026-11-13T10:00:00.000Z' });
