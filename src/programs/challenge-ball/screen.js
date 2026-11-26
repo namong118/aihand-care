@@ -50,7 +50,7 @@ export function createScreen(container) {
         },
         'aria-label': `${label}: ${hand ? HAND_TEXT[hand] : '기억한 손'}${active ? ', 지금 할 차례' : ''}`,
       },
-      h('p', { class: 'act-label', style: { 'font-size': '22px' } }, active ? `▶ ${label}` : label),
+      h('p', { class: 'act-label', style: { 'font-size': '24px' } }, active ? `▶ ${label}` : label),
       h('p', { style: { margin: '0', 'font-size': '56px', 'font-weight': '700', 'line-height': '1.2' } }, hand ? HAND_TEXT[hand] : '?'),
     );
   }
