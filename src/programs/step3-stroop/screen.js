@@ -2,8 +2,8 @@
 // 모양은 styles.css "활동 화면 공통"(act-*) 클래스 (시안 v11, docs/ui-classes.md)
 
 import { h, button, message } from '../../ui/components.js';
-import { speak } from './voice.js';
-import { startLine, goodLine, retryLine } from './lines.js';
+import { speak } from '../../ui/voice.js';
+import { startLine, goodLine, retryLine, questionLine, inkLine, endLine } from './lines.js';
 
 export function createScreen(container, colors) {
   container.innerHTML = '';
@@ -75,7 +75,7 @@ export function createScreen(container, colors) {
         ),
       );
       // 글자 뜻은 읽지 않는다
-      speak(`문제 ${index}번. 이 글자는 무슨 색깔인가요?`);
+      speak(questionLine(index));
     },
 
     /** 답을 오래 기다릴 때 문제 아래에 안내를 붙인다 (문제 화면은 그대로) */
@@ -90,15 +90,15 @@ export function createScreen(container, colors) {
       const ink = find(inkColor);
       if (correct) {
         const line = goodLine(ink.label);
-        set(message(`${line} 글자 색은 ${ink.label}이었어요.`, 'good'));
-        speak(`${line} 글자 색은 ${ink.label}이었어요.`);
+        set(message(`${line} ${inkLine(ink.label)}`, 'good'));
+        speak(`${line} ${inkLine(ink.label)}`);
       } else {
         const line = retryLine();
         set(
           message(line, 'retry'),
-          h('div', { class: 'act-card' }, h('p', { class: 'act-text' }, `글자 색은 ${ink.label}이었어요.`)),
+          h('div', { class: 'act-card' }, h('p', { class: 'act-text' }, inkLine(ink.label))),
         );
-        speak(`${line} 글자 색은 ${ink.label}이었어요.`);
+        speak(`${line} ${inkLine(ink.label)}`);
       }
     },
 
@@ -110,7 +110,7 @@ export function createScreen(container, colors) {
         h('p', {}, '이번 회차가 끝났어요. 한 번 더 해도 좋아요.'),
         h('div', { class: 'row' }, button('한 번 더 하기', onAgain)),
       );
-      speak(done === total ? `${total}문제를 모두 함께 해내셨어요! 정말 잘하셨어요!` : `${total}문제를 모두 마쳤어요. 수고하셨어요!`);
+      speak(endLine(total, done));
     },
   };
 }

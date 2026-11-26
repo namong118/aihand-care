@@ -25,9 +25,13 @@ import {
   shouldShowNotice,
   QUICK_GAMES,
   quickTiming,
+  COUNTDOWN_WORDS,
+  GOOD_TEXT,
+  retryText,
+  roundEndText,
 } from './logic.js';
 import { createScreen } from './screen.js';
-import { speak, stopSpeaking } from './voice.js';
+import { speak, stopSpeaking, preloadVoice } from '../../ui/voice.js';
 import { playQuickRound } from './quick.js';
 
 const ID = 'step2-rps';
@@ -100,7 +104,7 @@ async function waitAnswer(ctx, screen, s, since) {
 }
 
 async function countdown(ctx, screen, s, progress) {
-  const words = ['가위', '바위', '보!'];
+  const words = COUNTDOWN_WORDS;
   for (let i = 0; i < words.length; i++) {
     if (!s.alive) return;
     screen.countdown(words[i], progress);
@@ -163,7 +167,7 @@ async function playQuestion(ctx, screen, s, q, index, total) {
 
     if (result.correct) {
       screen.good({ userHand: picked.hand, attempt });
-      speak('잘하셨어요!');
+      speak(GOOD_TEXT);
       await robot(ctx.robot.react('ok'));
       if (!s.alive) return null;
       await wait(restMs(ctx));
@@ -173,7 +177,7 @@ async function playQuestion(ctx, screen, s, q, index, total) {
     if (attempt < MAX_TRIES) {
       // 처음 맞지 않음: 도움말을 보여 주고, 준비되면 "다시 하기"
       const hint = hintFor(q.conditionId);
-      speak(`다시 해 볼까요? ${hint}`);
+      speak(retryText(q.conditionId));
       const again = waitClick(s, (onAgain) => screen.retry({ userHand: picked.hand, hint }, onAgain));
       await robot(ctx.robot.react('retry'));
       if (!(await again)) return null;
@@ -232,7 +236,7 @@ async function playRound(ctx, screen, s) {
     },
   });
 
-  speak(`${items.length}문제를 모두 함께 해 주셨어요. 수고하셨어요!`);
+  speak(roundEndText(items.length));
   screen.summary({ rows: items }, () => start(ctx, screen, s));
 }
 
@@ -248,6 +252,8 @@ export default {
     // waits: 기다리는 중인 손 입력, timers: 어려움 손 내리기 타이머, answer: 화면 버튼을 기다리는 중이면 그 resolve
     session = { alive: true, waits: new Set(), timers: new Set(), answer: null, screen: null };
     const s = session;
+    // "가위, 바위, 보!"는 박자가 중요해서 화면을 열 때 음성 파일을 미리 불러 둔다 (사고력·동시에 모드 공통)
+    preloadVoice(...COUNTDOWN_WORDS);
     // ctx.hand 를 넘기면 동시에 가위바위보 화면에 "내 손" 캠 화면이 나온다 (웹캠이 켜져 있을 때만)
     const screen = createScreen(container, ctx.hand);
     s.screen = screen;

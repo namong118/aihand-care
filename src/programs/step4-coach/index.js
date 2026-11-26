@@ -17,6 +17,7 @@ import {
   needsChooser,
 } from './logic.js';
 import { createScreen } from './screen.js';
+import { stopSpeaking } from '../../ui/voice.js';
 
 const ID = 'step4-coach';
 
@@ -165,6 +166,7 @@ export default {
   unmount() {
     if (!session) return;
     session.alive = false;
+    stopSpeaking();
     session.waits.forEach((w) => w.abort());
     session = null;
   },

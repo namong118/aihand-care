@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { voiceLines as step1VoiceLines, announceLine, recallLine, goodLine, summaryLine, QUESTIONS_PER_ROUND as STEP1_TOTAL } from './logic.js';
 import {
   CARD_NUMBERS,
   POSE_BY_NUMBER,
@@ -143,6 +144,25 @@ describe('summarizeRound', () => {
   });
   it('반응 시간이 하나도 없으면 null', () => {
     expect(summarizeRound([{ status: 'skipped', reactionMs: null }]).avgReactionMs).toBeNull();
+  });
+});
+
+describe('음성 문구 (#61)', () => {
+  it('화면에서 읽는 문구가 voiceLines 에 모두 들어 있다', () => {
+    const lines = step1VoiceLines();
+    for (let n = 1; n <= 5; n++) {
+      expect(lines).toContain(announceLine(n));
+      expect(lines).toContain(recallLine(n));
+    }
+    expect(lines).toContain(announceLine(3, 2));
+    expect(lines).toContain(goodLine(1));
+    expect(lines).toContain(goodLine(2));
+    expect(lines).toContain(summaryLine(STEP1_TOTAL));
+  });
+
+  it('로봇이 보여 줄 숫자 순서는 읽지 않는다 (숫자 개수만)', () => {
+    expect(announceLine(3)).toBe('이번에는 숫자 3개예요. 로봇을 잘 보고 기억해 주세요.');
+    expect(announceLine(3, 2)).toBe('같은 숫자를 한 번 더 보여 드릴게요. 로봇을 잘 보고 기억해 주세요.');
   });
 });
 

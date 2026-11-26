@@ -2,9 +2,9 @@
 
 import colors from '../../data/colors.json';
 import { makeRound, judge, gapMs, summarizeRound, isPerfect, NO_ANSWER_HINT_MS } from './logic.js';
-import { idleLine } from './lines.js';
+import { idleLine, hintLine } from './lines.js';
 import { createScreen } from './screen.js';
-import { stopSpeaking } from './voice.js';
+import { stopSpeaking } from '../../ui/voice.js';
 
 const ID = 'step3-stroop';
 
@@ -22,7 +22,7 @@ function pickOne(ctx, screen, s, q, progress) {
     let finished = false;
     // 오래 답이 없으면 안내: 카드를 들고 있으면 다시 인식하지 않으므로 내렸다가 다시 보여 달라고 한다 (#14)
     const hintTimer = setTimeout(
-      () => screen.hint(`${idleLine()} 카드를 내렸다가 다시 보여 주세요. 아래 버튼을 눌러도 돼요.`),
+      () => screen.hint(hintLine(idleLine())),
       NO_ANSWER_HINT_MS,
     );
     const finish = (picked) => {

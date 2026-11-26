@@ -4,7 +4,17 @@
 
 import { h, button, message } from '../../ui/components.js';
 import { handIcon } from '../../ui/icons.js';
-import { CARD_NUMBERS } from './logic.js';
+import { speak } from '../../ui/voice.js';
+import {
+  CARD_NUMBERS,
+  INTRO_VOICE,
+  announceLine,
+  recallLine,
+  goodLine,
+  RETRY_TEXT,
+  REVEAL_TEXT,
+  summaryLine,
+} from './logic.js';
 
 // 요약 화면의 문제별 결과 문구 (점수처럼 보이지 않게, 기호 + 글자)
 const STATUS_TEXT = {
@@ -51,6 +61,7 @@ export function createScreen(container) {
         ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
+      speak(INTRO_VOICE);
     },
 
     /** 카메라를 숫자 모드로 바꾸는 동안 (보통 바로 끝난다) */
@@ -71,6 +82,7 @@ export function createScreen(container) {
           h('p', { class: 'act-text', style: { 'text-align': 'center' } }, '로봇을 잘 보고 기억해 주세요'),
         ),
       );
+      speak(announceLine(count, attempt));
     },
 
     /** 로봇이 보여주는 동안. 정답 숫자는 화면에 쓰지 않는다 */
@@ -106,7 +118,7 @@ export function createScreen(container) {
           given.length > 0 ? h('span', { class: 'act-tag' }, `지금까지: ${join(given)}`) : null,
         ),
         card(
-          h('p', { class: 'act-question', style: { 'font-size': '44px' } }, `숫자 ${count}개를 순서대로 보여 주세요`),
+          h('p', { class: 'act-question', style: { 'font-size': '44px' } }, recallLine(count)),
           h('p', { class: 'act-text' }, '카드는 카메라 가까이(10~15cm) 하나씩 보여 주세요. 아래 숫자를 눌러도 돼요.'),
         ),
         h(
@@ -124,29 +136,33 @@ export function createScreen(container) {
           button('이 문제 건너뛰기', onSkip, { variant: 'secondary' }),
         ),
       );
+      // 카드를 하나씩 넣을 때마다 화면을 다시 그리므로, 첫 카드를 기다릴 때만 읽는다
+      if (given.length === 0) speak(recallLine(count));
     },
 
     /** 해냈을 때. 잠시 뒤 다음 문제로 넘어간다 */
     good({ given, attempt }) {
       set(
-        message(attempt > 1 ? '잘하셨어요! 다시 보고 해내셨어요.' : '잘하셨어요! 순서까지 똑같아요.', 'good'),
+        message(goodLine(attempt), 'good'),
         card(h('p', { class: 'act-label' }, '보여 주신 순서'), h('p', { class: 'act-question' }, join(given))),
       );
+      speak(goodLine(attempt));
     },
 
     /** 처음 해내지 못했을 때. 정답은 아직 보여 주지 않고, 로봇이 한 번 더 보여 준다 */
     retry({ given }, onAgain) {
       set(
-        message('다시 해 볼까요? 로봇이 같은 순서를 한 번 더 보여 줄게요.', 'retry'),
+        message(RETRY_TEXT, 'retry'),
         card(h('p', { class: 'act-label' }, '보여 주신 순서'), h('p', { class: 'act-question' }, join(given))),
         h('div', { class: 'row' }, button('다시 보기', onAgain)),
       );
+      speak(RETRY_TEXT);
     },
 
     /** 두 번째도 해내지 못했을 때: 순서를 함께 확인한다 */
     reveal({ expected, given, isLast }, onNext) {
       set(
-        message('함께 순서를 확인해 볼까요?', 'info'),
+        message(REVEAL_TEXT, 'info'),
         card(
           h('p', { class: 'act-label' }, '로봇이 보여준 순서'),
           h('p', { class: 'act-question' }, join(expected)),
@@ -155,6 +171,7 @@ export function createScreen(container) {
         ),
         h('div', { class: 'row' }, button(isLast ? '끝내기' : '다음 문제', onNext)),
       );
+      speak(REVEAL_TEXT);
     },
 
     /**
@@ -163,7 +180,7 @@ export function createScreen(container) {
      */
     summary({ rows }, onAgain) {
       set(
-        message(`${rows.length}문제를 모두 함께 해 주셨어요. 수고하셨어요!`, 'good'),
+        message(summaryLine(rows.length), 'good'),
         card(
           h('h2', { style: { 'font-size': '30px', margin: '0' } }, '오늘의 활동 기록'),
           h(
@@ -182,6 +199,7 @@ export function createScreen(container) {
         ),
         h('div', { class: 'row' }, button('한 번 더 하기', onAgain)),
       );
+      speak(summaryLine(rows.length));
     },
   };
 }

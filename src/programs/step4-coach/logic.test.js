@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { voiceLines as step4VoiceLines, stepLine, OLD_HAND_TEXT, REST_DONE_TEXT, REST_SKIPPED_VOICE, FINISH_TEXT } from './logic.js';
 import {
   expandRoutine,
   holdMsOf,
@@ -227,5 +228,22 @@ describe('summarizeSteps', () => {
   });
   it('모르는 방식이면 에러', () => {
     expect(() => summarizeSteps([{ method: 'done' }])).toThrow();
+  });
+});
+
+describe('음성 문구 (#61)', () => {
+  const poses = [{ name: 'ROCK', label: '주먹(바위)' }];
+
+  it('동작 문구는 say, 없으면 손모양 이름', () => {
+    const labelOf = (name) => poses.find((p) => p.name === name)?.label ?? name;
+    expect(stepLine({ pose: 'ROCK', say: '주먹을 쥐어 보세요' }, labelOf)).toBe('주먹을 쥐어 보세요');
+    expect(stepLine({ pose: 'ROCK' }, labelOf)).toBe('주먹(바위)');
+  });
+
+  it('루틴의 동작 문구와 공통 안내가 voiceLines 에 들어 있다. 숫자 세기는 넣지 않는다', () => {
+    const routines = [{ id: 'r', title: 't', description: 'd', steps: [{ pose: 'ROCK', say: '주먹을 쥐어 보세요' }, { pose: 'ROCK' }] }];
+    const lines = step4VoiceLines(routines, poses);
+    expect(lines).toEqual(expect.arrayContaining(['주먹을 쥐어 보세요', '주먹(바위)', OLD_HAND_TEXT, REST_DONE_TEXT, REST_SKIPPED_VOICE, FINISH_TEXT]));
+    expect(lines).not.toContain('하나');
   });
 });

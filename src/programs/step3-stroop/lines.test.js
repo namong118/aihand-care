@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { voiceLines, questionLine, hintLine, inkLine, endLine } from './lines.js';
 import { START_LINES, IDLE_LINES, GOOD_LINES, RETRY_LINES, pickLine, goodLine, retryLine, startLine, idleLine } from './lines.js';
 
 const COLOR_NAMES = ['빨강', '파랑', '노랑', '초록'];
@@ -37,5 +38,26 @@ describe('반응 멘트', () => {
     expect(RETRY_LINES).toContain(retryLine());
     expect(START_LINES).toContain(startLine());
     expect(IDLE_LINES).toContain(idleLine());
+  });
+});
+
+describe('음성 문구 (#61)', () => {
+  const colors = COLOR_NAMES.map((label) => ({ label }));
+
+  it('읽을 수 있는 문구가 voiceLines 에 모두 들어 있다', () => {
+    const lines = voiceLines(colors, 5);
+    for (let i = 1; i <= 5; i++) expect(lines).toContain(questionLine(i));
+    for (const idle of IDLE_LINES) expect(lines).toContain(hintLine(idle));
+    for (const label of COLOR_NAMES) expect(lines).toContain(inkLine(label));
+    expect(lines).toContain(endLine(5, 5));
+    expect(lines).toContain(endLine(5, 3));
+  });
+
+  it('문제 문구에 글자 뜻(색 이름)을 넣지 않는다', () => {
+    for (let i = 1; i <= 5; i++) for (const name of COLOR_NAMES) expect(questionLine(i)).not.toContain(name);
+  });
+
+  it('음성 문구에 쓰지 않는 말이 없다', () => {
+    for (const line of voiceLines(colors, 5)) for (const word of FORBIDDEN) expect(line).not.toContain(word);
   });
 });
