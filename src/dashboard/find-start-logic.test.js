@@ -106,12 +106,17 @@ describe('시작 단계 저장·적용', () => {
     expect(cleanLevels('x')).toEqual({});
   });
 
-  it('settingsFor: 정해 둔 활동만 단계를 바꾸고 원래 설정은 그대로', () => {
-    const settings = { difficulty: 'easy', speed: 'NORMAL', levels: { 'step1-memory': 'normal', 'challenge-baseball': 2 } };
-    expect(settingsFor('step1-memory', settings).difficulty).toBe('normal');
-    expect(settingsFor('challenge-baseball', settings).challengeLevel).toBe(2);
-    expect(settingsFor('step2-rps', settings).difficulty).toBe('easy');
+  it('settingsFor: 그분이 정해 둔 활동만 단계를 바꾸고 원래 설정은 그대로', () => {
+    const settings = { difficulty: 'easy', speed: 'NORMAL' };
+    const levels = { 'step1-memory': 'normal', 'challenge-baseball': 2 };
+    expect(settingsFor('step1-memory', settings, levels).difficulty).toBe('normal');
+    expect(settingsFor('challenge-baseball', settings, levels).challengeLevel).toBe(2);
+    expect(settingsFor('step2-rps', settings, levels).difficulty).toBe('easy');
     expect(settings.difficulty).toBe('easy');
+  });
+
+  it('settingsFor: 손님·하나만 해 보기(단계 없음)는 홈 설정 그대로', () => {
     expect(settingsFor('step1-memory', { difficulty: 'hard' }).difficulty).toBe('hard');
+    expect(settingsFor('challenge-baseball', { difficulty: 'hard' }, {}).challengeLevel).toBeUndefined();
   });
 });

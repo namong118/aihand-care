@@ -24,8 +24,15 @@ import {
   findStartOf,
   settingsFor,
 } from './dashboard/find-start-logic.js';
-import { renderFindStartIntro, createFindStartBar, renderFindStartBetween, renderFindStartRecommend } from './dashboard/find-start.js';
+import {
+  renderFindStartIntro,
+  createFindStartBar,
+  renderFindStartBetween,
+  renderFindStartRecommend,
+  renderFindStartOffer,
+} from './dashboard/find-start.js';
 import { loadSavedSettings, saveSettings, removeOldUsers } from './dashboard/prefs.js';
+import { createLevelStore } from './dashboard/user-levels.js';
 import { h, button, message } from './ui/components.js';
 import { PROGRAMS } from './programs/index.js';
 import login from './login/index.js';
@@ -71,27 +78,55 @@ function setSetting(key, value) {
   if (screen === 'home') showHome(); // 제목 아래 "난이도 · 속도" 알약 갱신
 }
 
-/** 나의 시작 찾기로 정한 시작 단계 지우기 (설정 영역) */
-function clearLevels() {
-  settings.levels = {};
-  saveSettings(settings);
-  updateSettings();
-  if (screen === 'home') showHome();
+// ---- 사람별 시작 단계 (docs/decisions.md 3번 "맞춤 단계") ----
+// 로그인한 분마다 저장한다. 코스는 그분의 단계로, 하나만 해 보기·손님은 홈 설정 그대로. 자동으로 올리지 않는다.
+const levelStore = createLevelStore();
+let levelEditing = null; // 설정에서 단계를 바꾸는 중인 분의 userId
+
+/** 단계를 정할 수 있는 활동: 기본 활동(손운동은 난이도가 없어서 뺌) + 지금 있는 도전 활동 */
+const LEVEL_ACTIVITIES = [
+  ...CATALOG.filter((p) => p.id !== 'step4-coach').map((p) => ({ id: p.id, name: p.name, challenge: false })),
+  ...CHALLENGES.filter((c) => PROGRAMS[c.id]).map((c) => ({ id: c.id, name: c.name, challenge: true })),
+];
+
+/** 지금 하시는 분의 시작 단계. 손님·로그인 전이면 {} */
+function whoLevels() {
+  return levelStore.get(who?.userId ?? null);
 }
 
 function updateSettings() {
+  const users = settingsOpen ? userStore.list() : [];
+  if (settingsOpen) levelStore.prune(users.map((u) => u.userId)); // 지워진 분의 단계 정리
   renderSettings(settingsEl, {
     open: settingsOpen,
     settings,
     setSetting,
     close: () => toggleSettings(false),
     openRegister: showRegister,
-    clearLevels,
+    openResults: () => {
+      toggleSettings(false);
+      showResults();
+    },
+    people: {
+      users,
+      levelsOf: (userId) => levelStore.get(userId),
+      activities: LEVEL_ACTIVITIES,
+      editing: levelEditing,
+      onEdit: (userId) => {
+        levelEditing = userId;
+        updateSettings();
+      },
+      onSetLevel: (userId, id, level) => {
+        levelStore.set(userId, { [id]: level });
+        updateSettings();
+      },
+    },
   });
 }
 
 function toggleSettings(open = !settingsOpen) {
   settingsOpen = open;
+  if (!open) levelEditing = null;
   updateSettings();
   updateStatusbar();
   if (open) settingsEl.scrollIntoView?.({ block: 'nearest' });
@@ -169,12 +204,10 @@ function showHome() {
     settings,
     plan: coursePlan.map((s) => s.program),
     openSettings: () => toggleSettings(true),
-    openResults: () => showResults(),
     startProgram: (id) => showProgram(id),
     startCourse: showLogin,
     hasProgram: (id) => Boolean(PROGRAMS[id]), // 도전 활동이 아직 없으면 홈에서 "준비 중"
-    levels: settings.levels ?? {}, // 나의 시작 찾기로 정한 시작 단계 → 카드에 "보통부터"
-    openFindStart: findGroups.length > 0 ? showFindStartIntro : null,
+    openFindStart: findGroups.length > 0 ? showFindStartLogin : null,
   });
 }
 
@@ -231,8 +264,9 @@ function showProgram(id, step = null, find = null) {
   current = program;
   try {
     // 하나만 해 보기(코스 밖)일 때는 ctx.single = true. 프로그램이 코스 밖에서만 보여 줄 화면을 고를 수 있게 (STEP 2 동시에 가위바위보)
-    // 시작 단계를 정해 둔 활동은 그 단계로 연다 (나의 시작 찾기, settingsFor)
-    const runCtx = step ? courseCtx(step) : find ? findCtx() : { ...ctx, settings: settingsFor(id, settings), single: true };
+    // 홈에서 여는 하나만 해 보기는 로그인하지 않으므로(who 없음) 홈 설정 그대로.
+    // 코스를 마친 뒤 요약 화면에서 여는 도전 활동은 그분의 단계로 (whoLevels, docs/decisions.md 3번)
+    const runCtx = step ? courseCtx(step) : find ? findCtx() : { ...ctx, settings: settingsFor(id, settings, whoLevels()), single: true };
     program.mount(body, runCtx);
   } catch (err) {
     console.error(err);
@@ -250,13 +284,13 @@ const userStore = createUserStore(); // 얼굴 로그인 사용자 목록 (src/l
 let course = null; // 진행 중인 코스 { id, index, bar }
 let who = null; // 코스 시작 때 로그인한 분 { userId, displayName, via }. 손님이면 userId·displayName 이 null (#82)
 
-/** 코스 동안 프로그램에 넘기는 ctx: 기록에 detail.course(사용자 포함)만 붙인다 (나머지는 ctx 그대로) */
+/** 코스 동안 프로그램에 넘기는 ctx: 그분의 시작 단계로 설정을 바꾸고, 기록에 detail.course(사용자 포함)를 붙인다 */
 function courseCtx(step) {
   const id = course.id;
   const userId = who?.userId ?? null;
   return {
     ...ctx,
-    settings: settingsFor(step.program, settings),
+    settings: settingsFor(step.program, settings, whoLevels()),
     log: { ...ctx.log, record: (r) => ctx.log.record(tagRecord(r, { id, order: step.order, of: step.of, userId })) },
   };
 }
@@ -311,18 +345,45 @@ function showLogin() {
   });
 }
 
-/** 사용자 등록 화면 (선생님용, 설정 영역의 "사용자 등록하기"). 끝나거나 그만두면 홈 */
+/**
+ * 사용자 등록 화면 (설정 영역의 "사용자 등록하기"). 그만두면 홈.
+ * 등록을 마치면 "등록한 분으로 바로 나의 시작 찾기"를 묻는다 (시연: 등록 → 시작 찾기 → 코스)
+ */
 function showRegister() {
   toggleSettings(false);
   leaveProgram();
   course = null;
   setScreen('login');
   current = login;
-  const back = () => {
-    current = null;
+  login.mountRegister(appEl, ctx, {
+    store: userStore,
+    onDone: (user) => {
+      current = null;
+      showRegistered(user);
+    },
+    onCancel: () => {
+      current = null;
+      showHome();
+    },
+  });
+}
+
+/** 등록을 마친 뒤: 그분으로 바로 나의 시작 찾기 / 홈으로 */
+function showRegistered(user) {
+  if (!user?.userId || findGroups.length === 0) {
     showHome();
-  };
-  login.mountRegister(appEl, ctx, { store: userStore, onDone: back, onCancel: back });
+    return;
+  }
+  leaveProgram();
+  setScreen('find');
+  renderFindStartOffer(appEl, {
+    who: user.displayName,
+    onFind: () => {
+      who = { userId: user.userId, displayName: user.displayName, via: 'register' };
+      showFindStartIntro();
+    },
+    onHome: showHome,
+  });
 }
 
 function showCourseIntro() {
@@ -333,6 +394,7 @@ function showCourseIntro() {
     plan: coursePlan,
     deviceNote: deviceNote(),
     who: whoText(),
+    levels: whoLevels(), // 그분의 시작 단계 → 목록에 "보통부터"
     onStart: startCourse,
     onHome: showHome,
   });
@@ -397,7 +459,17 @@ function finishCourse() {
   course = null;
   setScreen('course');
   const summary = summarizeCourse(courseStore.get(id), devices.log.list());
-  renderCourseSummary(appEl, { summary, who: whoText(), onHome: showHome, onResults: () => showResults() });
+  // 도전 활동은 코스 밖. 마친 뒤 원하시면 그분의 도전 단계로 이어서 (손님은 1단계)
+  const levels = whoLevels();
+  const challenges = CHALLENGES.filter((c) => PROGRAMS[c.id]).map((c) => ({ id: c.id, name: c.name, level: levels[c.id] ?? 1 }));
+  renderCourseSummary(appEl, {
+    summary,
+    who: whoText(),
+    challenges,
+    onChallenge: (programId) => showProgram(programId),
+    onHome: showHome,
+    onResults: () => showResults(),
+  });
   sendCourseSummary(summary); // 보호자 앱(#62). 기다리지 않고, 손님·연결 안 한 분은 알아서 보내지 않는다
   ctx.robot
     .hello()
@@ -409,10 +481,32 @@ function finishCourse() {
 // 홈 "나의 시작 찾기" → 시작 안내 → 짝마다 기본 활동 짧은 판 → (해내시면) 도전 활동 1단계 짧은 판 → 추천 화면.
 // 짝과 추천 단계는 src/data/find-start.json. 프로그램은 ctx.settings.findStart 가 true 면 짧은 판으로 한다.
 // 짧은 판 기록에는 detail.findStart 가 붙고, 결과 화면 반응 시간 변화에서는 빠진다.
-// 정한 시작 단계는 settings.levels 에 저장 (스테이션 하나에 하나, prefs.js).
+// 코스처럼 먼저 로그인한다. 정한 시작 단계는 그분의 것으로 저장 (user-levels.js). 손님은 추천만 보여 주고 저장하지 않는다.
 const allFindGroups = loadFindStart(findStartJson, [...CATALOG, ...CHALLENGES].map((p) => p.id));
 const findGroups = readyGroups(allFindGroups);
 let finding = null; // 진행 중인 나의 시작 찾기 { id, index, role, no, results: { 짝 id: { basic, challenge } }, waiting }
+
+/** 나의 시작 찾기 앞 로그인 (코스와 같은 화면). 끝나면 시작 안내, "← 홈으로"면 홈 */
+function showFindStartLogin() {
+  leaveProgram();
+  course = null;
+  finding = null;
+  who = null;
+  setScreen('login');
+  current = login;
+  login.mount(appEl, ctx, {
+    store: userStore,
+    onDone: (user) => {
+      current = null;
+      who = user;
+      showFindStartIntro();
+    },
+    onCancel: () => {
+      current = null;
+      showHome();
+    },
+  });
+}
 
 function showFindStartIntro() {
   leaveProgram();
@@ -489,7 +583,8 @@ function showFindBetween() {
 function showFindRecommend() {
   leaveProgram();
   setScreen('find');
-  const levels = settings.levels ?? {};
+  const userId = who?.userId ?? null;
+  const levels = whoLevels(); // 그분이 전에 정해 둔 단계 (하지 않은 짝은 이 값이 골라져 있음)
   const rows = findGroups.map((group) => {
     const rec = recommendFor(group, finding.results[group.id]);
     const pick = rec ?? {
@@ -501,11 +596,14 @@ function showFindRecommend() {
   renderFindStartRecommend(appEl, {
     rows,
     later: allFindGroups.filter((g) => !g.ready),
-    onSave: (picked) => {
-      settings.levels = { ...levels, ...picked };
-      saveSettings(settings);
-      showHome();
-    },
+    who: who?.displayName ?? null,
+    // 손님이면 저장하지 않는다 (onSave 없음 → 추천만 보여 줌)
+    onSave: userId
+      ? (picked) => {
+          levelStore.set(userId, picked);
+          showHome();
+        }
+      : null,
     onHome: showHome,
   });
 }

@@ -113,12 +113,13 @@ export function cleanLevels(raw) {
 }
 
 /**
- * 이 활동을 열 때 넘길 설정. 시작 단계를 정해 둔 활동이면 그 단계로 바꾼다.
+ * 이 활동을 열 때 넘길 설정. 그분이 시작 단계를 정해 둔 활동이면 그 단계로 바꾼다.
  *   기본 활동 → difficulty, 도전 활동 → challengeLevel (시작 화면에서 미리 골라 둠)
+ *   levels: 로그인한 분의 시작 단계 (user-levels.js). 손님·하나만 해 보기는 {} → 홈 설정 그대로
  * 원래 설정 객체는 바꾸지 않는다.
  */
-export function settingsFor(id, settings) {
-  const level = settings.levels?.[id];
+export function settingsFor(id, settings, levels = {}) {
+  const level = levels?.[id];
   if (!isLevelFor(id, level)) return { ...settings };
   return isChallengeId(id) ? { ...settings, challengeLevel: level } : { ...settings, difficulty: level };
 }

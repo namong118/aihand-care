@@ -76,6 +76,27 @@ export function renderFindStartIntro(container, { groups, onStart, onHome }) {
 }
 
 /**
+ * 사용자 등록을 마친 뒤: 그분으로 바로 나의 시작 찾기를 할지 묻는다 (시연: 등록 → 시작 찾기 → 코스).
+ * @param o.who     등록한 분 호칭
+ * @param o.onFind  "나의 시작 찾기 하기"
+ * @param o.onHome  "홈으로"
+ */
+export function renderFindStartOffer(container, { who, onFind, onHome }) {
+  container.innerHTML = '';
+  container.append(
+    h(
+      'div',
+      { class: 'course find-start' },
+      h('span', { class: 'pill course-who', 'aria-label': `등록한 분: ${who}` }, who),
+      h('h1', {}, `${who}, 반가워요`),
+      h('p', {}, '어디서부터 시작하면 좋을지 짧게 해 보고 정해 둘까요? 다음 코스부터 그 단계로 시작해요.'),
+      h('p', { class: 'find-note' }, '나중에 홈의 "나의 시작 찾기"나 설정에서도 정할 수 있어요.'),
+      h('div', { class: 'row' }, button('나의 시작 찾기 하기', onFind), button('홈으로', onHome, { variant: 'secondary' })),
+    ),
+  );
+}
+
+/**
  * 짧은 판 활동 화면 위쪽 막대 (기존 program-bar 대신).
  *   "나의 시작 찾기 · 숫자 기억 · 기본 활동 · 1 / 2"   [건너뛰기] [그만하기]
  * 건너뛰기·그만하기는 한 번 더 묻는다 (코스 막대와 같은 방식).
@@ -168,10 +189,12 @@ function levelRow(id, levels, selected, onPick) {
  * @param o.rows    [{ group, pick: { basic, challenge }, recommended: boolean }]
  *                  recommended 가 false 면(기본 활동을 건너뜀) 지금 설정이 골라져 있고, 바꾸지 않으면 저장하지 않는다
  * @param o.later   준비 중인 짝
- * @param o.onSave  (levels) => 저장하고 홈으로. levels = { 활동 id: 단계 }
+ * @param o.who     지금 하시는 분 호칭. 손님이면 null
+ * @param o.onSave  (levels) => 그분의 시작 단계로 저장하고 홈으로. levels = { 활동 id: 단계 }
+ *                  null 이면(손님) 추천만 보여 주고 저장하지 않는다 (docs/decisions.md 3번)
  * @param o.onHome  "저장하지 않고 홈으로"
  */
-export function renderFindStartRecommend(container, { rows, later, onSave, onHome }) {
+export function renderFindStartRecommend(container, { rows, later, who = null, onSave, onHome }) {
   const state = rows.map((r) => ({ ...r, pick: { ...r.pick }, touched: false }));
 
   function levelsToSave() {
@@ -190,8 +213,10 @@ export function renderFindStartRecommend(container, { rows, later, onSave, onHom
       h(
         'div',
         { class: 'course find-start find-recommend' },
+        // 지금 하시는 분 (코스 화면의 whoPill 과 같은 모양). 손님이면 "손님"
+        h('span', { class: 'pill course-who', 'aria-label': `지금 하시는 분: ${who ?? '손님'}` }, who ?? '손님'),
         h('h1', {}, '이 단계부터 시작해 보세요'),
-        h('p', {}, '마음에 들지 않으면 눌러서 바꾸실 수 있어요.'),
+        h('p', {}, onSave ? '마음에 들지 않으면 눌러서 바꾸실 수 있어요.' : '오늘 해 보신 것으로 고른 시작 단계예요.'),
         state.map((r) =>
           h(
             'section',
@@ -211,13 +236,17 @@ export function renderFindStartRecommend(container, { rows, later, onSave, onHom
           ),
         ),
         later.length > 0 ? h('ul', { class: 'find-later-list' }, later.map(laterRow)) : null,
-        h('p', { class: 'find-note' }, '설정에서 언제든 지우실 수 있어요.'),
-        h(
-          'div',
-          { class: 'row' },
-          button('이대로 시작하기', () => onSave(levelsToSave())),
-          button('저장하지 않고 홈으로', onHome, { variant: 'secondary' }),
-        ),
+        onSave
+          ? h('p', { class: 'find-note' }, `${who}의 다음 코스부터 이 단계로 시작해요. 설정에서 언제든 바꾸실 수 있어요.`)
+          : h('p', { class: 'find-note' }, '손님으로 하셔서 저장하지 않아요. 호칭을 등록하시면 다음부터 이 단계로 시작할 수 있어요.'),
+        onSave
+          ? h(
+              'div',
+              { class: 'row' },
+              button('이대로 저장하기', () => onSave(levelsToSave())),
+              button('저장하지 않고 홈으로', onHome, { variant: 'secondary' }),
+            )
+          : h('div', { class: 'row' }, button('홈으로', onHome)),
       ),
     );
   }

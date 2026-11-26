@@ -882,19 +882,19 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
   cursor: pointer;
 }
 .home-find-btn:hover { background: var(--c-accent-soft); }
-/* 시작 단계 알약: 카드 이름 옆, 도전 칸 이름 옆 */
-.home-level {
-  margin-left: 10px;
-  padding: 3px 12px;
+/* 코스 요약: 이어서 해 볼 도전 활동 (그분의 단계로) */
+.course-challenges { display: flex; flex-direction: column; gap: 10px; }
+.course-challenges h2 { margin: 0; font-size: 26px; }
+/* 코스 시작 화면: 로그인한 분의 시작 단계 알약 ("보통부터"). 정해 두지 않은 활동은 알약 없음 */
+.course-level {
+  padding: 4px 14px;
   border-radius: 999px;
-  background: var(--c-surface);
-  color: var(--step-fg);
-  font-size: 17px;
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-size: 20px;
   font-weight: 600;
-  vertical-align: middle;
+  white-space: nowrap;
 }
-.home-challenge .home-level { margin-left: auto; padding: 3px 10px; background: var(--step-bg); font-size: 15px; white-space: nowrap; }
-.home-challenge .home-level + .home-challenge-go { margin-left: 0; }
 .home-challenge-name { white-space: nowrap; }
 
 .find-start { display: flex; flex-direction: column; gap: 18px; }
