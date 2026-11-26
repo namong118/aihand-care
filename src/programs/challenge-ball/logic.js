@@ -89,22 +89,34 @@ export function beatMs(speed) {
   return isSlow(speed) ? 1500 : 1000;
 }
 
-/** 3단계에서 지시를 보여 주다가 가리기까지 시간(ms). [준비됐어요]를 누르면 바로 가린다 */
+/** 3단계에서 지시를 보여 주다가 가리기까지 시간(ms). [준비됐어요]를 누르면 바로 가린다. 가린 뒤에도 [준비됐어요]를 눌러야 넘어간다 */
 export function hideMs(speed) {
   return isSlow(speed) ? 8000 : 5000;
 }
 
-/** 로봇이 공을 쥐고 있는 시간(ms). 사용자가 받을 손을 준비하는 시간. 쥔 채 오래 두지 않는다 */
-export function holdBallMs(speed) {
-  return isSlow(speed) ? 3000 : 2000;
+/**
+ * 받기 모양: 웹캠에 펼친 손이 보이면 로봇이 공을 내려놓는다 (2026-11-26 A).
+ * 손바닥을 위로 받친 손은 웹캠에서 손가락이 겹쳐 보여 엄지가 흔들리기 쉬워서, 엄지만 접힌 FOUR 도 받기로 친다.
+ * 왼손·오른손은 확인하지 않는다 (사용자를 믿는다).
+ */
+export const RECEIVE_POSES = ['PAPER', 'FOUR'];
+
+/** 받기 모양을 이만큼 유지하면 확정(ms). 손을 받친 채 오래 들고 있지 않아도 되게 짧게 */
+export function receiveHoldMs(speed) {
+  return isSlow(speed) ? 800 : 500;
 }
 
 /**
- * 공을 돌려받은 뒤 다음 번으로 넘어가기 전 시간(ms).
- * 그사이 공이 떨어졌으면 [다시 건네기]를 누를 수 있어야 해서 넉넉히 둔다
+ * 받을 손을 기다리는 최대 시간(ms). 그동안 로봇은 공을 쥐고 있으므로 오래 두지 않는다 (11/23 약지 문제).
+ * 이 안에 손이 안 보이고 버튼도 누르지 않으면 "손을 받쳐 주세요 — 셋, 둘, 하나" 뒤 내려놓는다
  */
-export function gapMs(speed) {
-  return isSlow(speed) ? 5000 : 3500;
+export function receiveWaitMs(speed) {
+  return isSlow(speed) ? 15000 : 10000;
+}
+
+/** 받기 모양 이름인지 (화면에 "손이 보여요" 안내용) */
+export function isReceivePose(name) {
+  return RECEIVE_POSES.includes(name);
 }
 
 /**

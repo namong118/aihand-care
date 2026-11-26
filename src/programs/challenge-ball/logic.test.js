@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   EXCHANGES, ALL_PAIRS, levelSpec, defaultLevel, otherHand, makeInstructions, samePair, instructionText,
-  beatMs, hideMs, holdBallMs, gapMs, summarizeSession,
+  beatMs, hideMs, receiveHoldMs, receiveWaitMs, RECEIVE_POSES, isReceivePose, summarizeSession,
 } from './logic.js';
 
 // 매번 다른 값을 주는 간단한 의사 난수 (seed 고정)
@@ -109,14 +109,30 @@ describe('makeInstructions', () => {
 
 describe('시간 값', () => {
   it('속도 느리게면 더 길다', () => {
-    for (const fn of [beatMs, hideMs, holdBallMs, gapMs]) {
+    for (const fn of [beatMs, hideMs, receiveHoldMs, receiveWaitMs]) {
       expect(fn('SLOW')).toBeGreaterThan(fn('NORMAL'));
     }
   });
 
-  it('공을 쥐는 시간은 짧게 (3초 이하)', () => {
-    expect(holdBallMs('NORMAL')).toBeLessThanOrEqual(3000);
-    expect(holdBallMs('SLOW')).toBeLessThanOrEqual(3000);
+  it('받을 손을 기다리며 공을 쥐는 시간은 15초를 넘지 않는다 (서보 보호)', () => {
+    expect(receiveWaitMs('NORMAL')).toBeLessThanOrEqual(15000);
+    expect(receiveWaitMs('SLOW')).toBeLessThanOrEqual(15000);
+  });
+
+  it('받기 모양 확정은 1초 안 (손을 받친 채 오래 들지 않게)', () => {
+    expect(receiveHoldMs('NORMAL')).toBeLessThan(1000);
+    expect(receiveHoldMs('SLOW')).toBeLessThan(1000);
+  });
+});
+
+describe('받기 모양', () => {
+  it('펼친 손(PAPER)과 엄지만 접힌 손(FOUR)을 받기로 본다', () => {
+    expect(RECEIVE_POSES).toEqual(['PAPER', 'FOUR']);
+    expect(isReceivePose('PAPER')).toBe(true);
+    expect(isReceivePose('FOUR')).toBe(true);
+    expect(isReceivePose('ROCK')).toBe(false);
+    expect(isReceivePose('V')).toBe(false);
+    expect(isReceivePose(null)).toBe(false);
   });
 });
 

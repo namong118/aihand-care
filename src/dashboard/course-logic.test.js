@@ -384,6 +384,11 @@ describe('challengeText (도전 활동 한 판 기록 글)', () => {
     expect(challengeText(r('challenge-count', { level: 1, end: 20, winner: 'robot' }))).toBe('1단계 · 끝 숫자 20 · 끝 숫자를 부르심');
     expect(challengeText(r('challenge-count', { level: 1, end: 20, winner: null, stopped: true }))).toBe('1단계 · 끝 숫자 20 · 중간에 그만함');
   });
+  it('공 주고받기: 1단계는 고른 손도', () => {
+    const ball = (detail, done) => ({ program: 'challenge-ball', total: 4, done, skipped: 0, detail });
+    expect(challengeText(ball({ level: 1, hand: 'left', exchanges: [] }, 4))).toBe('1단계 · 왼손 · 공을 4번 주고받음');
+    expect(challengeText(ball({ level: 3, hand: null, exchanges: [] }, 4))).toBe('3단계 · 공을 4번 주고받음');
+  });
   it('모르는 활동·detail 없음은 null', () => {
     expect(challengeText(r('challenge-shuffle', { level: 1 }))).toBeNull();
     expect(challengeText(r('step1-memory', {}))).toBeNull();

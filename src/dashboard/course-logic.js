@@ -325,5 +325,10 @@ export function challengeText(r) {
     const how = d.winner === 'me' ? '로봇이 끝 숫자를 부름' : d.winner === 'robot' ? '끝 숫자를 부르심' : '중간에 그만함';
     return `${level}${end}${how}`;
   }
+  if (r.program === 'challenge-ball') {
+    // 1단계는 고른 손도 ("오른손 · "). 끝까지 한 회차만 기록되므로 주고받은 수만 쓴다
+    const hand = d.hand === 'right' ? '오른손 · ' : d.hand === 'left' ? '왼손 · ' : '';
+    return `${level}${hand}공을 ${r.done ?? 0}번 주고받음`;
+  }
   return null;
 }
