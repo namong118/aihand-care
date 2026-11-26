@@ -68,9 +68,9 @@ function playedChallenges(records, also = null) {
 /** 기록 한 건의 "완료 4 / 5 · 건너뛴 문제 1". 도전 활동은 "2단계 · 3번 만에 찾음"처럼 (challengeText) */
 function recordText(r) {
   const challenge = challengeText(r);
-  if (challenge) return challenge;
-  const parts = [`완료 ${r.done} / ${r.total}`];
-  if ((r.skipped ?? 0) > 0) parts.push(`건너뛴 문제 ${r.skipped}`);
+  const parts = challenge ? [challenge] : [`완료 ${r.done} / ${r.total}`];
+  if (!challenge && (r.skipped ?? 0) > 0) parts.push(`건너뛴 문제 ${r.skipped}`);
+  if (r.detail?.findStart) parts.unshift('나의 시작 찾기');
   return parts.join(' · ');
 }
 
@@ -84,7 +84,9 @@ function detailText(r) {
     if (!m) return '-';
     return `손 인식 ${m.detected ?? 0} · 버튼 ${m.manual ?? 0} · 건너뜀 ${m.skipped ?? 0}`;
   }
-  return challengeText(r) ?? '-';
+  const text = challengeText(r);
+  if (r.detail?.findStart) return text ? `나의 시작 찾기 · ${text}` : '나의 시작 찾기';
+  return text ?? '-';
 }
 
 function table(headers, rows, props = {}) {

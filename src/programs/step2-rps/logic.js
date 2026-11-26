@@ -18,23 +18,27 @@ const BEATS = {
 };
 
 /**
- * 조건 5종. target 은 사용자가 만들어야 하는 결과.
- * "이기지도 비기지도 마세요" 는 결국 져야 하고,
- * "지지도 비기지도 마세요" 는 결국 이겨야 한다 (정답은 항상 하나).
+ * 조건 7종. targets 는 사용자가 만들어야 하는 결과 (그중 하나가 되면 맞음).
+ * 원래 5종은 정답 손이 하나다:
+ *   "이기지도 비기지도 마세요" 는 결국 져야 하고, "지지도 비기지도 마세요" 는 결국 이겨야 한다.
+ * 어려움에만 나오는 2종은 정답 손이 둘이다 (#18, 2026-11-24 D 결정):
+ *   "이기지 마세요" = 지거나 비기면 된다, "지지 마세요" = 이기거나 비기면 된다.
  */
 export const CONDITIONS = [
-  { id: 'WIN', text: '이겨주세요', target: 'win' },
-  { id: 'LOSE', text: '져주세요', target: 'lose' },
-  { id: 'DRAW', text: '비겨주세요', target: 'draw' },
-  { id: 'NO_WIN_NO_DRAW', text: '이기지도 비기지도 마세요', target: 'lose' },
-  { id: 'NO_LOSE_NO_DRAW', text: '지지도 비기지도 마세요', target: 'win' },
+  { id: 'WIN', text: '이겨주세요', targets: ['win'] },
+  { id: 'LOSE', text: '져주세요', targets: ['lose'] },
+  { id: 'DRAW', text: '비겨주세요', targets: ['draw'] },
+  { id: 'NO_WIN_NO_DRAW', text: '이기지도 비기지도 마세요', targets: ['lose'] },
+  { id: 'NO_LOSE_NO_DRAW', text: '지지도 비기지도 마세요', targets: ['win'] },
+  { id: 'NO_WIN', text: '이기지 마세요', targets: ['lose', 'draw'] },
+  { id: 'NO_LOSE', text: '지지 마세요', targets: ['win', 'draw'] },
 ];
 
-/** 난이도별로 나올 수 있는 조건 */
+/** 난이도별로 나올 수 있는 조건. 어려움은 보통 5종 + 정답이 둘인 2종 */
 export const CONDITIONS_BY_DIFFICULTY = {
   easy: ['WIN', 'LOSE', 'DRAW'],
   normal: ['WIN', 'LOSE', 'DRAW', 'NO_WIN_NO_DRAW', 'NO_LOSE_NO_DRAW'],
-  hard: ['WIN', 'LOSE', 'DRAW', 'NO_WIN_NO_DRAW', 'NO_LOSE_NO_DRAW'],
+  hard: ['WIN', 'LOSE', 'DRAW', 'NO_WIN_NO_DRAW', 'NO_LOSE_NO_DRAW', 'NO_WIN', 'NO_LOSE'],
 };
 
 export function isRpsHand(name) {
@@ -59,24 +63,24 @@ export function outcome(user, robot) {
   return BEATS[user] === robot ? 'win' : 'lose';
 }
 
-/** 조건과 로봇 손이 주어졌을 때 정답 손 (항상 하나) */
-export function answerFor(conditionId, robotHand) {
-  const { target } = findCondition(conditionId);
-  return HANDS.find((h) => outcome(h, robotHand) === target);
+/** 조건과 로봇 손이 주어졌을 때 정답 손 목록 (HANDS 순서). 원래 5종은 하나, NO_WIN·NO_LOSE 는 둘 */
+export function answersFor(conditionId, robotHand) {
+  const { targets } = findCondition(conditionId);
+  return HANDS.filter((h) => targets.includes(outcome(h, robotHand)));
 }
 
 /**
  * 판정.
- * 반환: { correct, outcome, answer }
- *   outcome: 사용자 기준 승패, answer: 정답 손
+ * 반환: { correct, outcome, answers }
+ *   outcome: 사용자 기준 승패, answers: 정답 손 목록 (하나 또는 둘)
  */
 export function judge(conditionId, robotHand, userHand) {
   const result = outcome(userHand, robotHand);
-  const { target } = findCondition(conditionId);
+  const { targets } = findCondition(conditionId);
   return {
-    correct: result === target,
+    correct: targets.includes(result),
     outcome: result,
-    answer: answerFor(conditionId, robotHand),
+    answers: answersFor(conditionId, robotHand),
   };
 }
 
@@ -175,19 +179,39 @@ export function hintFor(conditionId) {
   const c = findCondition(conditionId);
   if (c.id === 'NO_WIN_NO_DRAW') return `도움말: “${c.text}”는 “져주세요”와 같은 뜻이에요.`;
   if (c.id === 'NO_LOSE_NO_DRAW') return `도움말: “${c.text}”는 “이겨주세요”와 같은 뜻이에요.`;
+  if (c.id === 'NO_WIN') return `도움말: “${c.text}”는 지거나 비기면 된다는 뜻이에요.`;
+  if (c.id === 'NO_LOSE') return `도움말: “${c.text}”는 이기거나 비기면 된다는 뜻이에요.`;
   return '도움말: 로봇이 낸 손을 다시 잘 보고 생각해 보세요.';
 }
 
-const TARGET_WORD = { win: '이기려면', lose: '지려면', draw: '비기려면' };
+// 조건의 targets 를 이어 붙인 것 → 설명 앞말
+const TARGET_WORD = {
+  win: '이기려면',
+  lose: '지려면',
+  draw: '비기려면',
+  'lose,draw': '지거나 비기려면',
+  'win,draw': '이기거나 비기려면',
+};
 
-/** 두 번째도 맞지 않았을 때 함께 확인하는 설명. 예: "로봇이 ✊ 바위를 냈어요. 이기려면 ✋ 보를 내면 돼요." */
+/** 손 목록을 말로: ['ROCK'] → "✊ 바위", ['ROCK', 'V'] → "✊ 바위나 ✌️ 가위" (가위·바위·보 모두 받침이 없어 "나") */
+export function handsText(names) {
+  return names.map(handText).join('나 ');
+}
+
+/**
+ * 두 번째도 맞지 않았을 때 함께 확인하는 설명.
+ *   예: "로봇이 ✊ 바위를 냈어요. 이기려면 ✋ 보를 내면 돼요."
+ *   정답이 둘: "로봇이 ✊ 바위를 냈어요. “이기지 마세요”는 지거나 비기면 된다는 뜻이에요. 지거나 비기려면 ✊ 바위나 ✌️ 가위를 내면 돼요."
+ */
 export function explain(conditionId, robotHand) {
   const c = findCondition(conditionId);
-  const answer = answerFor(conditionId, robotHand);
+  const answers = answersFor(conditionId, robotHand);
   const lines = [`로봇이 ${handText(robotHand)}를 냈어요.`];
   if (c.id === 'NO_WIN_NO_DRAW') lines.push(`“${c.text}”는 져 주라는 뜻이에요.`);
   if (c.id === 'NO_LOSE_NO_DRAW') lines.push(`“${c.text}”는 이기라는 뜻이에요.`);
-  lines.push(`${TARGET_WORD[c.target]} ${handText(answer)}를 내면 돼요.`);
+  if (c.id === 'NO_WIN') lines.push(`“${c.text}”는 지거나 비기면 된다는 뜻이에요.`);
+  if (c.id === 'NO_LOSE') lines.push(`“${c.text}”는 이기거나 비기면 된다는 뜻이에요.`);
+  lines.push(`${TARGET_WORD[c.targets.join(',')]} ${handsText(answers)}를 내면 돼요.`);
   return lines.join(' ');
 }
 
@@ -275,12 +299,15 @@ export function timingOf(formedAt, goAt, lateMs) {
 /**
  * 한 판 결과.
  *   input: { hand, formedAt } | null(손이 확정되지 않음)
- *   lastPose: 판이 끝날 때 마지막으로 보인 손 { name, stableMs } (확정되지 않았을 때 이유(early/late/none)를 알려 주는 데만 쓴다)
+ *   lastPose: 판이 끝날 때 마지막으로 보인 손 { name, stableMs } (확정되지 않았을 때 이유(early/late/unclear/none)를 알려 주는 데만 쓴다)
+ *   sawHand: 손 입력을 받기 시작한 뒤(since) 손이 한 번이라도 보였는지
  *   now: 판이 끝난 시각
- * 반환: { timing: 'ontime'|'early'|'late'|'none', timingMs, outcome: 'win'|'draw'|'lose'|null }
+ * 반환: { timing: 'ontime'|'early'|'late'|'unclear'|'none', timingMs, outcome: 'win'|'draw'|'lose'|null }
+ *   unclear: 손은 보였지만 가위·바위·보로 확정되지 않음 (다른 모양으로 인식됨, 또는 확정 전에 손을 내림)
+ *   none: 손이 한 번도 보이지 않음
  *   outcome 은 제때 냈을 때만 정한다 (늦게 내면 로봇 손을 보고 낼 수 있어서 승패를 따지지 않는다)
  */
-export function quickResult({ robotHand, input, goAt, lateMs, lastPose = null, now = goAt }) {
+export function quickResult({ robotHand, input, goAt, lateMs, lastPose = null, sawHand = false, now = goAt }) {
   if (input) {
     const timing = timingOf(input.formedAt, goAt, lateMs);
     return {
@@ -296,6 +323,8 @@ export function quickResult({ robotHand, input, goAt, lateMs, lastPose = null, n
     const timing = formedAt < goAt - EARLY_MS ? 'early' : 'late';
     return { timing, timingMs: timing === 'late' ? Math.round(formedAt - goAt) : null, outcome: null };
   }
+  // 손은 보였는데 가위·바위·보로 확정되지 않음: "손이 보이지 않았어요"라고 하면 사실과 다르다
+  if (sawHand) return { timing: 'unclear', timingMs: null, outcome: null };
   return { timing: 'none', timingMs: null, outcome: null };
 }
 
@@ -308,7 +337,20 @@ export function quickMessage({ timing, outcome: result }) {
   }
   if (timing === 'early') return { tone: 'retry', text: '조금 빨랐어요. “보!” 소리에 맞춰 내 볼까요?' };
   if (timing === 'late') return { tone: 'retry', text: '조금 늦었어요. “보!” 소리에 맞춰 내 볼까요?' };
+  if (timing === 'unclear') {
+    return { tone: 'retry', text: '손 모양을 알아보지 못했어요. 다음 판에는 가위·바위·보를 카메라에 잠깐 멈춰서 보여 주세요.' };
+  }
   return { tone: 'retry', text: '손이 보이지 않았어요. 다음 판에는 “보!”에 맞춰 손을 내 주세요.' };
+}
+
+/**
+ * 캠 화면 아래 "지금 보이는 손" 글자. 사용자가 손이 어떻게 인식되는지 바로 볼 수 있게 한다.
+ *   pose: ctx.hand.onPose 로 받은 값 { code, name }
+ */
+export function seenText(pose) {
+  if (!pose || !pose.code) return '손이 안 보여요';
+  if (isRpsHand(pose.name)) return `${handText(pose.name)}`;
+  return '가위·바위·보가 아닌 모양';
 }
 
 /** "보!"에서 손을 낼 때까지 걸린 시간 글자. 먼저 낸 경우(0 이하)는 "거의 동시에" */
@@ -372,7 +414,8 @@ export function voiceLines() {
     lines.push(c.text, retryText(c.id));
     for (const hand of HANDS) lines.push(explain(c.id, hand));
   }
-  for (const timing of ['ontime', 'early', 'late', 'none']) {
+  // unclear: 손은 보였지만 가위·바위·보로 확정 안 됨 (#155 "손 모양을 알아보지 못했어요")
+  for (const timing of ['ontime', 'early', 'late', 'unclear', 'none']) {
     for (const result of ['win', 'draw', 'lose']) lines.push(quickMessage({ timing, outcome: result }).text);
   }
   return lines;

@@ -24,7 +24,7 @@ AIHand 로봇손과 웹캠 손동작 인식을 이용한 고령자 인지·손�
 
 - 순서: **손운동(STEP 4) → 가위바위보(STEP 2) → 숫자 기억(STEP 1) → 색깔손(STEP 3)** (손으로 하는 활동 → 카드로 하는 활동, 쉬운 것 → 어려운 것)
 - STEP 번호와 폴더명은 바꾸지 않는다. 화면에는 코스 순서로 "1번째 활동: 손운동"처럼 보여 준다
-- 앞 활동 결과로 다음 활동을 맞춤 조정하는 기능은 지금 범위에서 뺐다 (`docs/decisions.md` 3번)
+- 맞춤 단계 (2026-11-26 변경, `docs/decisions.md` 3번): "나의 시작 찾기"로 처음 시작 단계를 추천하고, 로그인한 분마다 저장한다. 단계는 대시보드가 코스를 시작할 때 `ctx.settings`로 넘기고, 코스 중간에는 바꾸지 않는다. 자동으로 단계를 올리지 않는다. 단계는 설정에서 바꾸거나 나의 시작 찾기를 다시 해서 바꾼다. 시연은 시작 단계가 다른 예시 세 분으로 보여 준다
 - 코스는 대시보드가 진행한다. 프로그램 코드는 코스를 몰라도 된다: 활동 끝은 기록 알림으로 알고, 코스 동안 `ctx.log`만 감싸 기록에 `detail.course = { id, order, of, userId }`를 붙인다 (`userId`: 로그인한 분, 손님은 `null`). `ctx.course`는 만들지 않는다
 - 코스 요약 형식(결과 화면·보호자 앱 공통)과 진행 방식: `docs/course.md`
 
@@ -98,6 +98,7 @@ export default {
   - `signal`(AbortController)을 abort 하면 `null`로 resolve. 화면 버튼과 `Promise.race`로 함께 쓴다
   - 입력 확정 규칙을 프로그램 안에 따로 만들지 않는다. `holdMs` 값은 각 프로그램이 정한다
   - 자세한 내용은 `docs/hand-api.md`
+- `ctx.hand.preview(video, onActive)` → 연결 끊기 함수 반환. 프로그램 화면의 `<video>`에 웹캠 영상을 이어 준다 (사용자가 자기 손 보기). 웹캠이 꺼져 있으면 `onActive(false)`
 - `ctx.robot.showPose(name)`, `ctx.robot.react('ok' | 'retry')`, `ctx.robot.hello()`, `ctx.robot.rest()`
   - 모두 Promise를 반환하고, 로봇이 `DONE`을 보내면 resolve 된다
 - `ctx.card.onCard(cb)` → `cb({ color })`, 구독 해제 함수 반환

@@ -1,6 +1,6 @@
 // STEP 1 숫자 기억: logic 과 screen 을 연결한다. core 는 import 하지 않고 ctx 만 쓴다.
 //
-// 한 회차 = 5문제. 문제 하나의 흐름:
+// 한 회차 = 5문제 (나의 시작 찾기 짧은 판은 숫자 3개 한 문제). 문제 하나의 흐름:
 //   "이번에는 숫자 N개" 안내 →
 //   로봇이 숫자를 손가락으로 차례로 보여줌 → 손 내림(REST)
 //   → 사용자가 숫자 카드를 같은 순서로 하나씩 보여줌 (화면 숫자 버튼도 됨, 건너뛰기 가능) → 판정
@@ -11,10 +11,9 @@
 
 import {
   CARD_NUMBERS,
-  QUESTIONS_PER_ROUND,
+  roundPlan,
   MAX_TRIES,
   poseForNumber,
-  sequenceLength,
   makeSequence,
   judgeSequence,
   questionStatus,
@@ -196,9 +195,10 @@ async function playRound(ctx, screen, s) {
   if (!s.alive) return;
 
   const items = [];
-  let count = sequenceLength(difficulty);
-  for (let i = 1; i <= QUESTIONS_PER_ROUND; i++) {
-    const item = await playQuestion(ctx, screen, s, count, i, QUESTIONS_PER_ROUND);
+  const plan = roundPlan(difficulty, ctx.settings.findStart);
+  let count = plan.length;
+  for (let i = 1; i <= plan.questions; i++) {
+    const item = await playQuestion(ctx, screen, s, count, i, plan.questions);
     if (!item) return; // 화면이 닫힘: 끝까지 하지 않은 회차는 기록하지 않는다
     items.push(item);
     count = nextLength(count, item.status, difficulty);
@@ -242,9 +242,9 @@ export default {
     s.offNumber = ctx.card.onNumber(({ number }) => s.pending?.({ number, via: 'card' }));
 
     const screen = createScreen(container);
-    screen.intro({ total: QUESTIONS_PER_ROUND, count: sequenceLength(ctx.settings.difficulty) }, () =>
-      start(ctx, screen, s),
-    );
+    // 나의 시작 찾기(ctx.settings.findStart)면 짧은 판: 숫자 3개 한 문제 (logic.js roundPlan)
+    const plan = roundPlan(ctx.settings.difficulty, ctx.settings.findStart);
+    screen.intro({ total: plan.questions, count: plan.length }, () => start(ctx, screen, s));
   },
 
   unmount() {

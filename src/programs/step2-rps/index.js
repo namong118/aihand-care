@@ -184,13 +184,17 @@ async function playQuestion(ctx, screen, s, q, index, total) {
       continue;
     }
 
-    // 두 번째도 맞지 않음: 답을 함께 확인하고 로봇이 그 손을 보여 준다
+    // 두 번째도 맞지 않음: 답을 함께 확인하고 로봇이 그 손을 보여 준다.
+    // 정답이 둘인 조건(어려움의 "이기지 마세요"·"지지 마세요")은 두 손을 차례로 보여 준다 (#18)
     const text = explain(q.conditionId, q.robotHand);
     speak(text);
     const next = waitClick(s, (onNext) =>
-      screen.reveal({ text, answer: result.answer, isLast: index === total }, onNext),
+      screen.reveal({ text, answers: result.answers, isLast: index === total }, onNext),
     );
-    await robot(ctx.robot.showPose(result.answer));
+    for (let i = 0; i < result.answers.length && s.alive; i++) {
+      if (i > 0) await wait(restMs(ctx)); // 앞 손을 볼 시간
+      await robot(ctx.robot.showPose(result.answers[i]));
+    }
     if (!(await next)) return null;
   }
 
@@ -246,11 +250,13 @@ export default {
 
   mount(container, ctx) {
     // waits: 기다리는 중인 손 입력, timers: 어려움 손 내리기 타이머, answer: 화면 버튼을 기다리는 중이면 그 resolve
-    session = { alive: true, waits: new Set(), timers: new Set(), answer: null };
+    session = { alive: true, waits: new Set(), timers: new Set(), answer: null, screen: null };
     const s = session;
     // "가위, 바위, 보!"는 박자가 중요해서 화면을 열 때 음성 파일을 미리 불러 둔다 (사고력·동시에 모드 공통)
     preloadVoice(...COUNTDOWN_WORDS);
-    const screen = createScreen(container);
+    // ctx.hand 를 넘기면 동시에 가위바위보 화면에 "내 손" 캠 화면이 나온다 (웹캠이 켜져 있을 때만)
+    const screen = createScreen(container, ctx.hand);
+    s.screen = screen;
     const reveal = revealMs(ctx.settings.difficulty, ctx.settings.speed);
     const thinkIntro = () =>
       screen.intro({ total: QUESTIONS_PER_ROUND, revealSec: reveal ? reveal / 1000 : null }, () => start(ctx, screen, s));
@@ -273,6 +279,7 @@ export default {
     session.waits.forEach((w) => w.abort());
     session.timers.forEach((t) => clearTimeout(t));
     session.answer?.(null); // 버튼을 기다리던 흐름도 끝낸다
+    session.screen?.close(); // 캠 화면 연결 끊기
     session = null;
     stopSpeaking();
   },

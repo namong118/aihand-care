@@ -7,9 +7,11 @@
 //   → 로봇이 손가락으로 스트라이크 개수 → 볼 개수 (0개는 주먹), 화면에도 글자로
 //   → 다 맞히면 칭찬 / 8번을 다 쓰거나 "정답 보기"면 로봇이 정답을 손가락으로 차례로 보여 줌
 //   → ctx.log.record 로 한 번 기록
+// 나의 시작 찾기(ctx.settings.findStart)면 단계 고르기 없이 1단계, 5번까지만 (logic.js gameSpec)
 
 import {
-  levelSpec,
+  gameSpec,
+  FIND_START_GAME,
   defaultLevel,
   makeSecret,
   addDigit,
@@ -98,7 +100,7 @@ async function collectGuess(screen, s, base) {
 
 async function playGame(ctx, screen, s, level) {
   const startedAt = new Date().toISOString();
-  const spec = levelSpec(level);
+  const spec = gameSpec(level, ctx.settings.findStart);
   const { count, maxTries } = spec;
 
   // 0) 카메라가 숫자 모드가 된 다음 시작 (모드 전환은 최대 약 5초, 보통 바로)
@@ -213,7 +215,9 @@ export default {
     s.offNumber = ctx.card.onNumber(({ number }) => s.pending?.({ number, via: 'card' }));
 
     const screen = createScreen(container);
-    showLevels(ctx, screen, s);
+    // 나의 시작 찾기면 단계 고르기 없이 짧은 판(1단계, 5번까지)으로 바로 시작
+    if (ctx.settings.findStart) start(ctx, screen, s, FIND_START_GAME.level);
+    else showLevels(ctx, screen, s);
   },
 
   unmount() {

@@ -56,6 +56,23 @@ stop.abort(); // 버튼이 먼저 눌렸으면 기다리던 손 입력을 멈춘
 
 `unmount()`에서는 기다리는 중인 `waitForPose`를 모두 abort 한다.
 
+## `ctx.hand.preview(video, onActive)`
+
+프로그램 화면에 **사용자가 자기 손을 볼 수 있는 캠 화면**을 넣을 때 쓴다 (STEP 2 동시에 가위바위보, 2026-11-24).
+
+- 프로그램이 만든 `<video>`에 지금 웹캠 영상을 이어 준다. 카메라를 새로 켜지 않고 손 인식이 쓰는 영상을 나눠 쓴다 (라즈베리파이 부담 없음)
+- 웹캠을 켜거나 끄거나 카메라를 바꾸면 알아서 따라간다
+- `onActive(true | false)`: 영상이 나오는지. 웹캠이 꺼져 있으면(화면 버튼 모드) `false` → 칸을 숨기면 된다
+- 반환: 연결 끊기 함수. 화면을 바꾸거나 `unmount()` 할 때 부른다
+- 거울처럼 보이게 하려면 공통 클래스 `webcam-video`(좌우 뒤집기)를 쓴다
+
+```js
+const video = h('video', { class: 'webcam-video' });
+const box = h('div', { hidden: true }, video);
+const off = ctx.hand.preview(video, (on) => { box.hidden = !on; });
+// 화면을 바꿀 때: off();
+```
+
 ### 손모양 목록 (`src/data/poses.json`)
 
 | name | code | 화면 이름 |
@@ -99,6 +116,7 @@ AIHand가 이 손모양을 모두 만들 수 있는지는 아직 확인하지 �
 |---|---|---|
 | `ctx.hand.onPose(cb)` | 구독 해제 함수 반환 | 0.1초마다 현재 손 상태. 유지 게이지 등에 사용 |
 | `ctx.hand.waitForPose(opts)` | Promise | 손모양 입력 확정. 위 참고 |
+| `ctx.hand.preview(video, onActive)` | 연결 끊기 함수 반환 | 웹캠 영상을 `<video>`에 이어 준다 (사용자가 자기 손 보기). 웹캠이 꺼져 있으면 `onActive(false)`. 위 참고 |
 | `ctx.robot.showPose(name)` | Promise | 로봇이 손모양을 만든다. `DONE` 받으면 resolve |
 | `ctx.robot.react('ok' \| 'retry')` | Promise | 칭찬 / "다시 해 볼까요" 반응 |
 | `ctx.robot.hello()` | Promise | 인사 |

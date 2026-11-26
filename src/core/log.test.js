@@ -111,6 +111,18 @@ describe('createLog', () => {
     expect(storage.getItem(STORAGE_KEY)).not.toContain('홍길동');
     expect(createLog({ storage }).list()).toHaveLength(2);
   });
+  it('removeWhere: 조건에 맞는 기록만 지우고 지운 개수를 돌려준다 (사용자 지우기)', () => {
+    const storage = createMemoryStorage();
+    const log = createLog({ storage });
+    const mine = { ...base, detail: { course: { id: 'C1', order: 1, of: 4, userId: 'u1' } } };
+    log.record(mine);
+    log.record({ ...mine, program: 'step1-memory' });
+    log.record({ ...base, detail: { course: { id: 'C2', order: 1, of: 4, userId: 'u2' } } });
+    log.record(base); // 코스 밖 기록
+    expect(log.removeWhere((r) => r.detail?.course?.userId === 'u1')).toBe(2);
+    expect(createLog({ storage }).list()).toHaveLength(2);
+    expect(log.removeWhere(() => false)).toBe(0);
+  });
   it('저장소 값이 망가져 있으면 빈 목록', () => {
     const storage = createMemoryStorage();
     storage.setItem(STORAGE_KEY, '{망가짐');

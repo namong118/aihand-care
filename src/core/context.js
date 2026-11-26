@@ -33,6 +33,8 @@ export function createContext(settings) {
     hand: {
       onPose: (cb) => hand.onPose(cb),
       waitForPose: makeWaitForPose((cb) => hand.onPose(cb)),
+      // 웹캠 미리 보기: preview(<video>, onActive) → 연결 끊기 함수. 웹캠이 꺼져 있으면 onActive(false)
+      preview: (video, onActive) => hand.attachPreview(video, onActive),
     },
     robot: {
       showPose: (name) => robot.showPose(name),
