@@ -127,6 +127,6 @@ describe('summarizeSession', () => {
       { give: 'left', receive: 'right', retries: 1, replays: 0 },
     ];
     expect(summarizeSession(exchanges)).toEqual({ total: EXCHANGES, done: 2, skipped: 0, avgReactionMs: null });
-    expect(summarizeSession([], 6)).toEqual({ total: 6, done: 0, skipped: 0, avgReactionMs: null });
+    expect(summarizeSession([], 4)).toEqual({ total: 4, done: 0, skipped: 0, avgReactionMs: null });
   });
 });

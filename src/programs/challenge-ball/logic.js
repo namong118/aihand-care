@@ -4,7 +4,7 @@
 // 어느 손을 썼는지는 확인하지 않는다 (센서 없음, 사용자를 믿는다). 그래서 맞고 틀림을 따지지 않는다.
 
 /** 한 회차에 주고받는 횟수 (로봇이 공을 쥐는 횟수. 약지 문제를 생각해 10번 이하로) */
-export const EXCHANGES = 6;
+export const EXCHANGES = 4;
 
 /** 손 이름 (화면 글자) */
 export const HAND_TEXT = { right: '오른손', left: '왼손' };
