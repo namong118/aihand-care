@@ -2,11 +2,11 @@
 // 설계: docs/guardian-app.md 5번 "다른 담당자에게 넘기는 함수"
 //
 //   createPairing(userId) → { url, shortCode }   연결 코드 만들기 (등록 화면 #84, QR 보기 #82)
-//   drawQr(element, url)                         QR 그리기 (지금은 코드 글자만 크게 보여 주는 Mock)
+//   drawQr(element, url)                         QR 그리기 (QR 그림 + 연결 코드 글자)
 //   sendCourseSummary(summary)                   코스 끝에 요약 보내기 (main.js finishCourse·stopCourse)
 //   listPairings(userId) / revokePairing(code)   연결 목록 보기·연결 끊기 (#82)
 //   forgetUser(userId)                           사용자를 지울 때 Supabase 기록도 지우기
-//   outboxStatus() → { waiting, lastSentAt, mock }
+//   outboxStatus() → { waiting, lastSentAt, mock, failed }
 //
 // ⚠️ 이 파일을 불러오면(import) 바로 보내기를 한 번 시도하고, 그 뒤로 1분마다와
 //    인터넷이 다시 연결될 때(online 이벤트) 대기열을 다시 보낸다 (2026-11-19 결정).
@@ -14,9 +14,12 @@
 //    보내기는 화면 흐름을 기다리게 하지 않는다: 위 함수들은 보내기가 끝나기 전에 바로 돌아온다.
 //
 // 보내기 모드: .env.local 에 VITE_SUPABASE_URL·VITE_SUPABASE_ANON_KEY·VITE_STATION_KEY 가
-// 모두 있으면 진짜, 하나라도 없으면 Mock (보낸 것처럼 대기열을 비우고 콘솔에 남긴다).
-// TODO(11/23): 진짜 보내기(fetch → Supabase RPC)는 아직 없다. 지금은 진짜 모드여도 대기열에 남겨 둔다.
+// 모두 있으면 진짜(fetch → Supabase 함수), 하나라도 없으면 Mock (보낸 것처럼 대기열을 비우고 콘솔에 남긴다).
+// 진짜 보내기가 안 되면:
+//   인터넷 끊김·403 비밀값·5xx → 대기열에 남겨 두고 1분 뒤·online 때 다시
+//   400 모양·409 코드 겹침(다시 보내도 같음) → 그 칸만 aihand-care.outbox-failed.v1 로 빼고 나머지는 계속
 
+import QRCode from 'qrcode';
 import { createUserStore } from '../login/users.js';
 import { createGuardianStore } from './store.js';
 import {
@@ -38,14 +41,24 @@ import {
   forgetInOutbox,
   flushOutbox,
   outboxStatusOf,
+  rpcUrl,
+  rpcRequest,
+  isPermanentStatus,
+  sendErrorText,
+  addFailed,
 } from './logic.js';
 
 const RETRY_MS = 60 * 1000; // 1분마다 다시 보내기
+const TIMEOUT_MS = 15 * 1000; // 핫스팟이 불안하면 답이 안 올 수 있다. 15초 넘으면 실패로 보고 다음에 다시
 const TAG = '[보호자 앱]';
 const KIND_TEXT = { pairing: '연결 코드', summary: '코스 요약', revoke: '연결 끊기', forget: '사용자 지우기' };
 
 const store = createGuardianStore();
 const mode = sendMode(import.meta.env);
+// 값은 콘솔에 남기지 않는다. 비밀값은 라즈베리파이 .env.local 에만 (설계 4번 "스테이션 비밀값")
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const STATION_KEY = import.meta.env.VITE_STATION_KEY;
 let lastSentAt = null; // 메모리에만 둔다 (새로고침하면 null)
 let flushing = null; // 보내는 중이면 그 Promise (두 번 겹쳐 보내지 않게)
 let again = false; // 보내는 중에 새로 부르면, 끝난 뒤 한 번 더 보낸다
@@ -63,9 +76,43 @@ async function mockSend(item) {
   console.info(`${TAG} Mock: 보낸 것처럼 처리 → ${describe(item)}`);
 }
 
-/** 진짜 보내기. TODO(11/23): fetch 로 Supabase RPC 부르기. 지금은 실패로 두어 대기열에 남긴다 */
-async function realSend() {
-  throw new Error('실제 전송은 아직 만들지 않았어요 (11/23 예정)');
+/**
+ * 진짜 보내기: 칸 하나를 Supabase 함수 하나로 부른다 (supabase-js 없이 fetch).
+ * 성공하면 함수가 돌려준 글자('saved' 등), 안 되면 에러. 다시 보내도 같은 에러면 err.permanent = true
+ */
+async function realSend(item) {
+  const { name, body } = rpcRequest(item, STATION_KEY);
+  const res = await fetch(rpcUrl(SUPABASE_URL, name), {
+    method: 'POST',
+    headers: { apikey: ANON_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  const text = await res.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+  if (!res.ok) {
+    const err = new Error(sendErrorText(res.status, data?.message ?? ''));
+    err.permanent = isPermanentStatus(res.status);
+    throw err;
+  }
+  if (data === 'no-pairing') {
+    console.info(`${TAG} 보냈지만 저장되지 않았어요 (Supabase에 이분의 연결 코드가 없음) → ${describe(item)}`);
+  } else {
+    console.info(`${TAG} 보냄 (${data}) → ${describe(item)}`);
+  }
+  return data;
+}
+
+/** 다시 보내도 안 되는 칸: 대기열에서 빼서 따로 보관하고 콘솔에 에러로 남긴다 */
+function dropItem(item, error) {
+  store.saveFailed(addFailed(store.loadFailed(), item, error, Date.now()));
+  console.error(`${TAG} 다시 보내도 안 돼서 대기열에서 뺐어요 (aihand-care.outbox-failed.v1 에 보관): ${error}`, describe(item));
 }
 
 function isOffline() {
@@ -92,14 +139,14 @@ function trySend() {
     save: store.saveOutbox,
     send: mode.mock ? mockSend : realSend,
     now: () => Date.now(),
+    drop: dropItem,
   })
-    .then(({ sent, failed }) => {
+    .then(({ sent, failed, error }) => {
       if (sent > 0) lastSentAt = new Date().toISOString();
       if (failed) {
         again = false; // 실패했으면 바로 다시 하지 않고 1분 뒤·online 때
-
         const left = store.loadOutbox().length;
-        console.warn(`${TAG} 보내지 못해 ${left}건을 남겨 둡니다 (다음에 다시): ${failed.lastError ?? ''}`, describe(failed));
+        console.warn(`${TAG} 보내지 못해 ${left}건을 남겨 둡니다 (1분 뒤 다시): ${error}`, describe(failed));
       }
     })
     .catch((err) => console.error(`${TAG} 보내기 오류`, err))
@@ -130,6 +177,8 @@ function start() {
 
   if (mode.mock) {
     console.info(`${TAG} Mock 으로 동작합니다 (보내지 않고 보낸 것처럼 처리). 빠진 값: ${mode.missing.join(', ')}`);
+  } else {
+    console.info(`${TAG} Supabase 로 진짜 보냅니다.`);
   }
   trySend(); // 앱을 켤 때 남아 있던 것 보내기
 }
@@ -164,30 +213,58 @@ export function createPairing(userId) {
 }
 
 /**
- * QR 그리기. TODO: qrcode 패키지는 팀 확인 뒤 추가 (설계 7번).
- * 지금은 Mock: QR 대신 연결 코드 글자를 크게 보여 준다 (폰 앱에서 직접 입력할 수 있다).
+ * QR 그리기: 안내 + QR 그림 + 연결 코드 글자. 보호자가 폰 카메라로 찍으면 폰 앱이 열리고 연결된다.
+ *   - 그림은 SVG 라 크게 키워도 선명하다. 화면이 어두워도 찍히게 흰 바탕·검은 무늬·가장자리 여백
+ *   - 인터넷이 없어도 그린다 (qrcode 패키지가 앱 안에 들어 있다, docs/decisions.md 4번)
+ *   - QR 을 그리지 못하면 코드 글자만 남긴다 (보호자가 폰 앱에 직접 넣을 수 있다)
+ * 코드 글자도 함께 보여 주므로, 부르는 쪽은 shortCode 를 따로 보여 주지 않아도 된다.
+ * 반환: 그림을 다 그리면 끝나는 Promise (기다리지 않아도 된다)
  */
 export function drawQr(element, url) {
   const { code } = parsePairingUrl(url);
   const box = document.createElement('div');
-  box.className = 'guardian-qr guardian-qr-mock';
+  box.className = 'guardian-qr';
   box.dataset.url = url;
-  box.style.cssText = 'display:grid;gap:8px;justify-items:center;padding:24px;border:3px dashed currentColor;border-radius:12px;text-align:center;';
+  box.style.cssText = 'display:grid;gap:12px;justify-items:center;text-align:center;';
 
   const lead = document.createElement('p');
-  lead.textContent = '보호자 폰 앱에 이 연결 코드를 입력해 주세요';
-  lead.style.cssText = 'margin:0;font-size:24px;';
+  lead.textContent = '보호자 폰 카메라로 QR을 찍어 주세요';
+  lead.style.cssText = 'margin:0;font-size:24px;font-weight:700;';
+
+  const pic = document.createElement('div');
+  pic.className = 'guardian-qr-image';
+  pic.setAttribute('role', 'img');
+  pic.setAttribute('aria-label', '보호자 연결 QR');
+  pic.style.cssText = 'width:min(280px,60vw);aspect-ratio:1;background:#fff;border-radius:12px;line-height:0;';
+
+  const hint = document.createElement('p');
+  hint.textContent = '찍기 어려우면 폰 앱에 이 연결 코드를 넣어 주세요';
+  hint.style.cssText = 'margin:0;font-size:24px;';
 
   const codeText = document.createElement('p');
+  codeText.className = 'guardian-qr-code';
   codeText.textContent = code ? formatCode(code) : '코드를 만들지 못했어요';
-  codeText.style.cssText = 'margin:0;font-size:48px;font-weight:700;letter-spacing:0.08em;';
+  codeText.style.cssText = 'margin:0;font-size:40px;font-weight:700;letter-spacing:0.08em;';
 
-  const note = document.createElement('p');
-  note.textContent = 'QR 그림은 준비 중이에요';
-  note.style.cssText = 'margin:0;font-size:24px;';
-
-  box.append(lead, codeText, note);
+  box.append(lead, pic, hint, codeText);
   element.replaceChildren(box);
+
+  // 오류 정정 M: 화면 반사·흐림에 조금 견디면서 칸이 너무 잘아지지 않게. 여백 4칸은 QR 규격의 권장값
+  return QRCode.toString(url, { type: 'svg', errorCorrectionLevel: 'M', margin: 4, color: { dark: '#000000', light: '#ffffff' } })
+    .then((svg) => {
+      pic.innerHTML = svg; // qrcode 가 만든 그림 (무늬만 있고 글자는 없다)
+      const el = pic.querySelector('svg');
+      el.setAttribute('width', '100%');
+      el.setAttribute('height', '100%');
+      el.setAttribute('shape-rendering', 'crispEdges');
+      el.setAttribute('aria-hidden', 'true');
+    })
+    .catch((err) => {
+      console.error(`${TAG} QR 을 그리지 못했어요. 연결 코드 글자만 보여 줍니다`, err);
+      pic.remove();
+      lead.textContent = '보호자 폰 앱에 이 연결 코드를 넣어 주세요';
+      hint.remove();
+    });
 }
 
 /**
@@ -237,7 +314,10 @@ export function forgetUser(userId) {
   trySend();
 }
 
-/** 장치 상태 표시용: { waiting 보낼 것 수, lastSentAt 마지막으로 보낸 시각(이번에 켠 뒤), mock } */
+/**
+ * 장치 상태 표시용: { waiting 보낼 것 수, lastSentAt 마지막으로 보낸 시각(이번에 켠 뒤), mock,
+ *   failed 다시 보내도 안 돼서 빼 둔 수 }
+ */
 export function outboxStatus() {
-  return outboxStatusOf(store.loadOutbox(), { lastSentAt, mock: mode.mock });
+  return outboxStatusOf(store.loadOutbox(), { lastSentAt, mock: mode.mock, failed: store.loadFailed().length });
 }

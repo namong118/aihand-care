@@ -1,9 +1,15 @@
 // 숫자 야구 화면 그리기. 판정은 하지 않고 보여주기만 한다.
 // 모양은 styles.css "활동 화면 공통"(act-*) 클래스와 단계 고르기(src/ui/level-picker.js).
 
-import { h, button, message } from '../../ui/components.js';
+import { h, button, message, firstOnly } from '../../ui/components.js';
 import { levelPicker } from '../../ui/level-picker.js';
 import { CARD_NUMBERS } from './logic.js';
+
+/** 끝 화면 버튼 두 개. 두 번 빨리 눌러도 처음 누른 것 하나만 받는다 (firstOnly) */
+function endButtons(onAgain, onLevels) {
+  const [again, levels] = firstOnly(onAgain, onLevels);
+  return [button('한 판 더 하기', again), button('단계 바꾸기', levels, { variant: 'secondary' })];
+}
 
 /** 단계 설명 (시작 화면) */
 const LEVEL_DESC = {
@@ -200,7 +206,7 @@ export function createScreen(container) {
       set(
         message(`찾으셨어요! ${tries}번 만에 로봇의 숫자를 맞히셨어요.`, 'good'),
         card(h('p', { class: 'act-label' }, '로봇이 정한 숫자'), h('p', { class: 'act-question', style: { 'letter-spacing': '0.08em' } }, join(secret))),
-        h('div', { class: 'row' }, button('한 판 더 하기', onAgain), button('단계 바꾸기', onLevels, { variant: 'secondary' })),
+        h('div', { class: 'row' }, ...endButtons(onAgain, onLevels)),
       );
     },
 
@@ -213,7 +219,7 @@ export function createScreen(container) {
           h('p', { class: 'act-question', style: { 'letter-spacing': '0.08em' } }, join(secret)),
           history.length ? h('p', { class: 'act-text' }, `${history.length}번 내 보셨어요. 다음 판에서 또 찾아봐요.`) : null,
         ),
-        h('div', { class: 'row' }, button('한 판 더 하기', onAgain), button('단계 바꾸기', onLevels, { variant: 'secondary' })),
+        h('div', { class: 'row' }, ...endButtons(onAgain, onLevels)),
       );
     },
   };

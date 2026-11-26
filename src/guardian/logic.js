@@ -5,6 +5,7 @@
 /** 스테이션 localStorage 키 */
 export const OUTBOX_KEY = 'aihand-care.outbox.v1'; // 보낼 것 대기열
 export const PAIRINGS_KEY = 'aihand-care.pairings.v1'; // 연결 목록 [{ code, userId, createdAt }]
+export const FAILED_KEY = 'aihand-care.outbox-failed.v1'; // 다시 보내도 안 되는 것을 빼 둔 곳 (최근 FAILED_MAX 개)
 
 /** QR 주소의 앞부분. 폰은 라즈베리파이(127.0.0.1)를 열 수 없으므로 언제나 GitHub Pages 배포 주소 */
 export const APP_BASE = 'https://namong118.github.io/aihand-care/';
@@ -193,32 +194,104 @@ export function forgetInOutbox(outbox, userId, now) {
  *   성공한 칸은 빼고, 하나라도 실패하면 거기서 멈춘다 (남은 것은 다음 시도에).
  *   멈추는 이유: 실패는 대개 인터넷이 끊겼거나 비밀값이 틀린 것이라 뒤의 것도 실패한다.
  *   그리고 연결 코드(pairing)가 못 갔는데 요약(summary)을 먼저 보내면 Supabase가 받지 않는다.
+ * 다만 다시 보내도 똑같이 안 되는 에러(err.permanent, 400·409)는 그 칸만 빼서 drop(칸, 에러)에 넘기고
+ *   다음 칸을 계속 보낸다. 그 한 칸 때문에 다른 분들 요약이 막히지 않게 (2026-11-22 결정 A).
  * localStorage·네트워크는 인자로 받는다 (테스트에서는 가짜를 넘긴다).
  *   load() → 대기열, save(대기열), send(칸) → 성공하면 resolve, 실패하면 reject, now() → ms
+ *   drop(칸, 에러) → 빼 둔 칸을 보관 (없으면 버린다)
  * 보내는 동안 새로 들어온 칸을 잃지 않도록 칸마다 load() 로 다시 읽는다.
- * 반환: { sent, failed } 보낸 칸 수, 실패한 칸 (없으면 null)
+ * 반환: { sent, dropped, failed, error } 보낸 수, 빼 둔 수, 멈춘 칸(없으면 null)과 그 에러 글자
  */
-export async function flushOutbox({ load, save, send, now }) {
+export async function flushOutbox({ load, save, send, now, drop = () => {} }) {
   const tried = new Set();
   let sent = 0;
+  let dropped = 0;
   for (;;) {
     const next = orderOutbox(load()).find((it) => !tried.has(it.id));
-    if (!next) return { sent, failed: null };
+    if (!next) return { sent, dropped, failed: null, error: null };
     tried.add(next.id);
     try {
       await send(next);
       save(markSent(load(), next.id));
       sent += 1;
     } catch (err) {
-      save(markFailed(load(), next.id, now(), err?.message ?? err));
-      return { sent, failed: next };
+      const message = String(err?.message ?? err);
+      if (err?.permanent) {
+        save(markSent(load(), next.id));
+        drop(next, message);
+        dropped += 1;
+        continue;
+      }
+      save(markFailed(load(), next.id, now(), message));
+      return { sent, dropped, failed: next, error: message };
     }
   }
 }
 
-/** outboxStatus() 의 모양 */
-export function outboxStatusOf(outbox, { lastSentAt = null, mock }) {
-  return { waiting: outbox.length, lastSentAt, mock };
+// ---- Supabase 로 보내기 (설계 4번 "표"의 스테이션 함수 4개) ----
+
+/**
+ * RPC 주소: https://xxx.supabase.co + register_pairing → https://xxx.supabase.co/rest/v1/rpc/register_pairing
+ * Supabase 화면에서 주소를 '…/rest/v1/'까지 복사해 넣어도 맞게, 끝의 /rest/v1 은 뗀다.
+ */
+export function rpcUrl(baseUrl, name) {
+  const root = String(baseUrl).replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+  return `${root}/rest/v1/rpc/${name}`;
+}
+
+/**
+ * 대기열 한 칸 → 부를 함수 이름과 보낼 값. 모든 스테이션 함수는 첫 값으로 비밀값을 받는다.
+ * 보낼 값은 설계 4번 표에 적은 것만: revoke 칸의 userId 는 스테이션 안에서만 쓰고 보내지 않는다.
+ */
+export function rpcRequest(item, stationKey) {
+  switch (item.kind) {
+    case 'pairing':
+      return { name: 'register_pairing', body: { station_key: stationKey, code: item.code, user_id: item.userId } };
+    case 'summary':
+      return { name: 'push_summary', body: { station_key: stationKey, user_id: item.userId, summary: item.payload } };
+    case 'revoke':
+      return { name: 'revoke_pairing', body: { station_key: stationKey, code: item.code } };
+    case 'forget':
+      return { name: 'forget_user', body: { station_key: stationKey, user_id: item.userId } };
+    default:
+      throw new Error(`모르는 종류: ${item.kind}`);
+  }
+}
+
+/**
+ * 다시 보내도 똑같이 안 되는 응답인지.
+ *   400 모양이 맞지 않음 (22023), 409 연결 코드가 다른 분께 이미 쓰임 (23505)
+ * 나머지(403 비밀값, 404 함수 없음, 5xx, 인터넷 끊김)는 고치면 되니 대기열에 남겨 다시 보낸다.
+ */
+export function isPermanentStatus(status) {
+  return status === 400 || status === 409;
+}
+
+/** 응답 상태 → 콘솔에 남길 안내 (Supabase 가 준 message 를 덧붙인다) */
+export function sendErrorText(status, message = '') {
+  const lead =
+    {
+      400: '보낸 값의 모양이 맞지 않아요',
+      403: '스테이션 비밀값이 맞지 않아요 (.env.local VITE_STATION_KEY 와 Supabase station_keys 확인)',
+      404: 'Supabase 에서 함수를 찾지 못했어요 (주소나 schema.sql 확인)',
+      409: '연결 코드가 다른 분께 이미 쓰였어요',
+    }[status] ?? `Supabase 가 답하지 않아요 (HTTP ${status})`;
+  return message && !lead.includes(message) ? `${lead}: ${message}` : lead;
+}
+
+// ---- 빼 둔 것 (FAILED_KEY) ----
+
+export const FAILED_MAX = 20;
+
+/** 빼 둔 칸 보관: 에러와 시각을 붙이고, 오래된 것부터 지워 FAILED_MAX 개만 남긴다 */
+export function addFailed(list, item, error, now) {
+  const entry = { ...item, failedAt: new Date(now).toISOString(), error: String(error ?? '') };
+  return [...list, entry].slice(-FAILED_MAX);
+}
+
+/** outboxStatus() 의 모양. failed 는 다시 보내도 안 돼서 빼 둔 수 */
+export function outboxStatusOf(outbox, { lastSentAt = null, mock, failed = 0 }) {
+  return { waiting: outbox.length, lastSentAt, mock, failed };
 }
 
 // ---- 저장된 값 읽기 (깨졌으면 빈 목록) ----
@@ -237,6 +310,11 @@ export function parseOutbox(raw) {
   return parseList(raw)
     .filter((it) => it && typeof it === 'object' && typeof it.id === 'string' && KINDS.includes(it.kind))
     .map((it) => ({ ...it, tries: Number.isInteger(it.tries) ? it.tries : 0 }));
+}
+
+/** localStorage 에서 읽은 글자 → 빼 둔 목록. 모양이 틀린 칸은 버린다 */
+export function parseFailed(raw) {
+  return parseList(raw).filter((it) => it && typeof it === 'object' && KINDS.includes(it.kind));
 }
 
 /** localStorage 에서 읽은 글자 → 연결 목록. 모양이 틀린 칸은 버린다 */

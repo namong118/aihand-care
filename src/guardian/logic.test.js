@@ -24,6 +24,14 @@ import {
   outboxStatusOf,
   parseOutbox,
   parsePairings,
+  rpcUrl,
+  rpcRequest,
+  isPermanentStatus,
+  sendErrorText,
+  addFailed,
+  parseFailed,
+  FAILED_MAX,
+  forgetItem,
 } from './logic.js';
 
 const NOW = Date.parse('2026-11-19T01:00:00.000Z');
@@ -195,34 +203,39 @@ describe('대기열', () => {
   });
 
   it('outboxStatus 모양', () => {
-    expect(outboxStatusOf([1, 2], { lastSentAt: null, mock: true })).toEqual({ waiting: 2, lastSentAt: null, mock: true });
+    expect(outboxStatusOf([1, 2], { lastSentAt: null, mock: true })).toEqual({ waiting: 2, lastSentAt: null, mock: true, failed: 0 });
+    expect(outboxStatusOf([], { mock: false, failed: 3 })).toEqual({ waiting: 0, lastSentAt: null, mock: false, failed: 3 });
   });
 });
 
 describe('flushOutbox', () => {
   /** 메모리 대기열 + 보낸 순서 기록 */
-  function setup(items, failIds = []) {
+  function setup(items, failIds = [], permanentIds = []) {
     let q = items;
     const sentIds = [];
+    const dropped = [];
     return {
       load: () => q,
       save: (next) => (q = next),
       send: async (it) => {
         if (failIds.includes(it.id)) throw new Error('인터넷 없음');
+        if (permanentIds.includes(it.id)) throw Object.assign(new Error('모양이 맞지 않아요'), { permanent: true });
         sentIds.push(it.id);
       },
+      drop: (it, error) => dropped.push([it.id, error]),
       now: () => NOW,
       get queue() {
         return q;
       },
       sentIds,
+      dropped,
     };
   }
 
   it('순서대로 모두 보내고 대기열을 비운다', async () => {
     const s = setup([summaryItem(summary(), NOW), pairingItem({ code: CODE_A, userId: ALICE }, NOW)]);
     const result = await flushOutbox(s);
-    expect(result).toEqual({ sent: 2, failed: null });
+    expect(result).toEqual({ sent: 2, dropped: 0, failed: null, error: null });
     expect(s.sentIds).toEqual([`pairing:${CODE_A}`, `summary:${ALICE}:${summary().courseId}`]);
     expect(s.queue).toEqual([]);
   });
@@ -234,6 +247,7 @@ describe('flushOutbox', () => {
     const result = await flushOutbox(s);
     expect(result.sent).toBe(0);
     expect(result.failed.id).toBe(pair.id);
+    expect(result.error).toBe('인터넷 없음');
     expect(s.sentIds).toEqual([]); // 연결 코드가 못 갔으니 요약도 보내지 않음
     expect(s.queue.find((it) => it.id === pair.id).tries).toBe(1);
     expect(s.queue.find((it) => it.id === sum.id).tries).toBe(0);
@@ -255,7 +269,25 @@ describe('flushOutbox', () => {
 
   it('대기열이 비어 있으면 아무것도 하지 않는다', async () => {
     const s = setup([]);
-    expect(await flushOutbox(s)).toEqual({ sent: 0, failed: null });
+    expect(await flushOutbox(s)).toEqual({ sent: 0, dropped: 0, failed: null, error: null });
+  });
+
+  it('다시 보내도 안 되는 에러(permanent)는 그 칸만 빼 두고 뒤의 것을 계속 보낸다 (결정 A)', async () => {
+    const bad = summaryItem(summary({ courseId: 'bad' }), NOW);
+    const good = summaryItem(summary({ courseId: 'good' }), NOW + 1000);
+    const s = setup([bad, good], [], [bad.id]);
+    const result = await flushOutbox(s);
+    expect(result).toEqual({ sent: 1, dropped: 1, failed: null, error: null });
+    expect(s.dropped).toEqual([[bad.id, '모양이 맞지 않아요']]);
+    expect(s.sentIds).toEqual([good.id]);
+    expect(s.queue).toEqual([]);
+  });
+
+  it('drop 을 넘기지 않아도 동작한다 (빼서 버림)', async () => {
+    const bad = summaryItem(summary(), NOW);
+    const s = setup([bad], [], [bad.id]);
+    delete s.drop;
+    expect((await flushOutbox(s)).dropped).toBe(1);
   });
 });
 
@@ -275,5 +307,65 @@ describe('저장된 값 읽기', () => {
     const pairing = { code: CODE_A, userId: ALICE, createdAt: '2026-11-18T00:00:00.000Z' };
     const rawPairings = JSON.stringify([pairing, { code: 'short', userId: ALICE }, { code: CODE_B }]);
     expect(parsePairings(rawPairings)).toEqual([pairing]);
+  });
+});
+
+describe('Supabase 로 보내기', () => {
+  it('RPC 주소: 끝의 / 와 /rest/v1 은 떼고 붙인다', () => {
+    expect(rpcUrl('https://x.supabase.co', 'push_summary')).toBe('https://x.supabase.co/rest/v1/rpc/push_summary');
+    expect(rpcUrl('https://x.supabase.co/', 'push_summary')).toBe('https://x.supabase.co/rest/v1/rpc/push_summary');
+    expect(rpcUrl('https://x.supabase.co/rest/v1/', 'push_summary')).toBe('https://x.supabase.co/rest/v1/rpc/push_summary');
+  });
+
+  it('칸마다 부를 함수와 보낼 값 (첫 값은 비밀값)', () => {
+    const KEY = 'k';
+    expect(rpcRequest(pairingItem({ code: CODE_A, userId: ALICE }, NOW), KEY)).toEqual({
+      name: 'register_pairing',
+      body: { station_key: KEY, code: CODE_A, user_id: ALICE },
+    });
+    expect(rpcRequest(summaryItem(summary(), NOW), KEY)).toEqual({
+      name: 'push_summary',
+      body: { station_key: KEY, user_id: ALICE, summary: summary() },
+    });
+    expect(rpcRequest(forgetItem(ALICE, NOW), KEY)).toEqual({ name: 'forget_user', body: { station_key: KEY, user_id: ALICE } });
+  });
+
+  it('연결 끊기에는 code 만 보낸다 (userId 는 스테이션 안에서만)', () => {
+    const req = rpcRequest(revokeItem({ code: CODE_A, userId: ALICE }, NOW), 'k');
+    expect(req).toEqual({ name: 'revoke_pairing', body: { station_key: 'k', code: CODE_A } });
+    expect(JSON.stringify(req.body)).not.toContain(ALICE);
+  });
+
+  it('모르는 종류는 에러', () => {
+    expect(() => rpcRequest({ kind: 'mystery' }, 'k')).toThrow();
+  });
+
+  it('다시 보내도 안 되는 응답은 400·409 뿐', () => {
+    expect(isPermanentStatus(400)).toBe(true);
+    expect(isPermanentStatus(409)).toBe(true);
+    for (const status of [401, 403, 404, 429, 500, 503]) expect(isPermanentStatus(status)).toBe(false);
+  });
+
+  it('에러 안내 글', () => {
+    expect(sendErrorText(403)).toMatch(/스테이션 비밀값/);
+    // Supabase 가 같은 말을 주면 두 번 쓰지 않는다
+    expect(sendErrorText(403, '스테이션 비밀값이 맞지 않아요')).toBe(sendErrorText(403));
+    expect(sendErrorText(409, '이 연결 코드는 다른 분께 이미 쓰였어요')).toMatch(/: 이 연결 코드는/);
+    expect(sendErrorText(502)).toBe('Supabase 가 답하지 않아요 (HTTP 502)');
+  });
+});
+
+describe('빼 둔 것 (outbox-failed)', () => {
+  it('에러와 시각을 붙여 보관하고, 최근 FAILED_MAX 개만 남긴다', () => {
+    let list = [];
+    for (let i = 0; i < FAILED_MAX + 5; i++) list = addFailed(list, summaryItem(summary({ courseId: `c${i}` }), NOW), '모양', NOW);
+    expect(list).toHaveLength(FAILED_MAX);
+    expect(list[0].courseId).toBe('c5');
+    expect(list.at(-1)).toMatchObject({ courseId: `c${FAILED_MAX + 4}`, error: '모양', failedAt: '2026-11-19T01:00:00.000Z' });
+  });
+
+  it('깨진 값이면 빈 목록', () => {
+    expect(parseFailed('{깨짐')).toEqual([]);
+    expect(parseFailed(JSON.stringify([{ kind: 'summary' }, { kind: '???' }, null]))).toEqual([{ kind: 'summary' }]);
   });
 });

@@ -1,0 +1,324 @@
+/* 보호자 폰 앱 스타일. 색은 스테이션 디자인 시안 v11 과 화면 고르기 목업을 따른다.
+   본문 글씨 16px 이상 (docs/guardian-app.md 6-0, 보호자도 나이가 있을 수 있다). */
+
+:root {
+  --bg: #f3f5f9;
+  --surface: #ffffff;
+  --fg: #1b2b4f;
+  --sub: #3b4560;
+  --muted: #5d6782;
+  --line: #e4e8f0;
+  --line-strong: #c9d0dd;
+  --accent: #1e3a75;
+  --on-accent: #ffffff;
+  --has-bg: #d7efe3;
+  --has-fg: #1d6b4c;
+  --note-bg: #fff1d6;
+  --note-fg: #6b3b00;
+  --ok-bg: #d7efe3;
+  --ok-fg: #1d6b4c;
+  --danger: #9b2c2c;
+  --sun: #8a5a00;
+  --radius: 18px;
+  --font: 'Apple SD Gothic Neo', 'Noto Sans KR', 'Noto Sans CJK KR', 'Malgun Gothic', system-ui, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1422;
+    --surface: #172036;
+    --fg: #e6ecf8;
+    --sub: #c2cbde;
+    --muted: #a3aec6;
+    --line: #26314a;
+    --line-strong: #3b4866;
+    --accent: #a9c1f5;
+    --on-accent: #0e1422;
+    --has-bg: #1c3b2e;
+    --has-fg: #8fd9b6;
+    --note-bg: #3a2a10;
+    --note-fg: #f5c877;
+    --ok-bg: #1c3b2e;
+    --ok-fg: #8fd9b6;
+    --danger: #ffb4b4;
+    --sun: #f2cf77;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.app-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 2px 0 0;
+  font-size: 26px;
+  line-height: 1.3;
+  word-break: keep-all;
+}
+
+h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+p {
+  margin: 0;
+}
+
+.lead,
+.sub {
+  color: var(--sub);
+}
+
+.top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ---- 버튼 ---- */
+.btn {
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn.small {
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 16px;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn.danger {
+  color: var(--danger);
+  border-color: currentColor;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---- 입력 ---- */
+.form label {
+  font-weight: 700;
+}
+
+.form input {
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 2px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 20px;
+}
+
+.form input#code {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.form-msg {
+  color: var(--note-fg);
+  font-weight: 700;
+}
+
+.form-msg:empty {
+  display: none;
+}
+
+.form-msg.ok {
+  color: var(--ok-fg);
+}
+
+.code {
+  letter-spacing: 0.06em;
+  font-size: 20px;
+}
+
+/* ---- 안내 띠 ---- */
+.banner {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--note-bg);
+  color: var(--note-fg);
+  font-weight: 700;
+}
+
+.banner.ok {
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+}
+
+.status p {
+  color: var(--sub);
+}
+
+.loaded-at {
+  font-size: 16px;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* ---- 참여 달력 (6-2 A) ---- */
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.navbtn {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.navbtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  text-align: center;
+}
+
+.dow {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.dow.sun {
+  color: var(--sun);
+}
+
+.day {
+  min-height: 56px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.day .dn {
+  font-size: 16px;
+  color: var(--sub);
+}
+
+.day.has {
+  background: var(--has-bg);
+}
+
+.day.has .dn {
+  color: var(--has-fg);
+  font-weight: 800;
+}
+
+.day.today {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.day .sp {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.day .sp small {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--has-fg);
+  margin-left: 1px;
+}
+
+.cal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  color: var(--sub);
+}
+
+.cal-foot b {
+  color: var(--fg);
+}
