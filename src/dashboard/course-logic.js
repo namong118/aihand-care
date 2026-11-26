@@ -294,6 +294,7 @@ export function reactionTrend(records, program, timeZone = TIME_ZONE) {
   for (const r of records) {
     if (r.program !== program) continue;
     if (r.detail?.mode === 'quick') continue;
+    if (r.detail?.findStart) continue; // 나의 시작 찾기 짧은 판은 평소 회차와 길이가 달라 빼고 본다
     const date = localDate(r.startedAt, timeZone);
     if (!date) continue;
     if (!byDate.has(date)) byDate.set(date, []);
@@ -323,6 +324,11 @@ export function challengeText(r) {
     const end = Number.isFinite(d.end) ? `끝 숫자 ${d.end} · ` : '';
     const how = d.winner === 'me' ? '로봇이 끝 숫자를 부름' : d.winner === 'robot' ? '끝 숫자를 부르심' : '중간에 그만함';
     return `${level}${end}${how}`;
+  }
+  if (r.program === 'challenge-ball') {
+    // 1단계는 고른 손도 ("오른손 · "). 끝까지 한 회차만 기록되므로 주고받은 수만 쓴다
+    const hand = d.hand === 'right' ? '오른손 · ' : d.hand === 'left' ? '왼손 · ' : '';
+    return `${level}${hand}공을 ${r.done ?? 0}번 주고받음`;
   }
   return null;
 }

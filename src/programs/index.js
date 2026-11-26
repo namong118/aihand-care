@@ -9,6 +9,7 @@ import step4 from './step4-coach/index.js';
 import challengeBaseball from './challenge-baseball/index.js';
 import challengeCount from './challenge-count/index.js';
 import challengeShuffle from './challenge-shuffle/index.js';
+import challengeBall from './challenge-ball/index.js';
 
 export const PROGRAMS = {
   [step1.id]: step1,
@@ -18,4 +19,5 @@ export const PROGRAMS = {
   [challengeBaseball.id]: challengeBaseball,
   [challengeCount.id]: challengeCount,
   [challengeShuffle.id]: challengeShuffle,
+  [challengeBall.id]: challengeBall,
 };

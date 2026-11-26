@@ -21,7 +21,9 @@ import {
   CONDITIONS,
   outcome,
   judge,
-  answerFor,
+  answersFor,
+  handsText,
+  CONDITIONS_BY_DIFFICULTY,
   makeQuestion,
   isRpsHand,
   QUESTIONS_PER_ROUND,
@@ -59,45 +61,83 @@ describe('outcome: 가위바위보 승패 (사용자 기준)', () => {
   });
 });
 
-describe('조건 5종', () => {
-  it('조건은 정확히 5개, 원래 기획 문구', () => {
+describe('조건 7종 (원래 5종 + 어려움 전용 2종, #18)', () => {
+  const ORIGINAL = ['WIN', 'LOSE', 'DRAW', 'NO_WIN_NO_DRAW', 'NO_LOSE_NO_DRAW'];
+  const TWO_ANSWERS = ['NO_WIN', 'NO_LOSE'];
+
+  it('원래 기획 문구 5종은 그대로, 뒤에 2종이 붙는다', () => {
     expect(CONDITIONS.map((c) => c.text)).toEqual([
       '이겨주세요',
       '져주세요',
       '비겨주세요',
       '이기지도 비기지도 마세요',
       '지지도 비기지도 마세요',
+      '이기지 마세요',
+      '지지 마세요',
     ]);
   });
 
-  it('모든 조건 × 로봇 손마다 정답은 정확히 하나', () => {
-    for (const c of CONDITIONS) {
+  it('원래 5종은 로봇 손마다 정답이 정확히 하나', () => {
+    for (const id of ORIGINAL) {
       for (const robot of HANDS) {
-        const correct = HANDS.filter((u) => judge(c.id, robot, u).correct);
+        const correct = HANDS.filter((u) => judge(id, robot, u).correct);
         expect(correct).toHaveLength(1);
-        expect(correct[0]).toBe(answerFor(c.id, robot));
+        expect(answersFor(id, robot)).toEqual(correct);
+      }
+    }
+  });
+
+  it('"이기지 마세요"·"지지 마세요"는 로봇 손마다 정답이 정확히 둘', () => {
+    for (const id of TWO_ANSWERS) {
+      for (const robot of HANDS) {
+        const correct = HANDS.filter((u) => judge(id, robot, u).correct);
+        expect(correct).toHaveLength(2);
+        expect(answersFor(id, robot)).toEqual(correct);
       }
     }
   });
 
   it('로봇이 바위일 때 조건별 정답', () => {
-    expect(answerFor('WIN', 'ROCK')).toBe('PAPER');
-    expect(answerFor('LOSE', 'ROCK')).toBe('V');
-    expect(answerFor('DRAW', 'ROCK')).toBe('ROCK');
-    expect(answerFor('NO_WIN_NO_DRAW', 'ROCK')).toBe('V'); // = 져라
-    expect(answerFor('NO_LOSE_NO_DRAW', 'ROCK')).toBe('PAPER'); // = 이겨라
+    expect(answersFor('WIN', 'ROCK')).toEqual(['PAPER']);
+    expect(answersFor('LOSE', 'ROCK')).toEqual(['V']);
+    expect(answersFor('DRAW', 'ROCK')).toEqual(['ROCK']);
+    expect(answersFor('NO_WIN_NO_DRAW', 'ROCK')).toEqual(['V']); // = 져라
+    expect(answersFor('NO_LOSE_NO_DRAW', 'ROCK')).toEqual(['PAPER']); // = 이겨라
+    expect(answersFor('NO_WIN', 'ROCK')).toEqual(['ROCK', 'V']); // 비김 또는 짐
+    expect(answersFor('NO_LOSE', 'ROCK')).toEqual(['ROCK', 'PAPER']); // 비김 또는 이김
   });
 
   it('"이기지도 비기지도 마세요" 는 져야 정답', () => {
-    expect(judge('NO_WIN_NO_DRAW', 'PAPER', 'ROCK')).toEqual({ correct: true, outcome: 'lose', answer: 'ROCK' });
+    expect(judge('NO_WIN_NO_DRAW', 'PAPER', 'ROCK')).toEqual({ correct: true, outcome: 'lose', answers: ['ROCK'] });
     expect(judge('NO_WIN_NO_DRAW', 'PAPER', 'V').correct).toBe(false); // 이김
     expect(judge('NO_WIN_NO_DRAW', 'PAPER', 'PAPER').correct).toBe(false); // 비김
   });
 
   it('"지지도 비기지도 마세요" 는 이겨야 정답', () => {
-    expect(judge('NO_LOSE_NO_DRAW', 'V', 'ROCK')).toEqual({ correct: true, outcome: 'win', answer: 'ROCK' });
+    expect(judge('NO_LOSE_NO_DRAW', 'V', 'ROCK')).toEqual({ correct: true, outcome: 'win', answers: ['ROCK'] });
     expect(judge('NO_LOSE_NO_DRAW', 'V', 'PAPER').correct).toBe(false); // 짐
     expect(judge('NO_LOSE_NO_DRAW', 'V', 'V').correct).toBe(false); // 비김
+  });
+
+  it('"이기지 마세요" 는 지거나 비기면 정답, 이기면 다시', () => {
+    expect(judge('NO_WIN', 'PAPER', 'ROCK')).toEqual({ correct: true, outcome: 'lose', answers: ['ROCK', 'PAPER'] });
+    expect(judge('NO_WIN', 'PAPER', 'PAPER').correct).toBe(true); // 비김
+    expect(judge('NO_WIN', 'PAPER', 'V').correct).toBe(false); // 이김
+  });
+
+  it('"지지 마세요" 는 이기거나 비기면 정답, 지면 다시', () => {
+    expect(judge('NO_LOSE', 'V', 'ROCK')).toEqual({ correct: true, outcome: 'win', answers: ['ROCK', 'V'] });
+    expect(judge('NO_LOSE', 'V', 'V').correct).toBe(true); // 비김
+    expect(judge('NO_LOSE', 'V', 'PAPER').correct).toBe(false); // 짐
+  });
+
+  it('정답이 둘인 조건은 어려움에만 나온다', () => {
+    for (const id of TWO_ANSWERS) {
+      expect(CONDITIONS_BY_DIFFICULTY.easy).not.toContain(id);
+      expect(CONDITIONS_BY_DIFFICULTY.normal).not.toContain(id);
+      expect(CONDITIONS_BY_DIFFICULTY.hard).toContain(id);
+    }
+    expect(CONDITIONS_BY_DIFFICULTY.hard).toEqual([...ORIGINAL, ...TWO_ANSWERS]);
   });
 
   it('없는 조건이면 에러', () => {
@@ -109,6 +149,7 @@ describe('makeQuestion', () => {
   it('rand 를 고정하면 같은 문제', () => {
     expect(makeQuestion('normal', () => 0)).toEqual({ robotHand: 'ROCK', conditionId: 'WIN' });
     expect(makeQuestion('normal', () => 0.99)).toEqual({ robotHand: 'V', conditionId: 'NO_LOSE_NO_DRAW' });
+    expect(makeQuestion('hard', () => 0.99)).toEqual({ robotHand: 'V', conditionId: 'NO_LOSE' });
   });
   it('쉬움에서는 기본 조건 3개만 나온다', () => {
     expect(makeQuestion('easy', () => 0.99).conditionId).toBe('DRAW');
@@ -165,21 +206,34 @@ describe('도움말과 설명 문구', () => {
   it('꼬인 조건 도움말은 뜻을 풀어 준다', () => {
     expect(hintFor('NO_WIN_NO_DRAW')).toContain('져주세요');
     expect(hintFor('NO_LOSE_NO_DRAW')).toContain('이겨주세요');
+    expect(hintFor('NO_WIN')).toBe('도움말: “이기지 마세요”는 지거나 비기면 된다는 뜻이에요.');
+    expect(hintFor('NO_LOSE')).toBe('도움말: “지지 마세요”는 이기거나 비기면 된다는 뜻이에요.');
     expect(hintFor('WIN')).toContain('다시 잘 보고');
   });
 
-  it('설명에는 항상 정답 손이 들어 있다', () => {
+  it('설명에는 항상 정답 손이 모두 들어 있다', () => {
     for (const c of CONDITIONS) {
       for (const robot of HANDS) {
-        expect(explain(c.id, robot)).toContain(handText(answerFor(c.id, robot)));
+        for (const hand of answersFor(c.id, robot)) expect(explain(c.id, robot)).toContain(handText(hand));
       }
     }
+  });
+
+  it('handsText: 손이 둘이면 "나"로 잇는다', () => {
+    expect(handsText(['ROCK'])).toBe('✊ 바위');
+    expect(handsText(['ROCK', 'V'])).toBe('✊ 바위나 ✌️ 가위');
   });
 
   it('설명 예시', () => {
     expect(explain('WIN', 'ROCK')).toBe('로봇이 ✊ 바위를 냈어요. 이기려면 ✋ 보를 내면 돼요.');
     expect(explain('NO_WIN_NO_DRAW', 'PAPER')).toBe(
       '로봇이 ✋ 보를 냈어요. “이기지도 비기지도 마세요”는 져 주라는 뜻이에요. 지려면 ✊ 바위를 내면 돼요.',
+    );
+    expect(explain('NO_WIN', 'ROCK')).toBe(
+      '로봇이 ✊ 바위를 냈어요. “이기지 마세요”는 지거나 비기면 된다는 뜻이에요. 지거나 비기려면 ✊ 바위나 ✌️ 가위를 내면 돼요.',
+    );
+    expect(explain('NO_LOSE', 'PAPER')).toBe(
+      '로봇이 ✋ 보를 냈어요. “지지 마세요”는 이기거나 비기면 된다는 뜻이에요. 이기거나 비기려면 ✋ 보나 ✌️ 가위를 내면 돼요.',
     );
   });
 
@@ -296,6 +350,7 @@ import {
   quickMessage,
   timingText,
   summarizeQuick,
+  seenText,
 } from './logic.js';
 
 describe('quickTiming: 동시에 가위바위보 시간 값', () => {
@@ -389,6 +444,26 @@ describe('quickResult: 한 판 결과', () => {
     expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose, now }).timing).toBe('none');
     expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, now }).timing).toBe('none');
   });
+
+  it('손은 보였지만 가위·바위·보로 확정되지 않으면 unclear ("손이 안 보였어요"가 아님)', () => {
+    const now = goAt + 2000;
+    // 다른 모양(검지 하나)으로 인식됨
+    const other = { name: 'INDEX', code: '01000', stableMs: 500 };
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose: other, sawHand: true, now })).toEqual({
+      timing: 'unclear',
+      timingMs: null,
+      outcome: null,
+    });
+    // 손을 냈다가 확정 전에 내림 → 마지막은 손 없음
+    const gone = { name: null, code: null, stableMs: 0 };
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose: gone, sawHand: true, now }).timing).toBe('unclear');
+  });
+
+  it('마지막 손이 가위·바위·보면 손을 봤어도 early·late 로 알려 준다', () => {
+    const now = goAt + 2000;
+    const lastPose = { name: 'ROCK', code: '00000', stableMs: 3000 }; // "보!" 훨씬 전부터
+    expect(quickResult({ robotHand: 'V', input: null, goAt, lateMs, lastPose, sawHand: true, now }).timing).toBe('early');
+  });
 });
 
 describe('quickMessage: 결과 문구', () => {
@@ -399,6 +474,7 @@ describe('quickMessage: 결과 문구', () => {
       { timing: 'ontime', outcome: 'lose' },
       { timing: 'early', outcome: null },
       { timing: 'late', outcome: null },
+      { timing: 'unclear', outcome: null },
       { timing: 'none', outcome: null },
     ];
     for (const c of cases) {
@@ -410,6 +486,21 @@ describe('quickMessage: 결과 문구', () => {
 
   it('이기면 good', () => {
     expect(quickMessage({ timing: 'ontime', outcome: 'win' }).tone).toBe('good');
+  });
+
+  it('손이 안 보인 것과 모양을 알아보지 못한 것은 다른 문구', () => {
+    expect(quickMessage({ timing: 'none', outcome: null }).text).toContain('손이 보이지 않았어요');
+    expect(quickMessage({ timing: 'unclear', outcome: null }).text).toContain('손 모양을 알아보지 못했어요');
+  });
+});
+
+describe('seenText: 캠 화면 아래 "지금 보이는 손"', () => {
+  it('손 없음 / 가위·바위·보 / 다른 모양', () => {
+    expect(seenText(null)).toBe('손이 안 보여요');
+    expect(seenText({ code: null, name: null })).toBe('손이 안 보여요');
+    expect(seenText({ code: '00000', name: 'ROCK' })).toBe('✊ 바위');
+    expect(seenText({ code: '01000', name: 'INDEX' })).toBe('가위·바위·보가 아닌 모양');
+    expect(seenText({ code: '11001', name: null })).toBe('가위·바위·보가 아닌 모양');
   });
 });
 
@@ -447,6 +538,14 @@ describe('summarizeQuick: 회차 요약', () => {
 
   it('제때 낸 판이 없으면 평균은 null', () => {
     expect(summarizeQuick([{ timing: 'none', timingMs: null, outcome: null }]).avgReactionMs).toBeNull();
+  });
+
+  it('손 모양을 알아보지 못한 판(unclear)은 건너뜀(skipped)에 넣지 않는다', () => {
+    const games = [
+      { timing: 'unclear', timingMs: null, outcome: null },
+      { timing: 'none', timingMs: null, outcome: null },
+    ];
+    expect(summarizeQuick(games)).toMatchObject({ total: 2, done: 0, skipped: 1 });
   });
 });
 

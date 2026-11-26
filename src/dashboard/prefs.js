@@ -1,4 +1,5 @@
-// 대시보드 설정 저장: 난이도·속도. 개인정보는 저장하지 않는다.
+// 대시보드 설정 저장: 난이도·속도 (스테이션 하나에 하나). 개인정보는 저장하지 않는다.
+// 사람마다 시작 단계는 따로 저장한다 (user-levels.js, docs/decisions.md 3번).
 
 // 예전 버전이 저장한 사용자 이름 목록. 이제 쓰지 않으므로 앱이 시작할 때 지운다.
 const OLD_USERS_KEY = 'aihand-care.users.v1';
@@ -21,7 +22,7 @@ function write(key, value) {
   }
 }
 
-/** 저장된 설정 중 difficulty, speed 만 꺼낸다. */
+/** 저장된 설정 중 difficulty, speed 만 꺼낸다 */
 export function loadSavedSettings() {
   const s = read(SETTINGS_KEY, {});
   const out = {};

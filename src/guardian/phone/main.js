@@ -8,11 +8,24 @@
 import './phone.css';
 import { formatCode } from '../logic.js';
 import { localDate } from '../../dashboard/course-logic.js';
-import { parseHash, normalizeCode, cleanDisplayName, pageTitle, pairedText, countByDate, monthOf, shiftMonth, monthRange } from './logic.js';
+import {
+  parseHash,
+  normalizeCode,
+  cleanDisplayName,
+  pageTitle,
+  pairedText,
+  countByDate,
+  monthOf,
+  shiftMonth,
+  monthRange,
+  dayTitle,
+  coursesOn,
+} from './logic.js';
+import routines from '../../data/routines.json';
 import { demoSummaries, DEMO_NAME } from './demo.js';
 import { hasApi, fetchSummaries } from './api.js';
 import { loadConnection, saveConnection, clearConnection } from './store.js';
-import { renderConnect, renderHome, renderSettings } from './screen.js';
+import { renderConnect, renderHome, renderSettings, renderDay } from './screen.js';
 
 const TAG = '[보호자 앱]';
 const REFRESH_AFTER_MS = 60 * 1000; // 앱으로 돌아왔을 때 1분이 지났으면 새로 불러오기
@@ -21,7 +34,10 @@ const root = document.getElementById('app');
 const today = () => localDate(new Date().toISOString());
 
 const state = {
-  view: 'home', // 'connect' | 'home' | 'settings'
+  view: 'home', // 'connect' | 'home' | 'settings' | 'day'
+  day: null, // 회차 화면의 날짜 'YYYY-MM-DD'
+  tab: 0, // 회차 탭 (그날 몇 번째 코스)
+  trend: 'step2-rps', // 모아 보기 "반응 시간 변화"에서 고른 활동
   conn: null, // { code, name }
   demo: false,
   summaries: [],
@@ -40,7 +56,7 @@ function clearHash() {
 
 function start() {
   const parsed = parseHash(location.hash);
-  Object.assign(state, { view: 'home', notice: '', saved: false, connectError: '', month: monthOf(today()), loadedAt: null });
+  Object.assign(state, { view: 'home', day: null, tab: 0, notice: '', saved: false, connectError: '', month: monthOf(today()), loadedAt: null });
 
   state.demo = parsed.kind === 'demo';
   if (state.demo) {
@@ -112,7 +128,48 @@ function connectManually({ code, name }) {
   return '';
 }
 
+/** 날짜를 누르면 회차 화면 (6-5 B). 휴대폰 뒤로 가기로 달력에 돌아올 수 있게 기록을 하나 쌓는다 */
+function openDay(date) {
+  Object.assign(state, { view: 'day', day: date, tab: 0, notice: '' });
+  history.pushState({ view: 'day', date }, '');
+  render();
+  window.scrollTo(0, 0);
+}
+
+function closeDay() {
+  Object.assign(state, { view: 'home', day: null, tab: 0 });
+  render();
+}
+
+// 휴대폰 뒤로 가기: 회차 화면이면 달력으로 (주소 # 가 바뀔 때는 hashchange 의 start 가 맡는다)
+window.addEventListener('popstate', (e) => {
+  if (e.state?.view === 'day' && state.conn) {
+    Object.assign(state, { view: 'day', day: e.state.date, tab: 0 });
+    render();
+  } else if (state.view === 'day') {
+    closeDay();
+  }
+});
+
 function render() {
+  if (state.view === 'day' && state.conn) {
+    renderDay(root, {
+      title: dayTitle(state.day),
+      courses: coursesOn(state.summaries, state.day),
+      index: state.tab,
+      routines,
+      demo: state.demo,
+      onTab: (i, focus) => {
+        state.tab = i;
+        render();
+        if (focus) document.getElementById(`tab-${i}`)?.focus();
+      },
+      // 이 앱 안에서 연 화면이면 뒤로 가기와 같게, 아니면(새로고침 등) 그냥 달력으로
+      onBack: () => (history.state?.view === 'day' ? history.back() : closeDay()),
+    });
+    return;
+  }
+
   if (state.view === 'connect') {
     renderConnect(root, {
       error: state.connectError,
@@ -161,6 +218,12 @@ function render() {
     month: state.month,
     range: monthRange(t),
     counts: countByDate(state.summaries),
+    summaries: state.summaries,
+    trendProgram: state.trend,
+    onTrend: (id) => {
+      state.trend = id;
+      render();
+    },
     today: t,
     onPrev: () => {
       state.month = shiftMonth(state.month, -1);
@@ -173,6 +236,10 @@ function render() {
     onReload: () => {
       state.notice = '';
       refresh();
+    },
+    onOpenDay: (date) => {
+      state.month = monthOf(date);
+      openDay(date);
     },
     onSettings: () => {
       state.view = 'settings';

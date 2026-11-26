@@ -5,6 +5,7 @@
 
 import { h, button, message } from '../ui/components.js';
 import { findProgramInfo } from './catalog.js';
+import { levelText } from './find-start.js';
 
 const INPUT_TEXT = {
   hand: '손으로 해요 (카메라에 손을 보여 주세요)',
@@ -71,10 +72,11 @@ export function stepLabel(info) {
  * @param o.plan        [{ program, input }]
  * @param o.deviceNote  장치 상태 한 줄 (main.js 가 만든다)
  * @param o.who         지금 하시는 분 호칭 또는 "손님" (로그인 결과, #82)
+ * @param o.levels      그분의 시작 단계 { 활동 id: 단계 } (user-levels.js). 정해 둔 활동에 "보통부터" 알약. 손님은 {}
  * @param o.onStart     "시작하기"
  * @param o.onHome      "← 홈으로"
  */
-export function renderCourseIntro(container, { plan, deviceNote, who, onStart, onHome }) {
+export function renderCourseIntro(container, { plan, deviceNote, who, levels = {}, onStart, onHome }) {
   container.innerHTML = '';
   container.append(
     h(
@@ -92,6 +94,9 @@ export function renderCourseIntro(container, { plan, deviceNote, who, onStart, o
             { class: 'course-item' },
             h('span', { class: 'course-order' }, `${i + 1}번째`),
             h('span', { class: 'course-name' }, programTitle(step.program)),
+            levels[step.program] !== undefined
+              ? h('span', { class: 'course-level' }, `${levelText(step.program, levels[step.program])}부터`)
+              : null,
             h('span', { class: 'course-input' }, step.input === 'hand' ? '손' : '카드'),
           ),
         ),
@@ -236,10 +241,12 @@ function dateText(date) {
  * 코스 요약 화면.
  * @param o.summary    summarizeCourse() 결과
  * @param o.who        지금 하시는 분 (#82)
+ * @param o.challenges 이어서 해 볼 도전 활동 [{ id, name, level }] (level: 그분의 도전 단계 1·2·3). 없으면 칸을 그리지 않는다
+ * @param o.onChallenge (id) => 그 도전 활동 열기 (그분의 단계로, docs/decisions.md 3번)
  * @param o.onHome     "처음으로"
  * @param o.onResults  "활동 기록 보기"
  */
-export function renderCourseSummary(container, { summary, who, onHome, onResults }) {
+export function renderCourseSummary(container, { summary, who, challenges = [], onChallenge, onHome, onResults }) {
   const playedAll = summary.activities.every((a) => a.status === 'played');
   container.innerHTML = '';
   container.append(
@@ -275,6 +282,19 @@ export function renderCourseSummary(container, { summary, who, onHome, onResults
           ),
         ),
       ),
+      // 도전 활동은 코스에 넣지 않는다. 코스를 마친 뒤 원하시면 그분의 단계로 이어서 해 본다
+      challenges.length > 0 && onChallenge
+        ? h(
+            'section',
+            { class: 'course-challenges', 'aria-label': '도전 활동 해 보기' },
+            h('h2', {}, '도전 활동도 해 보시겠어요?'),
+            h(
+              'div',
+              { class: 'row' },
+              challenges.map((c) => button(`${c.name} · ${c.level}단계`, () => onChallenge(c.id), { variant: 'secondary' })),
+            ),
+          )
+        : null,
       h('div', { class: 'row' }, button('처음으로', onHome), button('활동 기록 보기', onResults, { variant: 'secondary' })),
     ),
   );

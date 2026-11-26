@@ -12,6 +12,8 @@ import {
   nextLength,
   summarizeRound,
   MAX_LENGTH_BY_DIFFICULTY,
+  QUESTIONS_PER_ROUND,
+  roundPlan,
 } from './logic.js';
 import poses from '../../data/poses.json';
 
@@ -161,5 +163,16 @@ describe('음성 문구 (#61)', () => {
   it('로봇이 보여 줄 숫자 순서는 읽지 않는다 (숫자 개수만)', () => {
     expect(announceLine(3)).toBe('이번에는 숫자 3개예요. 로봇을 잘 보고 기억해 주세요.');
     expect(announceLine(3, 2)).toBe('같은 숫자를 한 번 더 보여 드릴게요. 로봇을 잘 보고 기억해 주세요.');
+  });
+});
+
+describe('roundPlan (나의 시작 찾기 짧은 판)', () => {
+  it('보통 회차는 5문제, 난이도별 첫 개수', () => {
+    expect(roundPlan('normal')).toEqual({ questions: QUESTIONS_PER_ROUND, length: 2 });
+    expect(roundPlan('hard', false)).toEqual({ questions: QUESTIONS_PER_ROUND, length: 3 });
+  });
+  it('나의 시작 찾기면 난이도와 관계없이 숫자 3개 한 문제', () => {
+    expect(roundPlan('easy', true)).toEqual({ questions: 1, length: 3 });
+    expect(roundPlan('hard', true)).toEqual({ questions: 1, length: 3 });
   });
 });

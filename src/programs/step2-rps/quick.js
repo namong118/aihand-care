@@ -54,9 +54,11 @@ async function playGame(ctx, screen, s, robotHand, index, total) {
   // 1) 입력 받기 시작: 손 인식과 화면 버튼 중 먼저 들어온 것
   const stop = new AbortController();
   s.waits.add(stop);
-  let lastPose = null; // 판이 끝났을 때 확정이 안 됐으면 이유(너무 먼저/안 보임)를 알려 주는 데 쓴다
+  let lastPose = null; // 판이 끝났을 때 확정이 안 됐으면 이유(너무 먼저/늦게/알아보지 못함/안 보임)를 알려 주는 데 쓴다
+  let sawHand = false; // 손 입력을 받기 시작한(since) 뒤 손이 한 번이라도 보였는지
   const offPose = ctx.hand.onPose((pose) => {
     lastPose = pose;
+    if (pose?.code && Date.now() >= since) sawHand = true;
   });
   stop.signal.addEventListener('abort', offPose);
   const fromHand = ctx.hand
@@ -95,7 +97,7 @@ async function playGame(ctx, screen, s, robotHand, index, total) {
   if (!s.alive) return null;
 
   // 4) 판정과 결과
-  const result = quickResult({ robotHand, input, goAt, lateMs, lastPose, now: Date.now() });
+  const result = quickResult({ robotHand, input, goAt, lateMs, lastPose, sawHand, now: Date.now() });
   const msg = quickMessage(result);
   screen.quickResult({ robotHand, userHand: input?.hand ?? null, msg, timingMs: result.timing === 'ontime' ? result.timingMs : null });
   speak(msg.text);

@@ -1,9 +1,10 @@
 // 홈 화면 (디자인 시안 v11 "홈"): 날짜·인사말과 "오늘의 활동 시작하기", 코스 순서대로 활동 카드 4장,
-// 주 버튼 아래에 "지난 기록 보기"와 지금 설정(난이도·속도) + "바꾸기".
+// 주 버튼 아래에 지금 설정(난이도·속도) + "바꾸기". "지난 기록 보기"는 설정 영역에 있다 (어르신이 보는 홈에는 두지 않음).
 // 활동 카드를 누르면 그 활동 하나만 바로 시작한다 (예전 "하나만 해 보기" 작은 버튼 줄을 대신함, 11/18 Pi 시연 의견).
 // 카드 아래 칸은 짝 도전 활동 (11/20, #132). 코스에는 들어가지 않는다.
 // 설정 영역 자체는 settings.js, 상단 바는 statusbar.js.
 // 로그인은 코스를 시작할 때 하므로 홈에서는 호칭을 부르지 않는다.
+// "나의 시작 찾기" 입구는 주 버튼 아래. 시작 단계는 로그인한 분마다 저장하므로(user-levels.js) 홈 카드에는 표시하지 않는다.
 
 import { h } from '../ui/components.js';
 import { challengeFor, findProgramInfo } from './catalog.js';
@@ -77,16 +78,33 @@ function courseCard(p, order, app) {
       'button',
       { type: 'button', class: `home-course-card step${p.step}`, onClick: () => app.startProgram(p.id), 'aria-label': `${order}번째 ${p.name}, 하나만 해 보기` },
       h('span', { class: 'home-course-head' }, art(p.step), h('span', { class: 'home-course-order' }, `${order}번째`)),
-      h('span', { class: 'home-course-text' }, h('span', { class: 'home-course-name' }, p.name), h('span', { class: 'home-course-desc' }, p.short)),
+      h(
+        'span',
+        { class: 'home-course-text' },
+        h('span', { class: 'home-course-name' }, p.name),
+        h('span', { class: 'home-course-desc' }, p.short),
+      ),
       h('span', { class: 'home-course-go', 'aria-hidden': 'true' }, '하나만 해 보기 ›'),
     ),
     c ? challengeSlot(c, ready, () => app.startProgram(c.id)) : null,
   );
 }
 
+/** 나의 시작 찾기 입구. 누르면 먼저 로그인한다 (코스처럼, 손님도 할 수 있음) */
+function findStartEntry(app) {
+  if (!app.openFindStart) return null;
+  return h(
+    'div',
+    { class: 'home-find' },
+    h('span', {}, '어디서부터 할지 모르겠다면'),
+    h('button', { type: 'button', class: 'home-find-btn', onClick: app.openFindStart }, '나의 시작 찾기'),
+  );
+}
+
 /**
  * @param container  그릴 자리
- * @param app        { settings, plan: [programId...], openSettings(), openResults(), startProgram(id), startCourse(), hasProgram(id) }
+ * @param app        { settings, plan: [programId...], openSettings(), startProgram(id), startCourse(), hasProgram(id),
+ *                     openFindStart() (없으면 입구를 그리지 않음) }
  */
 export function renderHome(container, app) {
   const { settings } = app;
@@ -114,7 +132,8 @@ export function renderHome(container, app) {
             '오늘의 활동 시작하기',
             svgIcon(`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="${NS}"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`),
           ),
-          app.openResults ? h('button', { type: 'button', class: 'link-button', onClick: app.openResults }, '지난 기록 보기') : null,
+          findStartEntry(app),
+          // "지난 기록 보기"는 어르신이 보는 홈에서 설정 영역으로 옮김 (2026-11-26). 상단 바 결과 버튼은 그대로
           // 기본 활동의 난이도·속도. 도전 칸이 붙으면서 1280×720에 들어가게 아래 줄에서 이리로 옮김 (11/20)
           h(
             'div',

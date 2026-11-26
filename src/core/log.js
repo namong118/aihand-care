@@ -189,6 +189,16 @@ export function createLog({ storage = defaultStorage() } = {}) {
     clear() {
       save([]);
     },
+    /**
+     * 조건에 맞는 기록만 지운다 (사용자 지우기: 그분의 코스 기록). 지운 개수를 돌려준다.
+     * @param {(record) => boolean} match
+     */
+    removeWhere(match) {
+      const records = load();
+      const keep = records.filter((r) => !match(r));
+      if (keep.length !== records.length) save(keep);
+      return records.length - keep.length;
+    },
     onRecord(cb) {
       listeners.add(cb);
       return () => listeners.delete(cb);

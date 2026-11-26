@@ -177,3 +177,224 @@ export function timeText(iso) {
   const minute = parts.find((p) => p.type === 'minute').value;
   return `${hour < 12 ? '오전' : '오후'} ${hour % 12 === 0 ? 12 : hour % 12}:${minute}`;
 }
+
+// ---- 회차 화면 (6-4 ~ 6-10) ----
+// 표현 원칙(6-12): 센 개수만, 비율·점수·판정 없이. 화면 글자는 "완료"(맞은 개수 아님).
+
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** 날짜 제목: '2026-11-13' → '11월 13일 (금)' */
+export function dayTitle(date) {
+  const [y, m, d] = String(date).split('-').map(Number);
+  return `${m}월 ${d}일 (${DOW[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]})`;
+}
+
+/** 그날의 회차, 먼저 한 것부터 (회차 탭 순서) */
+export function coursesOn(summaries, date) {
+  return summaries
+    .filter((s) => s.date === date)
+    .sort((a, b) => String(a.startedAt ?? a.courseId).localeCompare(String(b.startedAt ?? b.courseId)));
+}
+
+/** 걸린 분 (1분보다 짧으면 1). 시각이 없으면 null */
+export function durationMinutes(summary) {
+  const ms = Date.parse(summary.endedAt) - Date.parse(summary.startedAt);
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  return Math.max(1, Math.round(ms / 60000));
+}
+
+/** 활동 목록을 코스 순서로 (order). 없으면 빈 목록 */
+export function orderedActivities(summary) {
+  return [...(summary.activities ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+/**
+ * ① 코스 전체 요약 (6-7 A): 시간 + 활동 수. 끝까지 했는지는 글자로만 구분한다.
+ * 반환: { time: '오전 10:05 시작 · 22분', main: '활동 4개 모두 함께하셨어요' }
+ */
+export function courseSummaryText(summary) {
+  const acts = orderedActivities(summary);
+  const played = acts.filter((a) => a.status === 'played').length;
+  const minutes = durationMinutes(summary);
+  const start = timeText(summary.startedAt);
+  const time = [start && `${start} 시작`, minutes && `${minutes}분`].filter(Boolean).join(' · ');
+  let main;
+  if (played === 0) main = '이번 코스에는 활동 기록이 없어요';
+  else if (summary.finished && played === acts.length) main = `활동 ${played}개 모두 함께하셨어요`;
+  else main = `활동 ${played}개 함께하고 마쳤어요`;
+  return { time, main };
+}
+
+/** 반응 시간 글자: 1400 → '1.4초'. 없으면 '' */
+export function reactionText(ms) {
+  return Number.isFinite(ms) && ms > 0 ? `${(ms / 1000).toFixed(1)}초` : '';
+}
+
+/** 쌓은 막대 칸 이름 (범례·글자). 모양(무늬)은 화면이 정한다 */
+export const SEGMENT_LABEL = {
+  done: '완료·따라 함',
+  shown: '함께 확인',
+  rest: '완료 외',
+  skipped: '건너뜀',
+};
+
+/**
+ * ② 쌓은 세로 막대 (6-8 C, 목업 모양) 한 활동의 칸들, 아래부터 쌓는 순서. 0인 칸은 뺀다.
+ *   완료(손운동은 따라 함) / 함께 확인 (숫자 기억·가위바위보) / 건너뜀 / 완료 외 (그 밖, 색깔손)
+ *   "다시 해서 함"은 완료에 들어 있다. "한 번에"는 ③ 숫자 카드에서 보여 준다.
+ * 하지 않았거나 건너뛴 활동은 빈 목록
+ */
+export function barSegments(activity) {
+  if (activity?.status !== 'played') return [];
+  const total = activity.total ?? 0;
+  const done = activity.done ?? 0;
+  const skipped = activity.skipped ?? 0;
+  const shown = activity.outcomes?.shown ?? 0;
+  const parts = [
+    ['done', done],
+    ['shown', shown],
+    ['skipped', skipped],
+    ['rest', total - done - shown - skipped],
+  ];
+  return parts.filter(([, v]) => Number.isFinite(v) && v > 0).map(([key, value]) => ({ key, label: SEGMENT_LABEL[key], value }));
+}
+
+/** 막대 세로축 끝: 가장 큰 전체 수를 짝수로 올림 (눈금 0·가운데·끝이 정수가 되게). 최소 2 */
+export function chartMax(activities) {
+  const top = Math.max(2, ...activities.map((a) => (a.status === 'played' ? a.total ?? 0 : 0)));
+  return top % 2 ? top + 1 : top;
+}
+
+/** 루틴 id → 이름 (src/data/routines.json 의 title). 모르는 id 는 '손운동' (6-13) */
+export function routineNames(ids, routines) {
+  const byId = new Map(routines.map((r) => [r.id, r.title]));
+  return (ids ?? []).map((id) => byId.get(id) ?? '손운동');
+}
+
+/**
+ * ③ 스텝별 요약 (6-10 B, 목업 모양) 한 활동.
+ *   tiles: 숫자 카드 4칸. 자리는 모든 활동에서 같게 둔다
+ *          전체 문제(손운동은 전체 동작) / 완료(따라 함) / 건너뜀(색깔손은 건너뛰기가 없어 '–') / 한 번에(숫자 기억·가위바위보만, 나머지 '–')
+ *   facts: 이름 / 값 줄. 평균 반응(없으면 '–'), 함께 확인 N문제(있을 때), 루틴(손운동), 한 활동 횟수(한 번 더 했을 때)
+ *   off:   건너뛴 활동 '건너뛰었어요', 하지 않은 활동 '하지 않았어요' (빈칸으로 두지 않는다)
+ */
+export function activityView(activity, routines = []) {
+  if (activity.status === 'skipped') return { played: false, off: '건너뛰었어요', tiles: [], facts: [] };
+  if (activity.status !== 'played') return { played: false, off: '하지 않았어요', tiles: [], facts: [] };
+  const coach = activity.program === 'step4-coach';
+  const stroop = activity.program === 'step3-stroop';
+  const o = activity.outcomes;
+  const tiles = [
+    { label: coach ? '전체 동작' : '전체 문제', value: String(activity.total), unit: coach ? '동작' : '문제' },
+    { label: coach ? '따라 함' : '완료', value: String(activity.done), unit: '' },
+    { label: '건너뜀', value: stroop ? '–' : String(activity.skipped ?? 0), unit: '' },
+    { label: '한 번에', value: o ? String(o.first) : '–', unit: '' },
+  ];
+  const facts = [{ label: '평균 반응', value: reactionText(activity.avgReactionMs) || '–' }];
+  if (o?.shown > 0) facts.push({ label: '함께 확인', value: `${o.shown}문제` });
+  if (activity.routines?.length) facts.push({ label: '루틴', value: routineNames(activity.routines, routines).join(', ') });
+  if (activity.rounds > 1) facts.push({ label: '한 횟수', value: `${activity.rounds}번` });
+  return { played: true, off: '', tiles, facts };
+}
+
+/** 방사형 끝값: 숫자 기억·가위바위보·색깔손은 한 회차가 늘 5문제라 5로 고정 (PR #152 리뷰) */
+export const RADAR_MAX = 5;
+
+/**
+ * 손운동 동작 수를 5칸으로 환산 (루틴마다 동작 수가 2·6·5·3… 으로 달라서).
+ * 안 했으면 0, 다 했으면 5, 그 사이는 반올림해서 1~4 로 묶는다
+ * (내림이면 6동작 중 1개가 0이 되고, 반올림만 하면 16개 중 15개가 5가 된다)
+ */
+export function toFive(done, total) {
+  if (!total || done <= 0) return 0;
+  if (done >= total) return 5;
+  return Math.min(4, Math.max(1, Math.round((done / total) * 5)));
+}
+
+/**
+ * 방사형 한 활동의 칸 값 (0~5). 그림에만 쓰고 글자로는 쓰지 않는다 (글자는 실제 기록).
+ *   모든 활동: toFive(완료 수, 전체 수). 손운동은 전체 동작, 나머지는 전체 문제
+ *   (한 번 더 해서 10문제면 9/10 → 4, 10/10 → 5. 다 했을 때만 5)
+ *   하지 않았거나 건너뛴 활동은 0
+ */
+export function radarValue(activity) {
+  if (activity?.status !== 'played') return 0;
+  return toFive(activity.done ?? 0, activity.total ?? 0);
+}
+
+/**
+ * 방사형 (6-9 B, 2026-11-23 경민 선택 · 팀 확인 필요): 축 = 활동 이름, 칸 = radarValue, 끝값 5 고정.
+ * 지난 회차 모양 겹치기, "넓을수록 좋아요" 같은 말은 두지 않는다 (PR #152 리뷰).
+ */
+export function radarData(activities) {
+  return { values: activities.map(radarValue), max: RADAR_MAX };
+}
+
+/**
+ * 방사형·막대 옆에 쓸 실제 기록 글자 (환산 숫자는 쓰지 않는다)
+ *   short: '5동작 따라 함' / '4문제 완료' / '건너뜀' / '하지 않음'
+ *   long:  '6동작 중 5동작 따라 하셨어요' / '5문제 중 4문제 완료' (화면 읽기용)
+ */
+export function recordText(activity) {
+  if (activity?.status === 'skipped') return { short: '건너뜀', long: '건너뛰었어요' };
+  if (activity?.status !== 'played') return { short: '하지 않음', long: '하지 않았어요' };
+  if (activity.program === 'step4-coach')
+    return { short: `${activity.done}동작 따라 함`, long: `${activity.total}동작 중 ${activity.done}동작 따라 하셨어요` };
+  return { short: `${activity.done}문제 완료`, long: `${activity.total}문제 중 ${activity.done}문제 완료` };
+}
+
+// ---- 모아 보기 (6-11 A·B) ----
+
+/** A. 달마다 함께한 날: 보고 있는 달까지 n달 [{ label: '9월', days }] (오래된 달부터) */
+export function monthlyDays(counts, endMonth, n = 3) {
+  return Array.from({ length: n }, (_, i) => {
+    const m = shiftMonth(endMonth, i - n + 1);
+    return { label: `${m.month}월`, days: daysInMonth(counts, m) };
+  });
+}
+
+/** A. 그 달 활동별 함께한 횟수 (활동을 한 코스 수). programs 순서대로 [{ program, count }] */
+export function activityCounts(summaries, { year, month }, programs) {
+  const prefix = `${year}-${pad(month)}-`;
+  const inMonth = summaries.filter((s) => s.date.startsWith(prefix));
+  return programs.map((program) => ({
+    program,
+    count: inMonth.filter((s) => (s.activities ?? []).some((a) => a.program === program && a.status === 'played')).length,
+  }));
+}
+
+/**
+ * B. 반응 시간 변화: 한 활동의 날짜별 평균 반응 시간 (ms), 날짜 오름차순, 최근 limit 날만.
+ * 하루에 여러 번 했으면 문제 수(total)로 가중 평균한다 (스테이션 결과 화면과 같은 계산, docs/course.md 5번).
+ * 반응 시간이 없는 날은 뺀다. 목표선·정상선·"빨라졌어요" 같은 판정은 두지 않는다 (6-11).
+ */
+export function reactionByDate(summaries, program, limit = 8) {
+  const byDate = new Map();
+  for (const s of summaries) {
+    for (const a of s.activities ?? []) {
+      if (a.program !== program || a.status !== 'played' || !(a.avgReactionMs > 0) || !(a.total > 0)) continue;
+      const cur = byDate.get(s.date) ?? { sum: 0, n: 0 };
+      cur.sum += a.avgReactionMs * a.total;
+      cur.n += a.total;
+      byDate.set(s.date, cur);
+    }
+  }
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-limit)
+    .map(([date, { sum, n }]) => ({ date, ms: Math.round(sum / n) }));
+}
+
+/** 반응 시간을 재는 방법 (활동마다 달라 활동끼리 견주지 않는다) */
+export const REACTION_NOTE = {
+  'step4-coach': '손운동은 동작이 시작된 뒤 손모양을 유지해 마칠 때까지예요 (유지 1초 포함).',
+  'step2-rps': '가위바위보는 문제가 나온 뒤 첫 답까지예요.',
+  'step1-memory': '숫자 기억은 첫 도전에서 숫자 하나를 입력하는 데 걸린 평균이에요.',
+  'step3-stroop': '색깔손은 문제가 나온 뒤 답까지예요.',
+};
+
+/** 날짜 짧은 글자: '2026-11-13' → '11/13' */
+export function shortDate(date) {
+  const [, m, d] = String(date).split('-').map(Number);
+  return `${m}/${d}`;
+}

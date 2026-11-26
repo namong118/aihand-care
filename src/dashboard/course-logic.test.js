@@ -259,6 +259,13 @@ describe('reactionTrend', () => {
     expect(reactionTrend(records, 'step2-rps')).toEqual([{ date: '2026-11-13', avgReactionMs: 2000, rounds: 1 }]);
     expect(reactionTrend([quick], 'step2-rps')).toEqual([]);
   });
+
+  it('나의 시작 찾기 짧은 판(detail.findStart)은 뺀다', () => {
+    const short = { ...rec('step1-memory', { start: '2026-11-22T05:00:00.000Z', total: 1, avg: 900 }) };
+    short.detail = { ...short.detail, findStart: { id: 'find-1', group: 'memory', role: 'basic' } };
+    const records = [short, rec('step1-memory', { start: '2026-11-22T06:00:00.000Z', total: 5, avg: 2000 })];
+    expect(reactionTrend(records, 'step1-memory')).toEqual([{ date: '2026-11-22', avgReactionMs: 2000, rounds: 1 }]);
+  });
 });
 
 describe('groupByDay (결과 화면 날짜별 기록)', () => {
@@ -376,6 +383,11 @@ describe('challengeText (도전 활동 한 판 기록 글)', () => {
     expect(challengeText(r('challenge-count', { level: 3, end: 23, winner: 'me' }))).toBe('3단계 · 끝 숫자 23 · 로봇이 끝 숫자를 부름');
     expect(challengeText(r('challenge-count', { level: 1, end: 20, winner: 'robot' }))).toBe('1단계 · 끝 숫자 20 · 끝 숫자를 부르심');
     expect(challengeText(r('challenge-count', { level: 1, end: 20, winner: null, stopped: true }))).toBe('1단계 · 끝 숫자 20 · 중간에 그만함');
+  });
+  it('공 주고받기: 1단계는 고른 손도', () => {
+    const ball = (detail, done) => ({ program: 'challenge-ball', total: 4, done, skipped: 0, detail });
+    expect(challengeText(ball({ level: 1, hand: 'left', exchanges: [] }, 4))).toBe('1단계 · 왼손 · 공을 4번 주고받음');
+    expect(challengeText(ball({ level: 3, hand: null, exchanges: [] }, 4))).toBe('3단계 · 공을 4번 주고받음');
   });
   it('모르는 활동·detail 없음은 null', () => {
     expect(challengeText(r('challenge-shuffle', { level: 1 }))).toBeNull();
