@@ -64,6 +64,7 @@ export function createMediaPipeHand({ poses, onStop = () => {} }) {
   let delegate = null; // 'GPU' | 'CPU'
   let stream = null;
   let running = false;
+  let paused = false; // 손 인식 쉬기: 영상은 켜 둔 채 인식 계산만 건너뛴다 (활동 화면이 아닐 때, 라즈베리파이 열 줄이기)
   let rafId = 0;
   let tickTimer = null;
   let lastVideoTime = -1;
@@ -128,8 +129,8 @@ export function createMediaPipeHand({ poses, onStop = () => {} }) {
 
   async function loop() {
     if (!running) return;
-    // 새 프레임이 들어왔을 때만 인식한다
-    if (landmarker && video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+    // 새 프레임이 들어왔을 때만 인식한다. 쉬는 중이면 인식하지 않는다
+    if (!paused && landmarker && video.readyState >= 2 && video.currentTime !== lastVideoTime) {
       lastVideoTime = video.currentTime;
       try {
         await detect();
@@ -218,6 +219,19 @@ export function createMediaPipeHand({ poses, onStop = () => {} }) {
   return {
     kind: 'mediapipe',
     video, // 미리보기용 (개발자 입력 영역에 붙인다)
+
+    /** 손 인식 쉬기(true)·다시 하기(false). 쉬는 동안은 "손 없음"으로 알린다 */
+    setPaused(on) {
+      paused = Boolean(on);
+      if (paused) {
+        setCode(null, null);
+        smooth = createCodeSmoother(2);
+        fps = 0;
+      }
+    },
+    get paused() {
+      return paused;
+    },
 
     onPose(cb) {
       listeners.add(cb);

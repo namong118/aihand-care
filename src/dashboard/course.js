@@ -238,9 +238,18 @@ function dateText(date) {
  * @param o.who        지금 하시는 분 (#82)
  * @param o.onHome     "처음으로"
  * @param o.onResults  "활동 기록 보기"
+ * @returns { setGreeting(text) }  "오늘의 한마디" 칸 채우기 (AI 인사, src/ai/greeting.js). 처음에는 "준비하고 있어요"
  */
 export function renderCourseSummary(container, { summary, who, onHome, onResults }) {
   const playedAll = summary.activities.every((a) => a.status === 'played');
+  // 오늘의 한마디: 코스 끝 따뜻한 인사. AI 가 만드는 데 몇 초 걸릴 수 있어서 먼저 칸을 그려 둔다
+  const greetingText = h('p', { class: 'act-text', 'aria-live': 'polite', style: { margin: '0' } }, '오늘의 한마디를 준비하고 있어요…');
+  const greetingCard = h(
+    'div',
+    { class: 'act-card', style: { margin: '12px 0', gap: '6px' } },
+    h('span', { class: 'act-label' }, '로봇의 오늘의 한마디'),
+    greetingText,
+  );
   container.innerHTML = '';
   container.append(
     h(
@@ -253,6 +262,7 @@ export function renderCourseSummary(container, { summary, who, onHome, onResults
         summary.finished && playedAll ? '네 가지 활동을 모두 함께 해 주셨어요. 수고하셨어요!' : '오늘 함께한 활동이에요. 수고하셨어요!',
         'good',
       ),
+      greetingCard,
       h(
         'div',
         { class: 'table-wrap' },
@@ -278,4 +288,9 @@ export function renderCourseSummary(container, { summary, who, onHome, onResults
       h('div', { class: 'row' }, button('처음으로', onHome), button('활동 기록 보기', onResults, { variant: 'secondary' })),
     ),
   );
+  return {
+    setGreeting(text) {
+      greetingText.textContent = text;
+    },
+  };
 }

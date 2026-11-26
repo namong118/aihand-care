@@ -27,6 +27,7 @@ export function createHand({ poses, loadWebcam = () => import('./mediapipe.js') 
   let starting = false;
   let everStarted = false;
   let note = '화면 버튼';
+  let resting = false; // 손 인식 쉬는 중 (활동 화면이 아닐 때). 웹캠을 나중에 켜도 이 값을 따른다
 
   function forward(pose) {
     listeners.forEach((cb) => cb(pose));
@@ -77,6 +78,7 @@ export function createHand({ poses, loadWebcam = () => import('./mediapipe.js') 
           });
         }
         await webcam.start(opts);
+        webcam.setPaused?.(resting);
         everStarted = true;
         note = '웹캠';
         return true;
@@ -88,6 +90,21 @@ export function createHand({ poses, loadWebcam = () => import('./mediapipe.js') 
         starting = false;
         changed();
       }
+    },
+
+    /**
+     * 손 인식 쉬기·다시 하기 (대시보드가 화면을 바꿀 때 부른다).
+     * 손 인식은 활동 화면에서만 필요하다. 쉬는 동안 웹캠 영상은 그대로 두고 인식 계산만 멈춰서 라즈베리파이 열을 줄인다.
+     * 코스 끝 AI 인사처럼 무거운 일은 쉬는 중일 때만 한다 (isResting)
+     */
+    rest(on) {
+      resting = Boolean(on);
+      webcam?.setPaused?.(resting);
+    },
+
+    /** 손 인식이 쉬는 중인지 (웹캠이 꺼져 있어도 true: 인식 계산이 없다) */
+    isResting() {
+      return resting || !webcamOn();
     },
 
     /** 웹캠 끄기 → 화면 버튼(Mock)으로 */

@@ -10,7 +10,7 @@ import { renderResults } from './dashboard/results.js';
 import { CATALOG, findProgramInfo } from './dashboard/catalog.js';
 import { loadCourse, newCourseId, tagRecord, stepInfo, courseProgress, courseOf, summarizeCourse } from './dashboard/course-logic.js';
 import { createCourseStore } from './dashboard/course-store.js';
-import { renderCourseIntro, renderStepIntro, createCourseBar, renderCourseSummary } from './dashboard/course.js';
+import { renderCourseIntro, renderStepIntro, createCourseBar, renderCourseSummary, programTitle } from './dashboard/course.js';
 import courseJson from './data/course.json';
 import { loadSavedSettings, saveSettings, removeOldUsers } from './dashboard/prefs.js';
 import { h, button, message } from './ui/components.js';
@@ -18,6 +18,7 @@ import { PROGRAMS } from './programs/index.js';
 import login from './login/index.js';
 import { createUserStore } from './login/users.js';
 import { sendCourseSummary } from './guardian/index.js';
+import { makeCourseGreeting } from './ai/greeting.js';
 
 const appEl = document.querySelector('#app');
 const statusEl = document.querySelector('#statusbar');
@@ -107,6 +108,8 @@ function updateRobotBox() {
 function setScreen(name) {
   screen = name;
   document.body.dataset.screen = name;
+  // 손 인식은 활동 화면에서만 한다. 다른 화면에서는 쉬어서 라즈베리파이 열을 줄인다 (웹캠 영상은 켜 둔 채)
+  devices.hand.rest(name !== 'program');
   updateRobotBox();
 }
 
@@ -358,7 +361,15 @@ function finishCourse() {
   course = null;
   setScreen('course');
   const summary = summarizeCourse(courseStore.get(id), devices.log.list());
-  renderCourseSummary(appEl, { summary, who: whoText(), onHome: showHome, onResults: () => showResults() });
+  const view = renderCourseSummary(appEl, { summary, who: whoText(), onHome: showHome, onResults: () => showResults() });
+  // 오늘의 한마디: 오프라인 AI 가 따뜻한 인사를 만든다. 손 인식이 쉬는 중일 때만 AI 를 쓰고(열),
+  // AI 가 없거나 금지어(건강·효과·점수 등)가 나오면 미리 써 둔 인사 (src/ai/greeting.js, docs/ai-greeting.md)
+  makeCourseGreeting({
+    summary,
+    titleOf: programTitle,
+    name: who?.displayName ?? null,
+    canUseAi: () => devices.hand.isResting(),
+  }).then((g) => view.setGreeting(g.text));
   sendCourseSummary(summary); // 보호자 앱(#62). 기다리지 않고, 손님·연결 안 한 분은 알아서 보내지 않는다
   ctx.robot
     .hello()
