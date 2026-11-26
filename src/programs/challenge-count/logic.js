@@ -25,6 +25,15 @@ export function levelSpec(level) {
   return LEVELS[defaultLevel(level)];
 }
 
+/** 나의 시작 찾기 짧은 판 (ctx.settings.findStart): 1단계 규칙, 끝 숫자만 10~13으로 짧게 */
+export const FIND_START_GAME = { level: 1, ends: [10, 13] };
+
+/** 이번 판에 쓸 단계 값. 나의 시작 찾기면 1단계에 끝 숫자만 짧게 */
+export function gameSpec(level, findStart = false) {
+  if (findStart) return { ...LEVELS[FIND_START_GAME.level], ends: [...FIND_START_GAME.ends] };
+  return levelSpec(level);
+}
+
 /** 시작 화면에서 미리 고를 단계. ctx.settings.challengeLevel 이 1·2·3 이면 그대로, 아니면 1 */
 export function defaultLevel(value) {
   return [1, 2, 3].includes(value) ? value : 1;
@@ -58,9 +67,10 @@ export function isLosingSpot(now, end, maxStep) {
  * 판 만들기: 끝 숫자와 한 번에 셀 수 있는 개수.
  * 먼저 하는 사용자가 잘 두면 이길 수 있는 판만 만든다 (처음 자리가 지는 자리가 아니게).
  * @param rand 0 이상 1 미만 (테스트에서 고정값)
+ * @param spec 단계 값 (없으면 levelSpec(level). 나의 시작 찾기는 gameSpec 결과를 넘긴다)
  */
-export function makeGame(level, rand = Math.random) {
-  const { ends, steps } = levelSpec(level);
+export function makeGame(level, rand = Math.random, spec = levelSpec(level)) {
+  const { ends, steps } = spec;
   const pick = (list) => list[Math.min(list.length - 1, Math.floor(rand() * list.length))];
   const maxStep = pick(steps);
   const candidates = [];

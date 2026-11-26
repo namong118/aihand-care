@@ -24,7 +24,8 @@
 | 3단계 | 20~25 | 1~3개 또는 1~4개 | 늘 이기는 수 | 없음 |
 
 - 로봇은 이기는 수를 고르지 않을 때도 끝 숫자는 피할 수 있으면 피한다 (일부러 지지 않음, `robotCount`)
-- 미리 고른 단계: `ctx.settings.challengeLevel`(1·2·3)이 있으면 그 단계, 없으면 1단계 (`defaultLevel`). "나의 시작 찾기"와 함께 대시보드가 넣을 예정
+- 미리 고른 단계: `ctx.settings.challengeLevel`(1·2·3)이 있으면 그 단계, 없으면 1단계 (`defaultLevel`). 나의 시작 찾기·사람별 시작 단계로 대시보드가 넣는다
+- **나의 시작 찾기 짧은 판** (`ctx.settings.findStart`가 `true`, 2026-11-26): 단계 고르기 없이 1단계 규칙, 끝 숫자만 **10~13** (`gameSpec`, `FIND_START_GAME`). 기록은 평소와 같고 대시보드가 `detail.findStart`를 붙인다
 - `ctx.settings.difficulty`(기본 활동용)는 쓰지 않는다. 속도 느리게(`SLOW`)는 손 확정 시간·로봇이 생각하고 보여 주는 시간만 늘린다
 
 ## 흐름 (한 회차 = 한 판)

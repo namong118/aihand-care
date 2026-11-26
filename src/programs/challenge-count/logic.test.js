@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   LEVELS,
   levelSpec,
+  gameSpec,
+  FIND_START_GAME,
   defaultLevel,
   countPose,
   poseCount,
@@ -39,6 +41,25 @@ describe('단계', () => {
   it('한 번에 셀 수 있는 개수는 손가락 손모양이 있는 1~4 안', () => {
     for (const { steps } of Object.values(LEVELS)) {
       for (const s of steps) expect(posesFor(s).every(Boolean)).toBe(true);
+    }
+  });
+});
+
+describe('나의 시작 찾기 짧은 판 (gameSpec)', () => {
+  it('평소에는 그 단계 값', () => {
+    expect(gameSpec(2)).toEqual(levelSpec(2));
+  });
+  it('나의 시작 찾기면 1단계 규칙에 끝 숫자만 10~13', () => {
+    const spec = gameSpec(3, true);
+    expect(spec).toEqual({ ...LEVELS[1], ends: [10, 13] });
+    expect(FIND_START_GAME.level).toBe(1);
+  });
+  it('짧은 판도 먼저 하는 사용자가 이길 수 있는 끝 숫자만', () => {
+    for (let i = 0; i < 30; i++) {
+      const { end, maxStep } = makeGame(1, Math.random, gameSpec(1, true));
+      expect(end).toBeGreaterThanOrEqual(10);
+      expect(end).toBeLessThanOrEqual(13);
+      expect(isLosingSpot(0, end, maxStep)).toBe(false);
     }
   });
 });

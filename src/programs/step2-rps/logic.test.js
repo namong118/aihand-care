@@ -25,6 +25,8 @@ import {
   handsText,
   CONDITIONS_BY_DIFFICULTY,
   makeQuestion,
+  roundQuestions,
+  FIND_START_ROUND,
   isRpsHand,
   QUESTIONS_PER_ROUND,
   makeRound,
@@ -190,6 +192,23 @@ describe('makeRound: 한 회차 문제 목록', () => {
       { robotHand: 'ROCK', conditionId: 'WIN' },
       { robotHand: 'ROCK', conditionId: 'WIN' },
     ]);
+  });
+});
+
+describe('roundQuestions: 나의 시작 찾기 짧은 판', () => {
+  it('평소에는 난이도대로 5문제', () => {
+    expect(roundQuestions('easy')).toHaveLength(QUESTIONS_PER_ROUND);
+  });
+  it('나의 시작 찾기면 꼬인 조건 한 문제 (난이도와 관계없이)', () => {
+    for (const difficulty of ['easy', 'normal', 'hard']) {
+      const list = roundQuestions(difficulty, true);
+      expect(list).toHaveLength(FIND_START_ROUND.questions);
+      expect(['NO_WIN_NO_DRAW', 'NO_LOSE_NO_DRAW']).toContain(list[0].conditionId);
+      expect(HANDS).toContain(list[0].robotHand);
+    }
+  });
+  it('나의 시작 찾기면 어려움이어도 로봇 손을 계속 보여 준다', () => {
+    expect(revealMs('hard', 'NORMAL', true)).toBeNull();
   });
 });
 

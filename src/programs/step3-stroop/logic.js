@@ -53,6 +53,18 @@ export function makeRound(colors, difficulty = 'easy', count = QUESTIONS_PER_ROU
   return list;
 }
 
+/**
+ * 나의 시작 찾기 짧은 판 (ctx.settings.findStart): 글자 뜻과 색이 늘 다른 문제(어려움 종류) 2개.
+ * 둘 다 해내야 "해냄" (대시보드 find-start-logic.js outcomeOf)
+ */
+export const FIND_START_ROUND = { questions: 2, difficulty: 'hard' };
+
+/** 한 회차 문제 목록. 나의 시작 찾기면 FIND_START_ROUND, 아니면 난이도대로 5문제 */
+export function roundQuestions(colors, difficulty, findStart = false, rand = Math.random) {
+  if (findStart) return makeRound(colors, FIND_START_ROUND.difficulty, FIND_START_ROUND.questions, rand);
+  return makeRound(colors, difficulty, QUESTIONS_PER_ROUND, rand);
+}
+
 function isSame(a, b) {
   return a.wordColor === b.wordColor && a.inkColor === b.inkColor;
 }

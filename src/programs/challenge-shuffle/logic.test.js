@@ -1,8 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import {
   LEVELS, ROUNDS, levelSpec, defaultLevel, makeStart, makeSwaps, applySwaps, pickAsks, positionPose, judgeShuffle, summarizeRound,
+  roundCount, FIND_START_GAME,
 } from './logic.js';
 import colors from '../../data/colors.json';
+
+describe('나의 시작 찾기 짧은 판', () => {
+  it('평소에는 5판, 나의 시작 찾기면 1단계 2판', () => {
+    expect(roundCount()).toBe(ROUNDS);
+    expect(roundCount(true)).toBe(2);
+    expect(FIND_START_GAME.level).toBe(1);
+    expect(LEVELS[FIND_START_GAME.level].asks).toBe(1); // 한 판에 1곳만 물으니 2판 = 2번
+  });
+});
 
 // 정해진 값을 차례로 돌려주는 rand (테스트용)
 const seq = (...values) => {

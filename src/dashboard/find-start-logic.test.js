@@ -19,9 +19,17 @@ const groups = loadFindStart(json, KNOWN);
 const memory = groups.find((g) => g.id === 'memory');
 
 describe('loadFindStart', () => {
-  it('find-start.json 을 읽는다 (지금은 숫자 기억 짝만 ready)', () => {
+  it('find-start.json 을 읽는다 (세 짝 모두 ready)', () => {
     expect(groups.map((g) => g.id)).toEqual(['memory', 'rps', 'color']);
-    expect(readyGroups(groups).map((g) => g.id)).toEqual(['memory']);
+    expect(readyGroups(groups).map((g) => g.id)).toEqual(['memory', 'rps', 'color']);
+  });
+
+  it('짝마다 기본 활동은 활동 이름, 도전 활동은 그 짝 (catalog.js 와 같음)', () => {
+    expect(groups.map((g) => [g.basic, g.challenge])).toEqual([
+      ['step1-memory', 'challenge-baseball'],
+      ['step2-rps', 'challenge-count'],
+      ['step3-stroop', 'challenge-shuffle'],
+    ]);
   });
 
   it('모르는 활동 id 면 오류', () => {
@@ -39,9 +47,13 @@ describe('loadFindStart', () => {
 });
 
 describe('outcomeOf', () => {
-  it('하나라도 해냈으면 done, 아니면 tried', () => {
+  it('짧은 판을 모두 해냈으면 done, 아니면 tried', () => {
     expect(outcomeOf({ done: 1, total: 1 })).toBe('done');
     expect(outcomeOf({ done: 0, total: 1 })).toBe('tried');
+    // 색깔손·카드 섞기 짧은 판은 2개: 하나만 해내면 tried
+    expect(outcomeOf({ done: 2, total: 2 })).toBe('done');
+    expect(outcomeOf({ done: 1, total: 2 })).toBe('tried');
+    expect(outcomeOf({ done: 0, total: 0 })).toBe('tried');
   });
 });
 

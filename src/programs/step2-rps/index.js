@@ -15,7 +15,8 @@ import {
   MAX_TRIES,
   findCondition,
   judge,
-  makeRound,
+  roundQuestions,
+  FIND_START_ROUND,
   revealMs,
   hintFor,
   explain,
@@ -118,7 +119,7 @@ async function countdown(ctx, screen, s, progress) {
 async function playQuestion(ctx, screen, s, q, index, total) {
   const condition = findCondition(q.conditionId);
   const progress = { index, total };
-  const hideAfter = revealMs(ctx.settings.difficulty, ctx.settings.speed);
+  const hideAfter = revealMs(ctx.settings.difficulty, ctx.settings.speed, ctx.settings.findStart);
   const tries = []; // 답마다 맞았는지
   const answers = []; // 기록용: 낸 손, 입력 방법, 승패, 걸린 시간
   let skipped = false;
@@ -213,7 +214,8 @@ async function playQuestion(ctx, screen, s, q, index, total) {
 async function playRound(ctx, screen, s) {
   const startedAt = new Date().toISOString();
   const { difficulty, speed } = ctx.settings;
-  const questions = makeRound(difficulty, QUESTIONS_PER_ROUND);
+  // 나의 시작 찾기(ctx.settings.findStart)면 짧은 판: 꼬인 조건 한 문제 (logic.js roundQuestions)
+  const questions = roundQuestions(difficulty, ctx.settings.findStart);
   const items = [];
 
   for (let i = 0; i < questions.length; i++) {
@@ -259,11 +261,12 @@ export default {
     // ctx.hand 를 넘기면 동시에 가위바위보 화면에 "내 손" 캠 화면이 나온다 (웹캠이 켜져 있을 때만)
     const screen = createScreen(container, ctx.hand);
     s.screen = screen;
-    const reveal = revealMs(ctx.settings.difficulty, ctx.settings.speed);
+    const reveal = revealMs(ctx.settings.difficulty, ctx.settings.speed, ctx.settings.findStart);
+    const total = ctx.settings.findStart ? FIND_START_ROUND.questions : QUESTIONS_PER_ROUND;
     const thinkIntro = () => {
       // 시작 인사: 화면에도 쓰고 읽어 준다 (음성만으로 알리지 않는다)
       const hello = startLine();
-      screen.intro({ total: QUESTIONS_PER_ROUND, revealSec: reveal ? reveal / 1000 : null, hello }, () => start(ctx, screen, s));
+      screen.intro({ total, revealSec: reveal ? reveal / 1000 : null, hello }, () => start(ctx, screen, s));
       speak(hello);
     };
 
