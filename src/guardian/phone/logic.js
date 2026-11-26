@@ -313,15 +313,13 @@ export function toFive(done, total) {
 
 /**
  * 방사형 한 활동의 칸 값 (0~5). 그림에만 쓰고 글자로는 쓰지 않는다 (글자는 실제 기록).
- *   손운동: toFive(따라 한 수, 전체 동작)
- *   나머지: 한 번 더 해서 10문제면 회차 평균(done ÷ rounds)을 반올림, 5를 넘지 않게
+ *   모든 활동: toFive(완료 수, 전체 수). 손운동은 전체 동작, 나머지는 전체 문제
+ *   (한 번 더 해서 10문제면 9/10 → 4, 10/10 → 5. 다 했을 때만 5)
  *   하지 않았거나 건너뛴 활동은 0
  */
 export function radarValue(activity) {
   if (activity?.status !== 'played') return 0;
-  if (activity.program === 'step4-coach') return toFive(activity.done ?? 0, activity.total ?? 0);
-  const perRound = (activity.done ?? 0) / Math.max(1, activity.rounds ?? 1);
-  return Math.min(RADAR_MAX, Math.max(0, Math.round(perRound)));
+  return toFive(activity.done ?? 0, activity.total ?? 0);
 }
 
 /**

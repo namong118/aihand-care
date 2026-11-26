@@ -365,10 +365,11 @@ describe('방사형 (6-9 B, PR #152 리뷰: 끝값 5 고정)', () => {
     expect(toFive(9, 9)).toBe(5);
   });
 
-  it('손운동은 toFive, 나머지는 회차 평균(done ÷ rounds)을 반올림해 5를 넘지 않게', () => {
+  it('모든 활동을 toFive(완료 수, 전체 수)로: 다 했을 때만 5', () => {
     expect(radarValue(played({ program: 'step4-coach', total: 6, done: 5 }))).toBe(4);
     expect(radarValue(played({ program: 'step2-rps', total: 5, done: 4 }))).toBe(4);
-    expect(radarValue(played({ program: 'step1-memory', total: 10, done: 7, rounds: 2 }))).toBe(4); // 3.5 → 4
+    expect(radarValue(played({ program: 'step1-memory', total: 10, done: 7, rounds: 2 }))).toBe(4);
+    expect(radarValue(played({ program: 'step1-memory', total: 10, done: 9, rounds: 2 }))).toBe(4); // 평균 4.5 를 반올림하면 5 가 되던 경우
     expect(radarValue(played({ program: 'step1-memory', total: 10, done: 10, rounds: 2 }))).toBe(5);
     expect(radarValue(played({ program: 'step3-stroop', total: 5, done: 5 }))).toBe(5);
     expect(radarValue({ status: 'skipped', program: 'step1-memory' })).toBe(0);
