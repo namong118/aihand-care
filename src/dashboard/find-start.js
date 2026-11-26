@@ -4,11 +4,18 @@
 // 추천은 "이 단계부터 시작해 보세요"로만 보여 준다. 점수·판정처럼 보이는 말은 쓰지 않는다.
 
 import { h, button } from '../ui/components.js';
+import { pageHead, pageCard, pageActions, headButton } from '../ui/page.js';
 import { findProgramInfo } from './catalog.js';
 import { DIFFICULTIES, labelOf } from './settings.js';
 import { BASIC_LEVELS, CHALLENGE_LEVELS } from './find-start-logic.js';
 
 const nameOf = (id) => findProgramInfo(id)?.name ?? id;
+
+/** 머리 위 작은 글자의 호칭 (없으면 null). 호칭만 보여 준다 */
+function whoText(who) {
+  if (!who) return null;
+  return h('span', { class: 'page-who', 'aria-label': `지금 하시는 분: ${who}` }, who);
+}
 const stepOf = (id) => findProgramInfo(id)?.step ?? null;
 const stepClass = (id) => (stepOf(id) ? ` step${stepOf(id)}` : '');
 
@@ -39,38 +46,42 @@ function laterRow(g) {
  * @param o.onStart "시작하기"
  * @param o.onHome  "홈으로"
  */
-export function renderFindStartIntro(container, { groups, onStart, onHome }) {
+export function renderFindStartIntro(container, { groups, who = null, onStart, onHome }) {
   const minutes = groups.reduce((sum, g) => sum + (g.minutes ?? 0), 0);
   container.innerHTML = '';
   container.append(
     h(
       'div',
-      { class: 'course find-start' },
-      h('h1', {}, '나의 시작 찾기'),
-      h('p', {}, '몇 가지를 짧게 해 보고, 어디서부터 시작하면 좋을지 알려 드릴게요.'),
+      { class: 'page find-start' },
+      pageHead(whoText(who), '나의 시작 찾기', headButton('← 홈으로', onHome)),
+      h('p', { class: 'page-text' }, '몇 가지를 짧게 해 보고, 어디서부터 시작하면 좋을지 알려 드릴게요.'),
+      // 7인치(1280×720)에서 스크롤 없이 버튼까지 보이게: 짝 하나 = 한 줄 (기본 활동 → 도전 활동)
+      h(
+        'div',
+        { class: 'find-intro-head', 'aria-hidden': 'true' },
+        h('span', {}, '기본 활동'),
+        h('span', {}, '해내시면 이어서 도전 활동'),
+      ),
       groups.map((g) =>
         h(
           'section',
-          { class: `find-pair${stepClass(g.basic)}` },
-          h('div', { class: 'find-pair-head' }, h('h2', {}, pairTitle(g)), g.minutes ? h('span', { class: 'find-minutes' }, `약 ${g.minutes}분`) : null),
+          { class: `find-pair-flow find-intro-row${stepClass(g.basic)}`, 'aria-label': pairTitle(g) },
+          h('div', { class: 'find-box' }, h('strong', {}, nameOf(g.basic)), h('span', {}, g.basicText ?? '')),
+          h('span', { class: 'find-arrow', 'aria-hidden': 'true' }, '→'),
           h(
             'div',
-            { class: 'find-pair-flow' },
-            h('div', { class: 'find-box' }, h('span', { class: 'find-box-tag' }, '기본 활동'), h('strong', {}, nameOf(g.basic)), h('span', {}, g.basicText ?? '')),
-            h('span', { class: 'find-arrow' }, '해내시면 이어서 →'),
-            h(
-              'div',
-              { class: 'find-box is-challenge' },
-              h('span', { class: 'find-box-tag' }, '도전 활동'),
-              h('strong', {}, `${nameOf(g.challenge)} 1단계`),
-              h('span', {}, g.challengeText ?? ''),
-            ),
+            { class: 'find-box is-challenge' },
+            h('strong', {}, `${nameOf(g.challenge)} 1단계`),
+            h('span', {}, g.challengeText ?? ''),
           ),
         ),
       ),
-      minutes > 0 && groups.length > 1 ? h('p', {}, `모두 약 ${minutes}분 걸려요.`) : null,
-      h('p', { class: 'find-note' }, '중간에 그만두셔도 괜찮아요. 언제든 홈에서 다시 하실 수 있어요.'),
-      h('div', { class: 'row' }, button('시작하기', onStart), button('홈으로', onHome, { variant: 'secondary' })),
+      h(
+        'p',
+        { class: 'find-note' },
+        `${minutes > 0 && groups.length > 1 ? `모두 약 ${minutes}분 걸려요. ` : ''}중간에 그만두셔도 괜찮아요. 언제든 홈에서 다시 하실 수 있어요.`,
+      ),
+      pageActions(button('시작하기', onStart)),
     ),
   );
 }
@@ -86,12 +97,14 @@ export function renderFindStartOffer(container, { who, onFind, onHome }) {
   container.append(
     h(
       'div',
-      { class: 'course find-start' },
-      h('span', { class: 'pill course-who', 'aria-label': `등록한 분: ${who}` }, who),
-      h('h1', {}, `${who}, 반가워요`),
-      h('p', {}, '어디서부터 시작하면 좋을지 짧게 해 보고 정해 둘까요? 다음 코스부터 그 단계로 시작해요.'),
-      h('p', { class: 'find-note' }, '나중에 홈의 "나의 시작 찾기"나 설정에서도 정할 수 있어요.'),
-      h('div', { class: 'row' }, button('나의 시작 찾기 하기', onFind), button('홈으로', onHome, { variant: 'secondary' })),
+      { class: 'page find-start' },
+      pageHead('등록을 마쳤어요', `${who}, 반가워요`),
+      pageCard(
+        null,
+        h('p', { class: 'page-text' }, '어디서부터 시작하면 좋을지 짧게 해 보고 정해 둘까요? 다음 코스부터 그 단계로 시작해요.'),
+        h('p', { class: 'find-note' }, '나중에 홈의 "나의 시작 찾기"나 설정에서도 정할 수 있어요.'),
+      ),
+      pageActions(button('나의 시작 찾기 하기', onFind), button('홈으로', onHome, { variant: 'secondary' })),
     ),
   );
 }
@@ -153,14 +166,18 @@ export function renderFindStartBetween(container, { group, onGo, onPass, onStop 
   container.append(
     h(
       'div',
-      { class: `course find-start find-between${stepClass(group.basic)}` },
+      { class: `page find-start find-between${stepClass(group.basic)}` },
       h('p', { class: 'find-done', role: 'status' }, `✔ ${nameOf(group.basic)} · 해내셨어요`),
-      h('h1', {}, `이번에는 ${nameOf(group.challenge)}를 1단계로 해 볼게요`),
-      c?.desc ? h('p', {}, c.desc) : null,
-      group.challengeText ? h('p', { class: 'find-note' }, group.challengeText) : null,
+      pageHead('이어서 도전 활동', `이번에는 ${nameOf(group.challenge)}를 1단계로 해 볼게요`),
+      // 도전 활동 소개는 STEP 색 칸으로 (나의 시작 찾기 첫 화면의 도전 칸과 같은 색)
       h(
-        'div',
-        { class: 'row' },
+        'section',
+        { class: 'find-between-card' },
+        h('strong', {}, `${nameOf(group.challenge)} 1단계`),
+        c?.desc ? h('p', {}, c.desc) : null,
+        group.challengeText ? h('p', { class: 'find-note' }, group.challengeText) : null,
+      ),
+      pageActions(
         button('해 볼게요', onGo),
         button('이번엔 넘어가기', onPass, { variant: 'secondary' }),
         button('그만하기', onStop, { variant: 'secondary' }),
@@ -169,18 +186,26 @@ export function renderFindStartBetween(container, { group, onGo, onPass, onStop 
   );
 }
 
-/** 단계 고르기 한 줄. 선택된 것은 ✔ (색만으로 구분하지 않게) */
-function levelRow(id, levels, selected, onPick) {
+/**
+ * 단계 고르기 한 묶음: 활동 이름(+ 기본/도전) 아래에 단계 버튼. 선택된 것은 ✔ (색만으로 구분하지 않게)
+ * 세 짝을 한 줄에 나란히 두려고 설정 화면의 작은 선택 버튼(.choice)을 쓴다
+ */
+function levelRow(id, levels, selected, onPick, tag) {
   return h(
     'div',
     { class: 'find-level-row', role: 'group', 'aria-label': `${nameOf(id)} 시작 단계` },
-    h('span', { class: 'find-level-name' }, nameOf(id)),
+    h('span', { class: 'find-level-name' }, nameOf(id), h('span', { class: 'find-level-tag' }, tag)),
     h(
       'div',
-      { class: 'row' },
-      levels.map((lv) => button(levelText(id, lv), () => onPick(lv), { variant: 'choice', pressed: selected === lv })),
+      { class: 'settings-choices' },
+      levels.map((lv) =>
+        h(
+          'button',
+          { type: 'button', class: 'choice', 'aria-pressed': String(selected === lv), onClick: () => onPick(lv) },
+          selected === lv ? `✔ ${levelText(id, lv)}` : levelText(id, lv),
+        ),
+      ),
     ),
-    h('span', { class: 'find-level-tail' }, '부터 시작'),
   );
 }
 
@@ -212,27 +237,33 @@ export function renderFindStartRecommend(container, { rows, later, who = null, o
     container.append(
       h(
         'div',
-        { class: 'course find-start find-recommend' },
-        // 지금 하시는 분 (코스 화면의 whoPill 과 같은 모양). 손님이면 "손님"
-        h('span', { class: 'pill course-who', 'aria-label': `지금 하시는 분: ${who ?? '손님'}` }, who ?? '손님'),
-        h('h1', {}, '이 단계부터 시작해 보세요'),
-        h('p', {}, onSave ? '마음에 들지 않으면 눌러서 바꾸실 수 있어요.' : '오늘 해 보신 것으로 고른 시작 단계예요.'),
-        state.map((r) =>
-          h(
-            'section',
-            { class: `find-pair${stepClass(r.group.basic)}` },
-            h('h2', {}, pairTitle(r.group)),
-            r.recommended ? null : h('p', { class: 'find-note' }, '이번에 하지 않으셔서 지금 설정이 골라져 있어요.'),
-            levelRow(r.group.basic, BASIC_LEVELS, r.pick.basic, (lv) => {
-              r.pick.basic = lv;
-              r.touched = true;
-              draw();
-            }),
-            levelRow(r.group.challenge, CHALLENGE_LEVELS, r.pick.challenge, (lv) => {
-              r.pick.challenge = lv;
-              r.touched = true;
-              draw();
-            }),
+        { class: 'page find-start find-recommend' },
+        // 지금 하시는 분. 손님이면 "손님"
+        pageHead(
+          h('span', {}, whoText(who ?? '손님'), ' · ', onSave ? '마음에 들지 않으면 눌러서 바꾸실 수 있어요' : '오늘 해 보신 것으로 고른 시작 단계예요'),
+          '이 단계부터 시작해 보세요',
+        ),
+        // 세 짝을 나란히 (1280×720 에서 스크롤 없이 저장 버튼까지)
+        h(
+          'div',
+          { class: 'find-recommend-grid' },
+          state.map((r) =>
+            h(
+              'section',
+              { class: `find-pair${stepClass(r.group.basic)}` },
+              h('h2', {}, pairTitle(r.group)),
+              levelRow(r.group.basic, BASIC_LEVELS, r.pick.basic, (lv) => {
+                r.pick.basic = lv;
+                r.touched = true;
+                draw();
+              }, '기본'),
+              levelRow(r.group.challenge, CHALLENGE_LEVELS, r.pick.challenge, (lv) => {
+                r.pick.challenge = lv;
+                r.touched = true;
+                draw();
+              }, '도전'),
+              r.recommended ? null : h('p', { class: 'find-note' }, '이번에 하지 않으셔서 지금 설정이에요.'),
+            ),
           ),
         ),
         later.length > 0 ? h('ul', { class: 'find-later-list' }, later.map(laterRow)) : null,
@@ -240,13 +271,11 @@ export function renderFindStartRecommend(container, { rows, later, who = null, o
           ? h('p', { class: 'find-note' }, `${who}의 다음 코스부터 이 단계로 시작해요. 설정에서 언제든 바꾸실 수 있어요.`)
           : h('p', { class: 'find-note' }, '손님으로 하셔서 저장하지 않아요. 호칭을 등록하시면 다음부터 이 단계로 시작할 수 있어요.'),
         onSave
-          ? h(
-              'div',
-              { class: 'row' },
+          ? pageActions(
               button('이대로 저장하기', () => onSave(levelsToSave())),
               button('저장하지 않고 홈으로', onHome, { variant: 'secondary' }),
             )
-          : h('div', { class: 'row' }, button('홈으로', onHome)),
+          : pageActions(button('홈으로', onHome)),
       ),
     );
   }

@@ -64,7 +64,15 @@ function updateStatusbar() {
   const list = devices.status();
   renderStatusbar(statusEl, {
     devices: list,
-    actions: { connectRobot, connectWebcam, showResults: () => showResults(), toggleSettings },
+    actions: {
+      connectRobot,
+      connectWebcam,
+      showResults: () => {
+        if (settingsOpen) toggleSettings(false); // 설정이 열려 있으면 닫고 (메인 화면을 다시 보이게)
+        showResults();
+      },
+      toggleSettings,
+    },
     settingsOpen,
   });
   devPanel.renderStatus(list);
@@ -131,7 +139,9 @@ function toggleSettings(open = !settingsOpen) {
   if (!open) levelEditing = null;
   updateSettings();
   updateStatusbar();
-  if (open) settingsEl.scrollIntoView?.({ block: 'nearest' });
+  // 설정이 열려 있는 동안은 메인 화면을 숨긴다. 설정 내용이 길어서 아래 메인 화면이 밀려 내려가 보였다
+  layoutEl.hidden = open;
+  window.scrollTo(0, 0);
 }
 
 // "AIHand 연결" 버튼. 포트 고르기 창은 클릭 안에서만 열리므로 await 앞에 다른 일을 하지 않는다.
@@ -145,10 +155,15 @@ function connectWebcam() {
 }
 
 // ---- 개발자 입력 (Mock): 손모양·색 카드 입력 패널, 웹캠·WonderCam 상태. 맨 아래, 기본 접힘 ----
+// 시연 화면(주소 끝 ?kiosk, scripts/kiosk.sh 가 붙여서 연다): 개발자 입력과 가상 로봇손을 보이지 않는다.
+// 라즈베리파이에서 어르신이 보는 화면 그대로. PC 에서도 http://localhost:5173/?kiosk 로 같은 화면을 볼 수 있다.
+// 입력은 화면 버튼으로 다 할 수 있다 (손·카드 대체 입력). Mock 키보드(R/B/Y/G 등)는 그대로 된다
+const KIOSK = new URLSearchParams(location.search).has('kiosk');
+document.body.dataset.kiosk = String(KIOSK);
 const devPanel = createDevPanel(devices);
-layoutEl.after(h('footer', { class: 'dev-wrap' }, devPanel.el));
+layoutEl.after(h('footer', { class: 'dev-wrap', hidden: KIOSK }, devPanel.el));
 
-// ---- 가상 로봇손: 활동 화면에서 로봇이 Mock 일 때만 오른쪽에 보인다 (홈·결과 화면에서는 숨김) ----
+// ---- 가상 로봇손: 활동 화면에서 로봇이 Mock 일 때만 오른쪽에 보인다 (홈·결과 화면, 시연 화면에서는 숨김) ----
 const robotBox = h('section', { class: 'mock-box' });
 
 function mountMockPanel() {
@@ -158,7 +173,7 @@ function mountMockPanel() {
 }
 
 function updateRobotBox() {
-  const show = screen === 'program' && devices.robot.kind === 'mock';
+  const show = !KIOSK && screen === 'program' && devices.robot.kind === 'mock';
   mockEl.hidden = !show;
   layoutEl.classList.toggle('with-side', show);
 }
@@ -553,7 +568,7 @@ function showFindStartIntro() {
   course = null;
   finding = null;
   setScreen('find');
-  renderFindStartIntro(appEl, { groups: findGroups, onStart: startFindStart, onHome: showHome });
+  renderFindStartIntro(appEl, { groups: findGroups, who: who?.displayName ?? '손님', onStart: startFindStart, onHome: showHome });
 }
 
 function startFindStart() {

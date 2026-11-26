@@ -2,7 +2,7 @@
 // 활동 전에 난이도와 진행 속도를 맞춘다.
 
 import { h, button } from '../ui/components.js';
-import { outlineButton } from './statusbar.js';
+import { pageHead, pageTile, pageCard, headButton } from '../ui/page.js';
 import { findProgramInfo } from './catalog.js';
 
 /** 시작 단계 글자 "숫자 기억 보통 · 숫자 야구 1단계". 정한 것이 없으면 "홈 설정대로" */
@@ -29,41 +29,45 @@ function peopleSection(people) {
   const { users, levelsOf, activities, editing, onEdit, onSetLevel } = people;
   // 기본 활동. null = 정하지 않음 → 위 난이도
   const basicChoices = [{ value: null, label: '홈 설정대로' }, ...DIFFICULTIES];
-  const head = h('div', { class: 'settings-row' }, h('span', { class: 'settings-label' }, '시작 단계'));
   if (users.length === 0) {
-    head.append(h('span', { class: 'settings-levels' }, '등록한 분이 없어요. 사용자를 등록하면 그분마다 시작 단계를 정할 수 있어요.'));
-    return head;
+    return h('p', { class: 'settings-levels' }, '등록한 분이 없어요. 사용자를 등록하면 그분마다 시작 단계를 정할 수 있어요.');
   }
-  head.append(h('span', { class: 'settings-levels' }, '로그인한 분은 코스를 이 단계로 시작해요. 손님은 위 난이도대로예요.'));
+  const head = h('p', { class: 'settings-levels' }, '로그인한 분은 코스를 이 단계로 시작해요. 나의 시작 찾기를 다시 해도 바뀌어요.');
   return [
     head,
     users.map((u) => {
       const levels = levelsOf(u.userId);
       const open = editing === u.userId;
-      return [
+      // 한 분 = 회색 칸 하나. 머리 줄(호칭 + 지금 단계 + [바꾸기]), 펼치면 기본 활동·도전 활동 고르기
+      const pick = (list) =>
+        list.map((a) =>
+          choiceRow(
+            `${u.displayName} · ${a.name}`,
+            a.challenge ? CHALLENGE_CHOICES : basicChoices,
+            levels[a.id] ?? null,
+            (v) => onSetLevel(u.userId, a.id, v),
+            a.name,
+          ),
+        );
+      return h(
+        'div',
+        { class: `settings-person${open ? ' is-open' : ''}` },
         h(
           'div',
-          { class: 'settings-row' },
-          h('span', { class: 'settings-label' }, u.displayName),
-          h(
-            'div',
-            { class: 'settings-choices' },
-            h('span', { class: 'settings-levels' }, levelsText(levels)),
-            button(open ? '닫기' : '바꾸기', () => onEdit(open ? null : u.userId), { variant: 'secondary' }),
-          ),
+          { class: 'settings-person-head' },
+          h('strong', {}, u.displayName),
+          h('span', { class: 'settings-levels' }, levelsText(levels)),
+          headButton(open ? '닫기' : '바꾸기', () => onEdit(open ? null : u.userId)),
         ),
         open
-          ? activities.map((a) =>
-              choiceRow(
-                `${u.displayName} · ${a.name}`,
-                a.challenge ? CHALLENGE_CHOICES : basicChoices,
-                levels[a.id] ?? null,
-                (v) => onSetLevel(u.userId, a.id, v),
-                a.name,
-              ),
-            )
+          ? [
+              h('p', { class: 'settings-group' }, '기본 활동'),
+              pick(activities.filter((a) => !a.challenge)),
+              h('p', { class: 'settings-group' }, '도전 활동'),
+              pick(activities.filter((a) => a.challenge)),
+            ]
           : null,
-      ];
+      );
     }),
   ];
 }
@@ -119,44 +123,30 @@ export function renderSettings(el, { open, settings, setSetting, close, openRegi
   el.innerHTML = '';
   el.hidden = !open;
   if (!open) return;
+  // 바로 가기 칸: 사용자 등록(#82, #84) · 사용자 지우기(동의서 "지우는 방법") · 지난 기록(홈에서 옮김, 2026-11-26)
+  const tiles = [
+    openRegister ? pageTile('사용자 등록하기', '호칭과 얼굴을 등록해요', openRegister) : null,
+    openForget ? pageTile('사용자 지우기', '등록한 분과 그분의 기록을 지워요', openForget) : null,
+    openResults ? pageTile('지난 기록 보기', '날짜별·활동별 기록', openResults) : null,
+  ].filter(Boolean);
   el.append(
     h(
       'section',
-      { class: 'settings-panel', 'aria-label': '설정' },
-      h('div', { class: 'settings-head' }, h('h2', {}, '설정'), outlineButton('닫기', close)),
-      choiceRow('난이도', DIFFICULTIES, settings.difficulty, (v) => setSetting('difficulty', v)),
-      choiceRow('진행 속도', SPEEDS, settings.speed, (v) => setSetting('speed', v)),
+      { class: 'page settings-page', 'aria-label': '설정' },
+      pageHead('활동 전에 맞춰 두는 곳', '설정', headButton('닫기', close)),
       h(
-        'p',
-        { class: 'settings-note' },
-        '활동 전에 맞춰 두는 항목입니다. 로봇 동작 속도도 함께 바뀝니다.',
+        'div',
+        { class: 'settings-grid' },
+        pageCard(
+          '활동 맞춤',
+          choiceRow('난이도', DIFFICULTIES, settings.difficulty, (v) => setSetting('difficulty', v)),
+          choiceRow('진행 속도', SPEEDS, settings.speed, (v) => setSetting('speed', v)),
+          h('p', { class: 'settings-note' }, '로봇 동작 속도도 함께 바뀌어요. 손님과 하나만 해 보기는 이 난이도로 해요.'),
+        ),
+        tiles.length > 0 ? pageCard('사용자와 기록', h('div', { class: 'page-tiles' }, tiles)) : null,
       ),
       // 로그인한 분은 코스를 위 난이도 대신 그분의 시작 단계로 시작한다 (나의 시작 찾기 또는 여기서 정함)
-      people ? peopleSection(people) : null,
-      // 지난 기록 보기: 어르신 화면(홈)에서 이리로 옮김 (2026-11-26)
-      openResults
-        ? h(
-            'div',
-            { class: 'settings-row' },
-            h('span', { class: 'settings-label' }, '활동 기록'),
-            h('div', { class: 'settings-choices' }, button('지난 기록 보기', openResults, { variant: 'secondary' })),
-          )
-        : null,
-      // 사용자 등록은 설정에서 한다 (#82, 등록 화면 #84). 어르신 화면(홈)에는 두지 않는다
-      openRegister
-        ? h(
-            'div',
-            { class: 'settings-row' },
-            h('span', { class: 'settings-label' }, '사용자'),
-            h(
-              'div',
-              { class: 'settings-choices' },
-              button('사용자 등록하기', openRegister, { variant: 'secondary' }),
-              // 동의서 "지우는 방법": 화면에서 직접 지운다 (얼굴은 카메라에서 따로)
-              openForget ? button('사용자 지우기', openForget, { variant: 'secondary' }) : null,
-            ),
-          )
-        : null,
+      people ? pageCard('사람별 시작 단계', peopleSection(people)) : null,
     ),
   );
 }

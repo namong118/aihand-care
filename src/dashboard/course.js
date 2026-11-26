@@ -4,6 +4,7 @@
 // 결과는 "활동 기록"으로만 보여 준다. 점수·비율처럼 평가로 보이는 말은 쓰지 않는다.
 
 import { h, button, message } from '../ui/components.js';
+import { pageHead, pageTile, pageActions, headButton } from '../ui/page.js';
 import { findProgramInfo } from './catalog.js';
 import { levelText } from './find-start.js';
 
@@ -81,30 +82,40 @@ export function renderCourseIntro(container, { plan, deviceNote, who, levels = {
   container.append(
     h(
       'div',
-      { class: 'course' },
-      whoPill(who),
-      h('h1', {}, `오늘의 활동 ${plan.length}가지`),
-      h('p', {}, '차례대로 이어서 해 볼까요? 하나가 끝나면 다음 활동으로 넘어가요.'),
+      { class: 'page' },
+      pageHead(whoEyebrow(who), `오늘의 활동 ${plan.length}가지`, headButton('← 홈으로', onHome)),
+      h('p', { class: 'page-text' }, '차례대로 이어서 해 볼까요? 하나가 끝나면 다음 활동으로 넘어가요.'),
+      // 홈의 활동 카드처럼 STEP 색 칸 4개
       h(
         'ol',
-        { class: 'course-list' },
+        { class: 'course-plan' },
         plan.map((step, i) =>
           h(
             'li',
-            { class: 'course-item' },
-            h('span', { class: 'course-order' }, `${i + 1}번째`),
-            h('span', { class: 'course-name' }, programTitle(step.program)),
-            levels[step.program] !== undefined
-              ? h('span', { class: 'course-level' }, `${levelText(step.program, levels[step.program])}부터`)
-              : null,
-            h('span', { class: 'course-input' }, step.input === 'hand' ? '손' : '카드'),
+            { class: `course-plan-item${stepClass(step.program)}` },
+            h('span', { class: 'course-plan-order' }, `${i + 1}번째`),
+            h('strong', { class: 'course-plan-name' }, programTitle(step.program)),
+            h(
+              'span',
+              { class: 'course-plan-tags' },
+              h('span', { class: 'course-plan-tag' }, step.input === 'hand' ? '손으로' : '카드로'),
+              levels[step.program] !== undefined
+                ? h('span', { class: 'course-plan-tag' }, `${levelText(step.program, levels[step.program])}부터`)
+                : null,
+            ),
           ),
         ),
       ),
       deviceNote ? message(deviceNote, 'info') : null,
-      h('div', { class: 'row' }, button('시작하기', onStart), button('← 홈으로', onHome, { variant: 'secondary' })),
+      pageActions(button('시작하기', onStart)),
     ),
   );
+}
+
+/** 머리 위 작은 글자: "봄날 어르신의 코스" / "손님" (#82). 호칭만 보여 준다 */
+function whoEyebrow(who) {
+  if (!who) return null;
+  return h('span', { class: 'page-who', 'aria-label': `지금 하시는 분: ${who}` }, who);
 }
 
 /**
@@ -252,33 +263,22 @@ export function renderCourseSummary(container, { summary, who, challenges = [], 
   container.append(
     h(
       'div',
-      { class: 'course' },
-      whoPill(who),
-      h('h1', {}, '오늘의 활동 기록'),
-      h('p', {}, dateText(summary.date)),
-      message(
-        summary.finished && playedAll ? '네 가지 활동을 모두 함께 해 주셨어요. 수고하셨어요!' : '오늘 함께한 활동이에요. 수고하셨어요!',
-        'good',
+      { class: 'page' },
+      pageHead(
+        h('span', {}, whoEyebrow(who), who ? ' · ' : '', dateText(summary.date)),
+        summary.finished && playedAll ? '모두 함께 해 주셨어요. 수고하셨어요!' : '오늘 함께한 활동이에요. 수고하셨어요!',
       ),
+      // 코스 시작 화면과 같은 STEP 색 칸에 활동 기록 한 줄씩
       h(
-        'div',
-        { class: 'table-wrap' },
-        h(
-          'table',
-          { class: 'course-table' },
-          h('thead', {}, h('tr', {}, ['순서', '활동', '기록'].map((t) => h('th', { scope: 'col' }, t)))),
+        'ol',
+        { class: 'course-plan', 'aria-label': '오늘의 활동 기록' },
+        summary.activities.map((a) =>
           h(
-            'tbody',
-            {},
-            summary.activities.map((a) =>
-              h(
-                'tr',
-                { class: `course-row is-${a.status}` },
-                h('td', {}, `${a.order}번째`),
-                h('td', {}, programTitle(a.program)),
-                h('td', {}, activityText(a)),
-              ),
-            ),
+            'li',
+            { class: `course-plan-item is-${a.status}${stepClass(a.program)}` },
+            h('span', { class: 'course-plan-order' }, `${a.order}번째`),
+            h('strong', { class: 'course-plan-name' }, programTitle(a.program)),
+            h('span', { class: 'course-plan-record' }, activityText(a)),
           ),
         ),
       ),
@@ -290,12 +290,18 @@ export function renderCourseSummary(container, { summary, who, challenges = [], 
             h('h2', {}, '도전 활동도 해 보시겠어요?'),
             h(
               'div',
-              { class: 'row' },
-              challenges.map((c) => button(`${c.name} · ${c.level}단계`, () => onChallenge(c.id), { variant: 'secondary' })),
+              { class: 'page-tile-grid' },
+              challenges.map((c) => pageTile(c.name, `${c.level}단계로 해 봐요`, () => onChallenge(c.id), { step: stepOfChallenge(c.id) })),
             ),
           )
         : null,
-      h('div', { class: 'row' }, button('처음으로', onHome), button('활동 기록 보기', onResults, { variant: 'secondary' })),
+      pageActions(button('처음으로', onHome), button('활동 기록 보기', onResults, { variant: 'secondary' })),
     ),
   );
+}
+
+/** 도전 활동 칸 색: 짝인 기본 활동의 STEP 색 (catalog 의 step, 없으면 회색) */
+function stepOfChallenge(id) {
+  const step = findProgramInfo(id)?.step;
+  return step ? `step${step}` : null;
 }
