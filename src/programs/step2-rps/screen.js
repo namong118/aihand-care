@@ -177,7 +177,14 @@ export function createScreen(container) {
           h('p', { class: 'act-text' }, '로봇이 가위바위보를 내면, 화면의 말에 맞게 손을 내 주세요.'),
           h('p', { class: 'act-text' }, '예: 로봇이 바위를 내고 “이겨주세요”가 나오면 보를 내면 돼요.'),
           h('p', { class: 'act-text' }, `모두 ${total}문제예요. 서두르지 않아도 돼요. 천천히 생각해서 손을 내 주세요.`),
-          revealSec ? h('p', { class: 'act-text' }, `어려움: 로봇 손은 ${revealSec}초만 보여 줘요. 잘 기억해 주세요.`) : null,
+          // revealSec 은 어려움일 때만 있다. 어려움에는 낼 수 있는 손이 둘인 조건도 나온다 (#18)
+          revealSec
+            ? h(
+                'p',
+                { class: 'act-text' },
+                `어려움: 로봇 손은 ${revealSec}초만 보여 줘요. 잘 기억해 주세요. “이기지 마세요”처럼 낼 수 있는 손이 둘인 문제도 나와요.`,
+              )
+            : null,
         ),
         h('div', { class: 'row' }, button('시작하기', onStart)),
       );
@@ -269,16 +276,21 @@ export function createScreen(container) {
     },
 
     /** 두 번째도 맞지 않을 때: 답을 함께 확인하고 로봇이 그 손을 보여 준다 */
-    reveal({ text, answer, isLast }, onNext) {
+    reveal({ text, answers, isLast }, onNext) {
+      // 정답이 둘이면 두 손을 나란히 보여 주고, 로봇도 차례로 보여 준다 (#18)
+      const robotText =
+        answers.length > 1
+          ? `로봇이 ${answers.map(handText).join('와 ')}를 차례로 보여 드릴게요.`
+          : `로봇이 ${handText(answers[0])}를 보여 드릴게요.`;
       set(
         message('함께 알아볼까요?', 'info'),
         card(
           h('p', { class: 'act-text' }, text),
           h(
             'div',
-            { style: { display: 'flex', 'align-items': 'center', gap: '16px' } },
-            h('span', { class: 'act-art' }, handIcon(answer)),
-            h('p', { class: 'act-text', style: { color: 'var(--c-text)' } }, `로봇이 ${handText(answer)}를 보여 드릴게요.`),
+            { style: { display: 'flex', 'align-items': 'center', gap: '16px', 'flex-wrap': 'wrap' } },
+            answers.map((a) => h('span', { class: 'act-art' }, handIcon(a))),
+            h('p', { class: 'act-text', style: { color: 'var(--c-text)' } }, robotText),
           ),
         ),
         h('div', { class: 'row' }, button(isLast ? '활동 기록 보기' : '다음 문제', onNext)),
