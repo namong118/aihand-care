@@ -8,7 +8,7 @@ import { HAND_TEXT } from './logic.js';
 
 /** 단계 설명 (시작 화면) */
 const LEVEL_DESC = {
-  1: '한 손으로 건네고 받아요',
+  1: '편한 한 손으로 건네고 받아요',
   2: '건네는 손과 받는 손을 바꿔요',
   3: '손이 매번 바뀌어요. 보고 기억해 주세요',
 };
@@ -112,26 +112,6 @@ export function createScreen(container) {
           selected,
           onStart,
         }),
-      );
-    },
-
-    /** 1단계: 어느 손으로 할지 고르기 */
-    chooseHand(onPick) {
-      promptEl = null;
-      const [right, left] = firstOnly(() => onPick('right'), () => onPick('left'));
-      set(
-        h(
-          'div',
-          { class: 'act-card' },
-          h('p', { class: 'act-question', style: { 'font-size': '44px', 'text-align': 'center' } }, '어느 손으로 할까요?'),
-          h('p', { class: 'act-text', style: { 'text-align': 'center' } }, '고른 손으로 공을 건네고 받아요.'),
-        ),
-        h(
-          'div',
-          { class: 'act-answers', role: 'group', 'aria-label': '손 고르기', style: { 'grid-template-columns': 'repeat(2, minmax(0, 1fr))' } },
-          h('button', { type: 'button', class: 'act-answer', style: { 'font-size': '40px', 'min-height': '120px' }, onClick: right }, '오른손'),
-          h('button', { type: 'button', class: 'act-answer', style: { 'font-size': '40px', 'min-height': '120px' }, onClick: left }, '왼손'),
-        ),
       );
     },
 
