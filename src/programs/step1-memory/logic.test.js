@@ -14,7 +14,21 @@ import {
   MAX_LENGTH_BY_DIFFICULTY,
   QUESTIONS_PER_ROUND,
   roundPlan,
+  maxTries,
+  MAX_TRIES,
 } from './logic.js';
+
+describe('maxTries (나의 시작 찾기는 한 번만)', () => {
+  it('평소에는 두 번, 나의 시작 찾기는 한 번 (다시 하기 없음)', () => {
+    expect(maxTries()).toBe(MAX_TRIES);
+    expect(maxTries(false)).toBe(2);
+    expect(maxTries(true)).toBe(1);
+  });
+
+  it('한 번만 도전해서 해내지 못하면 shown (함께 확인)', () => {
+    expect(questionStatus([false])).toBe('shown');
+  });
+});
 import poses from '../../data/poses.json';
 
 describe('숫자 ↔ 손모양', () => {

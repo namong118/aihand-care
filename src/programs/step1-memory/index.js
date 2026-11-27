@@ -12,7 +12,7 @@
 import {
   CARD_NUMBERS,
   roundPlan,
-  MAX_TRIES,
+  maxTries,
   poseForNumber,
   makeSequence,
   judgeSequence,
@@ -136,8 +136,9 @@ async function playQuestion(ctx, screen, s, count, index, total) {
   const attempts = []; // 기록용: 도전마다 보여 준 숫자, 입력 방법, 자리까지 맞은 개수
   let reactionMs = null; // 첫 도전에서 숫자 하나 입력에 걸린 평균 시간
   let skipped = false;
+  const tryCount = maxTries(ctx.settings.findStart); // 나의 시작 찾기는 한 번만 (다시 하기 없음)
 
-  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+  for (let attempt = 1; attempt <= tryCount; attempt++) {
     // 0) 이번에 몇 개를 기억할지 먼저 알려 주기
     //    안내 시간과 안내 음성 중 늦게 끝나는 쪽까지 기다린다 (음성이 로봇의 숫자 보여 주기와 겹치지 않게)
     const spoken = screen.announce({ ...progress, count, attempt });
@@ -171,7 +172,7 @@ async function playQuestion(ctx, screen, s, count, index, total) {
       break;
     }
 
-    if (attempt < MAX_TRIES) {
+    if (attempt < tryCount) {
       // 처음 해내지 못함: 준비되면 "다시 보기" → 로봇이 같은 순서를 한 번 더 보여 준다
       const again = waitClick(s, (onAgain) => screen.retry({ given: answer.given }, onAgain));
       await robot(ctx.robot.react('retry'));
@@ -179,7 +180,7 @@ async function playQuestion(ctx, screen, s, count, index, total) {
       continue;
     }
 
-    // 두 번째도 해내지 못함: 순서를 함께 확인한다
+    // 두 번째도(나의 시작 찾기는 처음에) 해내지 못함: 순서를 함께 확인한다
     await robot(ctx.robot.react('retry'));
     if (!s.alive) return null;
     const next = waitClick(s, (onNext) =>

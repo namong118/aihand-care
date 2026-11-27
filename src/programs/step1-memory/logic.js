@@ -21,6 +21,15 @@ export const QUESTIONS_PER_ROUND = 5;
 /** 한 문제에 도전하는 횟수. 처음 해내지 못하면 로봇이 한 번 더 보여 주고 다시 한다 */
 export const MAX_TRIES = 2;
 
+/**
+ * 이번 회차에서 한 문제에 도전하는 횟수.
+ * 나의 시작 찾기(findStart)는 한 번만: 다시 하기를 권하지 않고, 놓치면 함께 확인한 뒤 넘어간다 (2026-11-27 A).
+ * 그래야 기록(status 'shown', done 0)대로 쉬운 단계가 추천된다
+ */
+export function maxTries(findStart = false) {
+  return findStart ? 1 : MAX_TRIES;
+}
+
 /** 난이도별로 첫 문제에서 기억할 숫자 개수 */
 export const LENGTH_BY_DIFFICULTY = { easy: 1, normal: 2, hard: 3 };
 
