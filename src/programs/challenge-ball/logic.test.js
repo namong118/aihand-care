@@ -1,3 +1,4 @@
+import { PLAY_LEVEL } from './logic.js';
 import { describe, it, expect } from 'vitest';
 import {
   EXCHANGES, ALL_PAIRS, levelSpec, defaultLevel, otherHand, makeInstructions, samePair, instructionText,
@@ -145,5 +146,12 @@ describe('summarizeSession', () => {
     ];
     expect(summarizeSession(exchanges)).toEqual({ total: EXCHANGES, done: 2, skipped: 0, avgReactionMs: null });
     expect(summarizeSession([], 4)).toEqual({ total: 4, done: 0, skipped: 0, avgReactionMs: null });
+  });
+});
+
+describe('PLAY_LEVEL (한 가지로만, 2026-11-27)', () => {
+  it('화면에서 하는 단계는 1단계: 편한 손으로 건네고 같은 손으로 받기', () => {
+    expect(PLAY_LEVEL).toBe(1);
+    expect(makeInstructions(PLAY_LEVEL, 2)).toEqual([{ give: 'any', receive: 'same' }, { give: 'any', receive: 'same' }]);
   });
 });

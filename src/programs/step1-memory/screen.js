@@ -133,7 +133,7 @@ export function createScreen(container) {
           'div',
           { class: 'act-foot' },
           h('p', { class: 'act-foot-text' }, '카드를 하나 보여 준 뒤에는 잠깐 내려 주세요.'),
-          given.length > 0 ? button('처음부터 다시', onRestart, { variant: 'secondary' }) : null,
+          onRestart && given.length > 0 ? button('처음부터 다시', onRestart, { variant: 'secondary' }) : null,
           button('이 문제 건너뛰기', onSkip, { variant: 'secondary' }),
         ),
       );

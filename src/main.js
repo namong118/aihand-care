@@ -95,7 +95,7 @@ let levelEditing = null; // 설정에서 단계를 바꾸는 중인 분의 userI
 /** 단계를 정할 수 있는 활동: 기본 활동(손운동은 난이도가 없어서 뺌) + 지금 있는 도전 활동 */
 const LEVEL_ACTIVITIES = [
   ...CATALOG.filter((p) => p.id !== 'step4-coach').map((p) => ({ id: p.id, name: p.name, challenge: false })),
-  ...CHALLENGES.filter((c) => PROGRAMS[c.id]).map((c) => ({ id: c.id, name: c.name, challenge: true })),
+  ...CHALLENGES.filter((c) => PROGRAMS[c.id] && !c.singleLevel).map((c) => ({ id: c.id, name: c.name, challenge: true })),
 ];
 
 /** 지금 하시는 분의 시작 단계. 손님·로그인 전이면 {} */
@@ -516,7 +516,7 @@ function finishCourse() {
   const summary = summarizeCourse(courseStore.get(id), devices.log.list());
   // 도전 활동은 코스 밖. 마친 뒤 원하시면 그분의 도전 단계로 이어서 (손님은 1단계)
   const levels = whoLevels();
-  const challenges = CHALLENGES.filter((c) => PROGRAMS[c.id]).map((c) => ({ id: c.id, name: c.name, level: levels[c.id] ?? 1 }));
+  const challenges = CHALLENGES.filter((c) => PROGRAMS[c.id]).map((c) => ({ id: c.id, name: c.name, level: c.singleLevel ? null : (levels[c.id] ?? 1) }));
   renderCourseSummary(appEl, {
     summary,
     who: whoText(),
@@ -656,7 +656,9 @@ function showFindRecommend() {
     onSave: userId
       ? (picked) => {
           levelStore.set(userId, picked);
-          showHome();
+          // 저장하면 같은 분으로 바로 코스 시작 화면 (다시 로그인하지 않는다, 2026-11-27 실물 테스트). who 는 그대로 둔다
+          finding = null;
+          showCourseIntro();
         }
       : null,
     onHome: showHome,

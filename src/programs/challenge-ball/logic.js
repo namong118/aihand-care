@@ -30,6 +30,12 @@ export const LEVELS = {
   3: { mode: 'random', hide: true },
 };
 
+/**
+ * 화면에서 하는 단계. 2026-11-27 실물 테스트 뒤 한 가지(1단계: 편한 손 → 같은 손)로만 한다.
+ * 단계 차이가 잘 느껴지지 않았다. 2·3단계 값은 다시 쓸 수 있게 남겨 두되 화면에서는 고르지 않는다
+ */
+export const PLAY_LEVEL = 1;
+
 /** 단계 값. 1~3이 아니면 1단계 */
 export function levelSpec(level) {
   return LEVELS[level] ?? LEVELS[1];

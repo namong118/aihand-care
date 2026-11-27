@@ -252,7 +252,7 @@ function dateText(date) {
  * 코스 요약 화면.
  * @param o.summary    summarizeCourse() 결과
  * @param o.who        지금 하시는 분 (#82)
- * @param o.challenges 이어서 해 볼 도전 활동 [{ id, name, level }] (level: 그분의 도전 단계 1·2·3). 없으면 칸을 그리지 않는다
+ * @param o.challenges 이어서 해 볼 도전 활동 [{ id, name, level }] (level: 그분의 도전 단계 1·2·3, 단계가 없는 활동(공 주고받기)은 null). 없으면 칸을 그리지 않는다
  * @param o.onChallenge (id) => 그 도전 활동 열기 (그분의 단계로, docs/decisions.md 3번)
  * @param o.onHome     "처음으로"
  * @param o.onResults  "활동 기록 보기"
@@ -291,7 +291,7 @@ export function renderCourseSummary(container, { summary, who, challenges = [], 
             h(
               'div',
               { class: 'page-tile-grid' },
-              challenges.map((c) => pageTile(c.name, `${c.level}단계로 해 봐요`, () => onChallenge(c.id), { step: stepOfChallenge(c.id) })),
+              challenges.map((c) => pageTile(c.name, c.level ? `${c.level}단계로 해 봐요` : '이어서 해 봐요', () => onChallenge(c.id), { step: stepOfChallenge(c.id) })),
             ),
           )
         : null,

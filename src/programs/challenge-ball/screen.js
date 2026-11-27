@@ -1,17 +1,10 @@
 // 공 주고받기 화면 그리기. 진행·판단은 하지 않고 보여주기만 한다.
-// 모양은 styles.css "활동 화면 공통"(act-*) 클래스와 단계 고르기(src/ui/level-picker.js).
-// 손은 그림 없이 "오른손"·"왼손" 글자로 크게 보여 준다 (색이나 그림만으로 구분하지 않음).
+// 모양은 styles.css "활동 화면 공통"(act-*) 클래스.
+// 손은 그림 없이 "편한 손"·"같은 손" 글자로 크게 보여 준다 (색이나 그림만으로 구분하지 않음).
+// 단계는 하나뿐이다 (2026-11-27 실물 테스트): 단계 고르기·"N단계" 표시가 없다.
 
 import { h, button, message, firstOnly } from '../../ui/components.js';
-import { levelPicker } from '../../ui/level-picker.js';
 import { HAND_TEXT } from './logic.js';
-
-/** 단계 설명 (시작 화면) */
-const LEVEL_DESC = {
-  1: '편한 한 손으로 건네고 받아요',
-  2: '건네는 손과 받는 손을 바꿔요',
-  3: '손이 매번 바뀌어요. 보고 기억해 주세요',
-};
 
 export function createScreen(container) {
   container.innerHTML = '';
@@ -26,13 +19,8 @@ export function createScreen(container) {
     area.append(...children.flat().filter(Boolean));
   }
 
-  function head({ level, index, count }) {
-    return h(
-      'div',
-      { class: 'act-head' },
-      h('span', { class: 'act-progress' }, `${index} / ${count}번째`),
-      h('span', { class: 'act-tag' }, `${level}단계`),
-    );
+  function head({ index, count }) {
+    return h('div', { class: 'act-head' }, h('span', { class: 'act-progress' }, `${index} / ${count}번째`));
   }
 
   /** 손 칸 하나. hand 가 null 이면 가려진 칸 ("?") */
@@ -101,17 +89,18 @@ export function createScreen(container) {
   }
 
   return {
-    /** 시작 화면: 규칙 + 1·2·3단계 고르기 */
-    levels({ selected }, onStart) {
+    /** 시작 화면: 규칙 + [시작하기] (단계 고르기 없음) */
+    intro(onStart) {
       promptEl = null;
+      const [start] = firstOnly(onStart);
       set(
-        levelPicker({
-          title: '공 주고받기',
-          lead: '화면이 알려 주는 손으로 로봇에게 공을 건네고, 로봇이 펴 주는 공을 받아 보세요. 공 하나를 준비해 주세요.',
-          levels: [1, 2, 3].map((level) => ({ level, desc: LEVEL_DESC[level] })),
-          selected,
-          onStart,
-        }),
+        h(
+          'div',
+          { class: 'act-card' },
+          h('p', { class: 'act-question', style: { 'font-size': '40px' } }, '공 주고받기'),
+          h('p', { class: 'act-text' }, '편한 손으로 로봇에게 공을 건네고, 로봇이 펴 주는 공을 같은 손으로 받아 보세요. 공 하나를 준비해 주세요.'),
+        ),
+        h('div', { class: 'row' }, button('시작하기', start)),
       );
     },
 
@@ -137,23 +126,23 @@ export function createScreen(container) {
     },
 
     /** 회차 끝 */
-    finished({ done, level }, onAgain, onLevels) {
+    finished({ done }, onAgain) {
       promptEl = null;
-      const [again, levels] = firstOnly(onAgain, onLevels);
+      const [again] = firstOnly(onAgain);
       set(
         message(`다 하셨어요! 공을 ${done}번 주고받았어요.`, 'good'),
-        h('p', { class: 'act-text' }, `${level}단계를 끝까지 하셨어요. 한 번 더 하거나 다른 단계를 골라 보세요.`),
-        h('div', { class: 'row' }, button('한 번 더 하기', again), button('단계 바꾸기', levels, { variant: 'secondary' })),
+        h('p', { class: 'act-text' }, '끝까지 하셨어요. 한 번 더 해도 좋아요.'),
+        h('div', { class: 'row' }, button('한 번 더 하기', again)),
       );
     },
 
     /** 그만하기로 끝났을 때 (기록하지 않음) */
-    stopped({ done }, onAgain, onLevels) {
+    stopped({ done }, onAgain) {
       promptEl = null;
-      const [again, levels] = firstOnly(onAgain, onLevels);
+      const [again] = firstOnly(onAgain);
       set(
         message(done > 0 ? `이번에는 여기까지 할게요. 공을 ${done}번 주고받았어요.` : '이번에는 여기까지 할게요.', 'info'),
-        h('div', { class: 'row' }, button('처음부터 하기', again), button('단계 바꾸기', levels, { variant: 'secondary' })),
+        h('div', { class: 'row' }, button('처음부터 하기', again)),
       );
     },
   };

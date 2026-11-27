@@ -171,7 +171,7 @@ export function createScreen(container) {
             h(
               'div',
               { class: 'act-foot', style: { 'justify-content': 'flex-end' } },
-              guess.length > 0 ? button('처음부터 다시', onRestart, { variant: 'secondary' }) : null,
+              onRestart && guess.length > 0 ? button('처음부터 다시', onRestart, { variant: 'secondary' }) : null,
               button('정답 보기', onStop, { variant: 'secondary' }),
             ),
           ),

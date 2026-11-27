@@ -326,9 +326,10 @@ export function challengeText(r) {
     return `${level}${end}${how}`;
   }
   if (r.program === 'challenge-ball') {
-    // 1단계는 고른 손도 ("오른손 · "). 끝까지 한 회차만 기록되므로 주고받은 수만 쓴다
+    // 단계는 하나뿐이라(2026-11-27) "N단계"를 쓰지 않는다. 11/27 전 기록은 고른 손이 있을 수 있다 ("오른손 · ")
+    // 끝까지 한 회차만 기록되므로 주고받은 수만 쓴다
     const hand = d.hand === 'right' ? '오른손 · ' : d.hand === 'left' ? '왼손 · ' : '';
-    return `${level}${hand}공을 ${r.done ?? 0}번 주고받음`;
+    return `${hand}공을 ${r.done ?? 0}번 주고받음`;
   }
   return null;
 }

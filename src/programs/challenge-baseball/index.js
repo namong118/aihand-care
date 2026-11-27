@@ -59,7 +59,7 @@ function pickOne(screen, s, view) {
     screen.guessing(
       view,
       (number) => finish({ number, via: 'button' }),
-      () => finish({ restart: true }),
+      s.noRestart ? null : () => finish({ restart: true }),
       () => finish({ stop: true }),
     );
   });
@@ -207,7 +207,8 @@ export default {
   title: '숫자 야구',
 
   mount(container, ctx) {
-    session = { alive: true, pending: null, offNumber: null };
+    // noRestart: 나의 시작 찾기는 "처음부터 다시" 버튼을 보여 주지 않는다 (다시 하기 없음)
+    session = { alive: true, pending: null, offNumber: null, noRestart: Boolean(ctx.settings.findStart) };
     const s = session;
 
     // 숫자 카드 구독은 처음 한 번. 구독하면 core 가 WonderCam 을 숫자 모드로 바꾸기 시작한다.

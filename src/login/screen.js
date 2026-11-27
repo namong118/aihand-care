@@ -44,8 +44,9 @@ export function createScreen(container, { onGuest, onCancel }) {
     /**
      * 호칭 버튼 목록. users: 가나다순, note: 위에 붙는 안내 (없으면 null)
      * 등록된 분이 없으면 손님으로 시작하도록 안내한다
+     * onRetry: 있으면 [얼굴 다시 보여 주기] 버튼 (얼굴로 다시 찾기)
      */
-    choose(users, onPick, note = null) {
+    choose(users, onPick, note = null, onRetry = null) {
       set(
         users.length > 0 ? '호칭을 골라 주세요' : '아직 등록된 분이 없어요',
         [
@@ -58,6 +59,7 @@ export function createScreen(container, { onGuest, onCancel }) {
               )
             : pageCard(null, h('p', { class: 'page-text' }, '손님으로 시작해 주세요. 호칭은 설정에서 등록할 수 있어요.')),
         ],
+        onRetry ? [button('얼굴 다시 보여 주기', onRetry)] : [],
       );
     },
   };

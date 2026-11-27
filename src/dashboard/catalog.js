@@ -57,6 +57,7 @@ export const CHALLENGES = [
     name: '공 주고받기',
     short: '로봇손과 공을 주고받아요',
     desc: '로봇손에 공을 건네고, 로봇이 펴 주는 공을 받아 보세요.',
+    singleLevel: true, // 단계 없이 한 가지로만 한다 (2026-11-27 실물 테스트). 시작 단계 고르기·"N단계" 표시에서 뺀다
   },
   {
     id: 'challenge-count',

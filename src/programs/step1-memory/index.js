@@ -78,7 +78,7 @@ function pickOne(screen, s, view) {
     screen.recall(
       view,
       (number) => finish({ number, via: 'button' }),
-      () => finish({ restart: true }),
+      s.noRestart ? null : () => finish({ restart: true }),
       () => finish({ skip: true }),
     );
   });
@@ -241,7 +241,8 @@ export default {
 
   mount(container, ctx) {
     // pending: 숫자 입력을 기다리는 중이면 그 입력을 끝내는 함수, click: 화면 버튼을 기다리는 중이면 그 resolve
-    session = { alive: true, pending: null, click: null, offNumber: null };
+    // noRestart: 나의 시작 찾기는 "처음부터 다시" 버튼을 보여 주지 않는다 (다시 하기 없음)
+    session = { alive: true, pending: null, click: null, offNumber: null, noRestart: Boolean(ctx.settings.findStart) };
     const s = session;
 
     // 숫자 카드 구독은 시작할 때 한 번. 구독하면 core 가 WonderCam 을 숫자 모드로 바꾸기 시작한다.

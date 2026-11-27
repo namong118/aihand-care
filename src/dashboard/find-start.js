@@ -215,7 +215,7 @@ function levelRow(id, levels, selected, onPick, tag) {
  *                  recommended 가 false 면(기본 활동을 건너뜀) 지금 설정이 골라져 있고, 바꾸지 않으면 저장하지 않는다
  * @param o.later   준비 중인 짝
  * @param o.who     지금 하시는 분 호칭. 손님이면 null
- * @param o.onSave  (levels) => 그분의 시작 단계로 저장하고 홈으로. levels = { 활동 id: 단계 }
+ * @param o.onSave  (levels) => 그분의 시작 단계로 저장하고 같은 분으로 코스 시작 화면. levels = { 활동 id: 단계 }
  *                  null 이면(손님) 추천만 보여 주고 저장하지 않는다 (docs/decisions.md 3번)
  * @param o.onHome  "저장하지 않고 홈으로"
  */
@@ -268,11 +268,11 @@ export function renderFindStartRecommend(container, { rows, later, who = null, o
         ),
         later.length > 0 ? h('ul', { class: 'find-later-list' }, later.map(laterRow)) : null,
         onSave
-          ? h('p', { class: 'find-note' }, `${who}의 다음 코스부터 이 단계로 시작해요. 설정에서 언제든 바꾸실 수 있어요.`)
+          ? h('p', { class: 'find-note' }, `${who}의 코스는 이 단계로 시작해요. 설정에서 언제든 바꾸실 수 있어요.`)
           : h('p', { class: 'find-note' }, '손님으로 하셔서 저장하지 않아요. 호칭을 등록하시면 다음부터 이 단계로 시작할 수 있어요.'),
         onSave
           ? pageActions(
-              button('이대로 저장하기', () => onSave(levelsToSave())),
+              button('저장하고 오늘의 활동 하기', () => onSave(levelsToSave())),
               button('저장하지 않고 홈으로', onHome, { variant: 'secondary' }),
             )
           : pageActions(button('홈으로', onHome)),

@@ -45,29 +45,34 @@ export default {
       onCancel: () => finish(onCancel),
     });
 
-    const choose = (note) => {
+    const canFace = typeof ctx.card?.onFace === 'function' && users.some((u) => u.faceId !== null);
+
+    // onRetry: 얼굴을 못 찾았을 때 [얼굴 다시 보여 주기] (2026-11-27 실물 테스트: 사진을 미리 대고 있지 않으면 바로 호칭 목록으로 넘어감)
+    const choose = (note, onRetry = null) => {
       stopAll(s);
-      screen.choose(users, (u) => done(u, 'button'), note);
+      screen.choose(users, (u) => done(u, 'button'), note, onRetry);
     };
 
-    const canFace = typeof ctx.card?.onFace === 'function' && users.some((u) => u.faceId !== null);
+    const lookAtFace = () =>
+      watchFace(ctx, screen, s, users, {
+        onUser: (user) => {
+          stopAll(s);
+          screen.confirm(
+            user,
+            () => done(user, 'face'),
+            () => choose(null, lookAtFace), // "아니요" 한 번이면 바로 호칭 버튼 (얼굴 다시 보기도 됨)
+          );
+        },
+        onUnknown: () => choose('얼굴을 찾지 못했어요. 다시 보여 주시거나 호칭을 골라 주세요.', lookAtFace),
+        onGiveUp: () => choose('얼굴이 잘 보이지 않았어요. 다시 보여 주시거나 호칭을 골라 주세요.', lookAtFace),
+        onChoose: () => choose(null, lookAtFace),
+      }).catch((err) => console.error(err));
+
     if (!canFace) {
       choose(null);
       return;
     }
-    watchFace(ctx, screen, s, users, {
-      onUser: (user) => {
-        stopAll(s);
-        screen.confirm(
-          user,
-          () => done(user, 'face'),
-          () => choose(null), // "아니요" 한 번이면 바로 호칭 버튼
-        );
-      },
-      onUnknown: () => choose('얼굴을 찾지 못했어요. 호칭을 골라 주세요.'),
-      onGiveUp: () => choose('얼굴이 잘 보이지 않아요. 호칭을 골라 주세요.'),
-      onChoose: () => choose(null),
-    }).catch((err) => console.error(err));
+    lookAtFace();
   },
 
   /**

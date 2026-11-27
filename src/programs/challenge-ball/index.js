@@ -1,9 +1,9 @@
 // 도전 활동 "공 주고받기" (기본 활동 손운동의 짝, 홈 손운동 카드 아래 칸). core 는 import 하지 않고 ctx 만 쓴다.
 //
 // 한 회차 = 4번 주고받기:
-//   시작 화면에서 1·2·3단계 고르기 (미리 선택: ctx.settings.challengeLevel, 없으면 1단계). 1단계는 손도 고른다
+//   시작 화면 [시작하기]. 단계는 하나뿐 (PLAY_LEVEL, 2026-11-27 실물 테스트: 단계 차이가 잘 느껴지지 않아 한 가지로)
 //   → 로봇 인사
-//   → 번마다: 손 지시 보기("오른손으로 건네고, 왼손으로 받아요", 3단계는 보고 나면 가려짐) → [준비됐어요]
+//   → 번마다: 손 지시 보기("편한 손으로 건네고, 같은 손으로 받아요") → [준비됐어요]
 //            → 건네기: 로봇이 손을 펴고(PAPER) "셋, 둘, 하나" 뒤 쥔다(ROCK)
 //            → 받기: 웹캠에 펼친 손(PAPER·FOUR)이 보이거나 [손을 받쳤어요]를 누르면 로봇이 손을 편다(PAPER).
 //                    10초(느리게 15초) 안에 둘 다 없으면 "셋, 둘, 하나" 뒤 편다 (공을 오래 쥐지 않게)
@@ -22,8 +22,8 @@ import {
   EXCHANGES,
   HAND_TEXT,
   RECEIVE_POSES,
+  PLAY_LEVEL,
   levelSpec,
-  defaultLevel,
   makeInstructions,
   instructionText,
   beatMs,
@@ -150,11 +150,7 @@ async function giveBack(ctx, screen, s, base) {
 async function stopSession(ctx, screen, s, { level, done }) {
   await robot(ctx.robot.rest()); // 공은 이미 돌려줬다 (giveBack)
   if (!s.alive) return;
-  screen.stopped(
-    { done },
-    () => start(ctx, screen, s, level),
-    () => showLevels(ctx, screen, s),
-  );
+  screen.stopped({ done }, () => start(ctx, screen, s, level));
 }
 
 async function playSession(ctx, screen, s, level) {
@@ -226,7 +222,10 @@ async function playSession(ctx, screen, s, level) {
         hidden: spec.hide,
         active: 'give',
         prompt: '로봇이 손을 펴요',
-        sub: spec.hide ? '기억한 손으로 공을 로봇 손바닥에 대 주세요.' : `${HAND_TEXT[pair.give]}으로 공을 로봇 손바닥에 대 주세요.`,
+        // 2026-11-27 실물 테스트: 공을 일찍 떼면 다 쥐기 전에 떨어진다 → 다 쥘 때까지 대고 있도록 안내
+        sub: spec.hide
+          ? '기억한 손으로 공을 로봇 손바닥 가운데에 대 주세요. 로봇이 다 쥘 때까지 떼지 마세요.'
+          : `${HAND_TEXT[pair.give]}으로 공을 로봇 손바닥 가운데에 대 주세요. 로봇이 다 쥘 때까지 떼지 마세요.`,
         buttons: [{ label: '공을 댔어요', onClick: sender(s, 'placed') }, replayBtn, stopBtn].filter(Boolean),
       });
       await robot(ctx.robot.showPose('PAPER'));
@@ -235,9 +234,9 @@ async function playSession(ctx, screen, s, level) {
       if (r === null || !s.alive) return;
       if (r === 'stop') return stopHere(); // 아직 쥐지 않았다
       s.holding = true; // 명령을 보내기 전에 표시한다 (그사이 화면을 떠나도 unmount 가 손을 펴게)
-      screen.prompt('잡았어요!');
+      screen.prompt('잡는 중이에요. 공을 그대로 대고 계세요');
       await robot(ctx.robot.showPose('ROCK'));
-      if (!s.alive) return;
+      if (!s.alive) return; // 다 쥔 뒤(DONE) 받기 화면으로 바뀐다
 
       // 3) 받기: 웹캠에 펼친 손이 보이거나 [손을 받쳤어요]를 누르면 손을 편다.
       //    그동안 로봇은 공을 쥐고 있으므로 receiveWaitMs 를 넘기지 않는다
@@ -327,20 +326,16 @@ async function playSession(ctx, screen, s, level) {
       exchanges,
     },
   });
-  screen.finished(
-    { done: summary.done, level },
-    () => start(ctx, screen, s, level),
-    () => showLevels(ctx, screen, s),
-  );
+  screen.finished({ done: summary.done }, () => start(ctx, screen, s, level));
 }
 
 function start(ctx, screen, s, level) {
   playSession(ctx, screen, s, level).catch((err) => console.error(err));
 }
 
-/** 시작 화면 (단계 고르기). 고르면 바로 시작한다 (1단계도 손을 고르지 않음) */
-function showLevels(ctx, screen, s) {
-  screen.levels({ selected: defaultLevel(ctx.settings.challengeLevel) }, (level) => start(ctx, screen, s, level));
+/** 시작 화면. 단계 고르기 없이 [시작하기] (ctx.settings.challengeLevel 은 쓰지 않는다) */
+function showIntro(ctx, screen, s) {
+  screen.intro(() => start(ctx, screen, s, PLAY_LEVEL));
 }
 
 export default {
@@ -352,7 +347,7 @@ export default {
     // waits: 기다리는 손 입력(AbortController), holding: 로봇이 공을 쥐고 있는지
     session = { alive: true, answer: null, queued: null, timers: new Set(), waits: new Set(), holding: false, active: null, ctx };
     const screen = createScreen(container);
-    showLevels(ctx, screen, session);
+    showIntro(ctx, screen, session);
   },
 
   unmount() {
