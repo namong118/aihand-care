@@ -267,6 +267,69 @@ describe('createSerialRobot', () => {
     expect(onFace.mock.calls).toEqual([['unknown'], [2], [null]]);
     expect(onNumber).not.toHaveBeenCalled();
   });
+
+  describe('공 따라가기 (TRACK, 펌웨어 F5)', () => {
+    /** TRACK,ON 을 보내고 DONE 을 받아 따라가는 상태로 만든다 */
+    async function tracking(f, robot) {
+      const p = robot.track(true);
+      await untilSent(f.sent, 1);
+      expect(f.sent[0]).toBe('TRACK,ON\n');
+      f.robotSays('DONE,TRACK\n');
+      await p;
+      expect(robot.isTracking()).toBe(true);
+    }
+
+    it('꺼져 있으면 끄기는 아무것도 보내지 않는다 (F4 이하에 로봇 오류가 뜨지 않게)', async () => {
+      const f = fakePort();
+      const robot = createSerialRobot({ port: f.port });
+      await expect(robot.track(false)).resolves.toBe(null);
+      expect(f.sent).toEqual([]);
+    });
+
+    it('TRACK,OFF 가 사라지면 응답이 올 때까지 다시 보낸다', async () => {
+      const f = fakePort();
+      const robot = createSerialRobot({ port: f.port });
+      await tracking(f, robot);
+      const off = robot.track(false);
+      await untilSent(f.sent, 2);
+      await vi.advanceTimersByTimeAsync(500); // 첫 TRACK,OFF 가 사라짐 (손목 명령을 보내는 순간)
+      await untilSent(f.sent, 3);
+      expect(f.sent.slice(1)).toEqual(['TRACK,OFF\n', 'TRACK,OFF\n']);
+      f.robotSays('DONE,TRACK\n');
+      await expect(off).resolves.toEqual({ type: 'DONE', command: 'TRACK' });
+      expect(robot.isTracking()).toBe(false);
+    });
+
+    it('BALL,NEAR 를 받으면 onBallNear 를 부르고, 따라가기는 꺼진 것으로 본다 (다음 명령 앞에 TRACK,OFF 없음)', async () => {
+      const f = fakePort();
+      const onBallNear = vi.fn();
+      const robot = createSerialRobot({ port: f.port, onBallNear });
+      await tracking(f, robot);
+      f.robotSays('BALL,NEAR\n');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(onBallNear).toHaveBeenCalledTimes(1);
+      expect(robot.isTracking()).toBe(false);
+      const p = robot.showPose('ROCK');
+      await untilSent(f.sent, 2);
+      expect(f.sent[1]).toBe('POSE,ROCK\n');
+      f.robotSays('DONE,POSE\n');
+      await p;
+    });
+
+    it('따라가는 중에 다른 명령을 보내면 먼저 TRACK,OFF 를 보내고 그다음 보낸다', async () => {
+      const f = fakePort();
+      const robot = createSerialRobot({ port: f.port });
+      await tracking(f, robot);
+      const p = robot.showPose('ROCK');
+      await untilSent(f.sent, 2);
+      expect(f.sent[1]).toBe('TRACK,OFF\n');
+      f.robotSays('DONE,TRACK\n');
+      await untilSent(f.sent, 3);
+      expect(f.sent[2]).toBe('POSE,ROCK\n');
+      f.robotSays('DONE,POSE\n');
+      await expect(p).resolves.toEqual({ type: 'DONE', command: 'POSE' });
+    });
+  });
 });
 
 describe('openGrantedPort (허락한 포트 자동으로 열기)', () => {

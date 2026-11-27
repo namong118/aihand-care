@@ -27,9 +27,13 @@ const MOCK_NOTE = '카드 대신 키보드·버튼';
 export const CAM_STUCK_HELP =
   'WonderCam 모드를 바꾸지 못했어요. 카메라 화면이 로딩 중에 멈췄다면 micro:bit USB와 AIHand 전원을 모두 뺐다가, ' +
   'AIHand 전원 → 카메라 화면이 뜬 뒤 → USB 순서로 다시 켜 주세요. 지금은 키보드·버튼으로 입력해요';
-const MODE_LABEL = { TAG: '태그 모드', NUM: '숫자 모드', FACE: '얼굴 모드' };
-// 펌웨어가 그 모드를 모를 때(CAM 에 ERR,BAD_ARG) 안내. 숫자는 F3, 얼굴은 F4 부터
-const NEED_FIRMWARE = { NUM: '숫자 카드는 펌웨어 F3가 필요해요', FACE: '얼굴 인식은 펌웨어 F4가 필요해요' };
+const MODE_LABEL = { TAG: '태그 모드', NUM: '숫자 모드', FACE: '얼굴 모드', COLOR: '색 모드' };
+// 펌웨어가 그 모드를 모를 때(CAM 에 ERR,BAD_ARG) 안내. 숫자는 F3, 얼굴은 F4, 색(공 따라가기)은 F5 부터
+const NEED_FIRMWARE = {
+  NUM: '숫자 카드는 펌웨어 F3가 필요해요',
+  FACE: '얼굴 인식은 펌웨어 F4가 필요해요',
+  COLOR: '공 따라가기는 펌웨어 F5가 필요해요',
+};
 
 /**
  * @param colors  data/colors.json
@@ -196,6 +200,14 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
       return () => faceListeners.delete(cb);
     },
     /**
+     * 색 모드(공 따라가기, 펌웨어 F5)를 원한다. 카드 구독처럼 받는 값은 없다 (손목은 펌웨어가 움직인다).
+     * ctx 에는 직접 열지 않고 ctx.robot.followBall 이 쓴다 (context.js)
+     */
+    useColor() {
+      want('COLOR');
+    },
+
+    /**
      * 모드 바꾸기가 끝날 때까지 기다린다. 구독한 바로 뒤에 부른다.
      * @returns {Promise<boolean>} 실제 WonderCam 이 원하는 모드로 준비됐으면 true, Mock 입력만 되면 false
      */
@@ -232,6 +244,7 @@ export function createCard({ colors, robot = null, mock = createMockCard({ color
         else if (f !== null) text = `얼굴 ${f}번`;
         return { state: 'connected', mock: false, note: `얼굴 모드 · ${text}${extra}` };
       }
+      if (active === 'COLOR') return { state: 'connected', mock: false, note: `색 모드 · 공 따라가기${extra}` };
       return { state: 'missing', mock: true, note: problem ?? MOCK_NOTE };
     },
 

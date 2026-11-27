@@ -30,6 +30,7 @@ import {
   hideMs,
   receiveHoldMs,
   receiveWaitMs,
+  followMs,
   isReceivePose,
   summarizeSession,
 } from './logic.js';
@@ -45,6 +46,16 @@ async function robot(promise) {
     await promise;
   } catch (err) {
     console.error('공 주고받기 로봇 명령 오류', err);
+  }
+}
+
+/** 공 따라가기 켜기·끄기. ctx.robot.followBall 이 없거나 실패하면 false (활동은 따라가기 없이 그대로) */
+async function followBall(ctx, on, onNear) {
+  try {
+    return Boolean(await ctx.robot.followBall?.(on, onNear));
+  } catch (err) {
+    console.error('공 따라가기 오류', err);
+    return false;
   }
 }
 
@@ -222,16 +233,30 @@ async function playSession(ctx, screen, s, level) {
         hidden: spec.hide,
         active: 'give',
         prompt: '로봇이 손을 펴요',
-        // 2026-11-27 실물 테스트: 공을 일찍 떼면 다 쥐기 전에 떨어진다 → 다 쥘 때까지 대고 있도록 안내
+        // 2026-11-27 실물 테스트: 엄지·검지 쪽에 대야 잘 잡고, 일찍 떼면 다 쥐기 전에 떨어진다
         sub: spec.hide
-          ? '기억한 손으로 공을 로봇 손바닥 가운데에 대 주세요. 로봇이 다 쥘 때까지 떼지 마세요.'
-          : `${HAND_TEXT[pair.give]}으로 공을 로봇 손바닥 가운데에 대 주세요. 로봇이 다 쥘 때까지 떼지 마세요.`,
+          ? '기억한 손으로 공을 로봇 엄지와 검지 사이에 대 주세요. 로봇이 다 쥘 때까지 떼지 마세요.'
+          : `${HAND_TEXT[pair.give]}으로 공을 로봇 엄지와 검지 사이에 대 주세요. 로봇이 다 쥘 때까지 떼지 마세요.`,
         buttons: [{ label: '공을 댔어요', onClick: sender(s, 'placed') }, replayBtn, stopBtn].filter(Boolean),
       });
       await robot(ctx.robot.showPose('PAPER'));
       if (!s.alive) return;
-      r = await countdown(s, screen, speed);
+      // 공 따라가기 (펌웨어 F5, 2026-11-27): 손목이 공(WonderCam Color ID 1)을 따라 돈다.
+      // 공이 손 가까이 오면 펌웨어가 멈추고 알려 준다('near') → 셋·둘·하나 없이 바로 쥔다.
+      // [공을 댔어요]도 바로 쥔다. followMs 안에 둘 다 없으면 "셋, 둘, 하나" 뒤 쥔다.
+      // Mock·F4 이하·카메라 문제면 false → 지금처럼 바로 "셋, 둘, 하나"
+      const following = await followBall(ctx, true, sender(s, 'near'));
+      if (!s.alive) return;
+      r = 'timeout';
+      if (following) {
+        screen.prompt('공을 로봇 손 가까이 가져와 주세요. 가까이 오면 로봇이 잡아요');
+        r = await waitInput(s, followMs(speed));
+        if (r === null || !s.alive) return;
+      }
+      if (r === 'timeout') r = await countdown(s, screen, speed);
       if (r === null || !s.alive) return;
+      if (following) await followBall(ctx, false); // 쥐기 전에 손목을 멈춘다 (손목은 그 자리)
+      if (!s.alive) return;
       if (r === 'stop') return stopHere(); // 아직 쥐지 않았다
       s.holding = true; // 명령을 보내기 전에 표시한다 (그사이 화면을 떠나도 unmount 가 손을 펴게)
       screen.prompt('잡는 중이에요. 공을 그대로 대고 계세요');
@@ -256,14 +281,20 @@ async function playSession(ctx, screen, s, level) {
         return;
       }
       let stopAfter = false;
-      if (r === 'timeout') {
-        // 손이 보이지 않음: 공을 오래 쥐지 않게 세고 나서 내려놓는다. 이때 그만하기를 눌러도 곧 펴므로 편 뒤 끝낸다
+      if (r === 'timeout' || r === 'hand') {
+        // 셋, 둘, 하나 뒤 내려놓는다. 이때 그만하기를 눌러도 곧 펴므로 편 뒤 끝낸다
+        //   timeout: 손이 보이지 않음 → 공을 오래 쥐지 않게
+        //   hand: 웹캠에 편 손이 보임 = 받을 준비 신호. 웹캠에 손을 보이는 자리와 공이 떨어지는 자리가 달라서
+        //         바로 놓으면 공이 바닥에 떨어졌다 (2026-11-27 실물 테스트) → 로봇 손 아래로 옮길 시간을 준다
         show(screen, s, {
           ...base,
           hidden: spec.hide,
           active: 'receive',
           prompt: '',
-          sub: '손을 받쳐 주세요. 로봇이 곧 공을 내려놓아요.',
+          sub:
+            r === 'hand'
+              ? '손이 보였어요! 이제 그 손을 로봇 손 바로 아래로 옮겨 주세요.'
+              : '손을 받쳐 주세요. 로봇이 곧 공을 내려놓아요.',
           buttons: [stopBtn],
         });
         const c = await countdown(s, screen, speed);
@@ -361,6 +392,8 @@ export default {
     s.waits.clear();
     s.answer?.(null);
     // 공을 쥔 채 화면을 떠나면 바로 손을 편다 (공이 떨어질 수 있어도 서보 보호가 먼저)
+    // 공 따라가기가 켜져 있으면 끈다 (손목은 그 자리, 쥐고 있으면 아래 PAPER 전에 core 가 먼저 끈다)
+    followBall(s.ctx, false);
     if (s.holding) {
       s.holding = false;
       robot(s.ctx.robot.showPose('PAPER'));

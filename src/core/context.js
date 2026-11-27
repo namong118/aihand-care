@@ -28,6 +28,7 @@ export function createContext(settings) {
   const robot = createRobot({ poses });
   const card = createCard({ colors, robot }); // WonderCam 결과는 로봇 시리얼로 온다
   const log = createLog();
+  let stopNear = () => {}; // followBall 의 onNear 구독 끊기
 
   const ctx = {
     hand: {
@@ -41,6 +42,35 @@ export function createContext(settings) {
       react: (kind) => robot.react(kind),
       hello: () => robot.hello(),
       rest: () => robot.rest(),
+      /**
+       * 공 따라가기 (공 주고받기, 펌웨어 F5): on 이면 카메라를 색 모드로 바꾸고 손목이 공(Color ID 1)을 따라 돈다.
+       * 공이 손 가까이 오면 펌웨어가 스스로 멈추고 onNear() 를 한 번 부른다 (이때 쥐면 된다).
+       * 끄면 손목은 그 자리에 둔다. 다른 로봇 명령을 보내면 core 가 먼저 끈다.
+       * @returns {Promise<boolean>} 실제로 따라가기를 켰으면 true (Mock·F4 이하·카메라 문제면 false, 그래도 활동은 그대로)
+       */
+      followBall: async (on, onNear) => {
+        stopNear();
+        if (!on) {
+          await robot.track(false);
+          return false;
+        }
+        if (robot.kind !== 'serial') return false;
+        card.useColor();
+        if (!(await card.ready())) return false;
+        if (typeof onNear === 'function') {
+          const off = robot.onBallNear(() => {
+            stopNear();
+            onNear();
+          });
+          stopNear = () => {
+            off();
+            stopNear = () => {};
+          };
+        }
+        const msg = await robot.track(true);
+        if (msg?.type !== 'DONE') stopNear();
+        return msg?.type === 'DONE';
+      },
     },
     card: {
       onCard: (cb) => card.onCard(cb), // 색 카드: cb({ color: 'red' | 'blue' | 'yellow' | 'green' })

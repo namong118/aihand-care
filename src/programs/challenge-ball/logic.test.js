@@ -1,4 +1,4 @@
-import { PLAY_LEVEL } from './logic.js';
+import { PLAY_LEVEL, followMs } from './logic.js';
 import { describe, it, expect } from 'vitest';
 import {
   EXCHANGES, ALL_PAIRS, levelSpec, defaultLevel, otherHand, makeInstructions, samePair, instructionText,
@@ -153,5 +153,12 @@ describe('PLAY_LEVEL (한 가지로만, 2026-11-27)', () => {
   it('화면에서 하는 단계는 1단계: 편한 손으로 건네고 같은 손으로 받기', () => {
     expect(PLAY_LEVEL).toBe(1);
     expect(makeInstructions(PLAY_LEVEL, 2)).toEqual([{ give: 'any', receive: 'same' }, { give: 'any', receive: 'same' }]);
+  });
+});
+
+describe('followMs (공 따라가기 시간)', () => {
+  it('보통 10초, 느리게 15초', () => {
+    expect(followMs('NORMAL')).toBe(10000);
+    expect(followMs('SLOW')).toBe(15000);
   });
 });

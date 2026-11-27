@@ -30,6 +30,7 @@ export function createRobot({
   const tagListeners = new Set();
   const numberListeners = new Set();
   const faceListeners = new Set();
+  const ballListeners = new Set(); // BALL,NEAR (공 따라가기 중 공이 손 가까이, 펌웨어 F5)
 
   const active = () => serial ?? mock;
   function changed() {
@@ -93,6 +94,9 @@ export function createRobot({
       },
       onFace: (faceId) => {
         if (serial === robot) faceListeners.forEach((cb) => cb(faceId));
+      },
+      onBallNear: () => {
+        if (serial === robot) ballListeners.forEach((cb) => cb());
       },
     });
     const ok = await robot.check();
@@ -173,9 +177,14 @@ export function createRobot({
       return serial ? serial.speed(value) : Promise.resolve(null);
     },
 
-    /** WonderCam 모드 전환 ('TAG' | 'NUM' | 'FACE'). 실제 AIHand 에 연결되어 있지 않으면 null */
+    /** WonderCam 모드 전환 ('TAG' | 'NUM' | 'FACE' | 'COLOR'). 실제 AIHand 에 연결되어 있지 않으면 null */
     camMode(mode) {
       return serial ? serial.camMode(mode) : Promise.resolve(null);
+    },
+
+    /** 공 따라가기 켜기·끄기 (펌웨어 F5, TRACK,ON|OFF). 실제 AIHand 가 아니면 null. ctx.robot.followBall 이 쓴다 */
+    track(on) {
+      return serial ? serial.track(on) : Promise.resolve(null);
     },
 
     /** WonderCam 태그 줄 구독. cb(id): '0'~'3' 같은 태그 번호, 카드가 사라지면 null */
@@ -194,6 +203,12 @@ export function createRobot({
     onFace(cb) {
       faceListeners.add(cb);
       return () => faceListeners.delete(cb);
+    },
+
+    /** 공 따라가기 중 공이 손 가까이 옴 (BALL,NEAR). 펌웨어는 이미 따라가기를 멈췄다. ctx.robot.followBall 이 쓴다 */
+    onBallNear(cb) {
+      ballListeners.add(cb);
+      return () => ballListeners.delete(cb);
     },
 
     /** 상태 표시줄용 */

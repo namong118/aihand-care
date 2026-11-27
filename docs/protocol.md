@@ -5,7 +5,7 @@
 - 한 줄 = 명령 하나, 끝은 `\n`
 - 글자는 영어 대문자·숫자·`_`·쉼표만 사용
 - 값이 있으면 `명령,값` 처럼 쉼표로 붙인다 (공백 없음)
-- 구현: 웹 `src/core/robot/protocol.js`·`serial.js`, 로봇 `firmware/main.ts` (펌웨어 F4. F1 로봇 명령 + F2 WonderCam 태그 인식 + F3 숫자 인식 + F4 얼굴 인식)
+- 구현: 웹 `src/core/robot/protocol.js`·`serial.js`, 로봇 `firmware/main.ts` (펌웨어 F5. F1 로봇 명령 + F2 WonderCam 태그 인식 + F3 숫자 인식 + F4 얼굴 인식 + F5 공 따라가기)
 - **이 문서, `protocol.js`, `firmware/`는 항상 같이 고친다.**
 
 ## 웹 → 로봇
@@ -22,12 +22,20 @@
 | `CAM,TAG` | WonderCam을 태그(AprilTag) 인식 모드로 바꾼다 (색 카드, STEP 3) | `DONE,CAM` / 카메라 없음 `ERR,NO_CAM` / 모드가 안 바뀜 `ERR,CAM_MODE` | 미확인 (F2) |
 | `CAM,NUM` | WonderCam을 숫자 인식 모드로 바꾼다 (숫자 카드 1~5, STEP 1) | `CAM,TAG`와 같음 | 미확인 (F3) |
 | `CAM,FACE` | WonderCam을 얼굴 인식 모드로 바꾼다 (얼굴 로그인) | `CAM,TAG`와 같음 | 확인됨 (F4 Serial Terminal, 2026-11-15). 태그→얼굴 0.37초 (FACE1) |
+| `CAM,COLOR` | WonderCam을 색 인식 모드로 바꾼다 (공 따라가기). 이 모드에서는 보내는 줄이 없다 | `CAM,TAG`와 같음 | 미확인 (F5, 2026-11-27) |
+| `TRACK,ON` / `TRACK,OFF` | 공 따라가기 켜기·끄기. 켜져 있으면 펌웨어가 0.1초마다 Color ID 1(공)의 가로 위치를 읽고, 화면 가운데(150~170) 밖이면 손목(6번)을 (벗어난 픽셀 × 0.06)°씩 돌린다 (공식 예제 6.13 Color Tracking, 카메라가 손목과 함께 돈다). 끄면 손목은 그 자리. 30초 지나면 저절로 꺼짐. 공이 손 가까이 오면 스스로 멈추고 `BALL,NEAR` | `DONE,TRACK` / 색 모드가 아니면 `ERR,CAM_MODE` | 미확인 (F5, 2026-11-27) |
 
 - 웹은 `CAM` 명령을 직접 부르지 않는다. `core/card`가 프로그램의 구독(`onCard` / `onNumber` / `onFace`)에 맞춰 알아서 보낸다 (아래 "카메라 모드").
 - 카메라 모드가 실패(`ERR,NO_CAM`, `ERR,CAM_MODE`)하면 펌웨어는 모드 없음이 되어 `TAG`·`NUM`·`FACE` 줄을 보내지 않는다.
 - 펌웨어 F2에 `CAM,NUM`을 보내면 `ERR,BAD_ARG`이고 태그 모드는 그대로다. 웹은 "숫자 카드는 펌웨어 F3가 필요해요"로 안내하고 숫자는 Mock으로 받는다.
 - 펌웨어 F2·F3에 `CAM,FACE`를 보내면 `ERR,BAD_ARG`이고 카메라 모드는 그대로다. 웹은 "얼굴 인식은 펌웨어 F4가 필요해요"로 안내하고 얼굴 번호는 Mock 버튼으로 받는다.
 - 펌웨어 F1에 `CAM`을 보내면 `ERR,UNKNOWN_CMD`. 웹은 "펌웨어 F4가 필요해요"로 안내한다.
+- 펌웨어 F4 이하에 `CAM,COLOR`를 보내면 `ERR,BAD_ARG` → 웹은 "공 따라가기는 펌웨어 F5가 필요해요"로 안내하고 공 주고받기는 따라가기 없이 한다. `TRACK`은 켜진 뒤에만 끄기를 보내므로 F4에 `ERR,UNKNOWN_CMD`가 뜨지 않는다.
+- **공 따라가기 중 명령이 사라질 수 있다.** 따라가는 동안 펌웨어가 스스로 손목 명령을 보내고, 그 순간(약 30ms) 시리얼 통로가 확장보드 쪽이라 들어온 줄이 사라진다. 그래서 웹(`serial.js`)은
+  - `TRACK,OFF`를 0.5초 기다리고 응답이 없으면 다시 보낸다 (최대 6번)
+  - 따라가는 중에 다른 명령을 보내면 먼저 `TRACK,OFF`를 보내고 응답을 받은 뒤 보낸다
+  - 펌웨어도 `TRACK`·`PING`·`SPEED` 말고 다른 명령이 오면 따라가기를 먼저 멈춘다 (안전장치)
+- 프로그램은 `ctx.robot.followBall(true|false)`로 쓴다. 켜면 core 가 카메라를 색 모드로 바꾼 뒤(`core/card` `useColor`) `TRACK,ON`을 보낸다. 실제로 켜졌으면 `true` (Mock·F4 이하·카메라 문제면 `false`, 활동은 따라가기 없이 그대로)
 
 동작 각도·시간은 `docs/hardware-check.md` 3번·부록 5, 명령별 동작 시간은 `firmware/README.md`.
 
@@ -43,6 +51,7 @@
 | `FACE,<번호>` | 학습된 얼굴(카메라 레버로 학습한 Face ID, 1~5)이 보임. **번호가 바뀌면 바로 한 번**. 웹은 `ctx.card.onFace({ faceId: 번호 })`로 넘긴다. 확인됨 (F4, 2026-11-15) |
 | `FACE,UNKNOWN` | 학습되지 않은 얼굴만 보임. 웹은 `onFace({ faceId: 'unknown' })`. 확인됨 (F4, 2026-11-15) |
 | `FACE,NONE` | 보이던 얼굴이 **1초 넘게** 안 보임. 카드와 달리 웹은 `onFace({ faceId: null })`로 **알린다**. 확인됨 (F4, 2026-11-15) |
+| `BALL,NEAR` | 공 따라가기 중 공이 손 가까이 옴. 둘 중 하나: (1) 공 덩어리 크기(w×h)가 `BALL_NEAR_AREA`(임시 12000) 이상으로 화면 가운데(x 100~220)에 0.3초, (2) 가운데에서 `BALL_CLOSE_AREA`(임시 5000) 이상으로 보이다가 0.4초 넘게 사라짐 (공을 손 바로 앞에 대면 카메라에서 사라진다, 2026-11-27 실물). 펌웨어는 따라가기를 이미 멈췄다. 웹은 `followBall`의 `onNear`를 불러 바로 쥔다. 미확인 (F5, 2026-11-27) |
 | `RAW,NUM,<숫자>,<확신도×100>` | 펌웨어 `DEBUG_NUM = true`일 때만. 확신도 기준값을 정하려고 실물에서 재는 줄. **웹은 무시한다** (`UNKNOWN`) |
 | `PONG` | `PING` 응답 |
 | `ERR,<내용>` | 오류. `ERR,UNKNOWN_CMD` (모르는 명령), `ERR,UNKNOWN_POSE` (모르는 손모양), `ERR,BAD_ARG` (값이 틀림). 오류가 나면 로봇은 움직이지 않는다 |

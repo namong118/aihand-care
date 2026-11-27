@@ -26,7 +26,15 @@ export const TIMEOUT_MS = Object.freeze({
   REACT: 10000, // RETRY SLOW 약 6.7초
   HELLO: 10000, // SLOW 약 5.8초
   CAM: 6000, // WonderCam 모드 전환: 최악 약 5.1초 (카메라 다시 찾기 1초 + 공식 ChangeFunc 최대 4.1초)
+  TRACK: 1500, // 공 따라가기 켜기·끄기 (바로 답함)
 });
+
+/**
+ * 공 따라가기를 끌 때: 따라가는 동안 펌웨어가 손목 명령을 보내는 순간(약 30ms) 들어온 줄은 사라진다.
+ * 그래서 TRACK,OFF 는 짧게 기다리고 응답이 올 때까지 이만큼 다시 보낸다. 다른 명령은 그 뒤에 보낸다
+ */
+export const TRACK_OFF_TRIES = 6;
+export const TRACK_OFF_WAIT_MS = 500;
 
 /** 시간 초과 뒤 순서를 다시 맞출 때 PING 을 보내 보는 횟수 */
 export const RESYNC_TRIES = 3;
@@ -75,6 +83,7 @@ function err(message) {
  * @param {(id: string | null) => void} [options.onTag]  'TAG,<번호>' 줄을 받으면 번호, 'TAG,NONE' 이면 null
  * @param {(n: number | null) => void} [options.onNumber]  'NUM,<1~5>' 줄을 받으면 숫자, 'NUM,NONE' 이면 null
  * @param {(faceId: number | 'unknown' | null) => void} [options.onFace]  'FACE,<번호>' 줄이면 번호, UNKNOWN 이면 'unknown', NONE 이면 null
+ * @param {() => void} [options.onBallNear]  'BALL,NEAR' 줄 (공 따라가기 중 공이 손 가까이, 펌웨어 F5)
  * @param {object} [options.timeouts]  TIMEOUT_MS 대신 쓸 값 (테스트용)
  */
 export function createSerialRobot({
@@ -84,6 +93,7 @@ export function createSerialRobot({
   onTag = () => {},
   onNumber = () => {},
   onFace = () => {},
+  onBallNear = () => {},
   timeouts = TIMEOUT_MS,
 }) {
   const encoder = new TextEncoder();
@@ -94,6 +104,7 @@ export function createSerialRobot({
   let lost = false;
   let closing = false;
   let needResync = false;
+  let tracking = false; // 공 따라가기가 켜져 있는지 (TRACK,ON 에 DONE 을 받은 뒤)
   let waiter = null; // { matches(msg), resolve(msg) } 지금 응답을 기다리는 명령
   let queue = Promise.resolve();
 
@@ -111,6 +122,11 @@ export function createSerialRobot({
     }
     if (msg.type === 'FACE') {
       onFace(msg.faceId);
+      return;
+    }
+    if (msg.type === 'BALL') {
+      tracking = false; // 펌웨어가 따라가기를 이미 멈췄다 → 다음 명령 앞에 TRACK,OFF 를 보내지 않는다
+      onBallNear();
       return;
     }
     if (msg.type === 'UNKNOWN') return; // 확장보드 잡음 등은 무시
@@ -182,8 +198,26 @@ export function createSerialRobot({
     return false;
   }
 
+  /** 공 따라가기 끄기: 응답이 올 때까지 TRACK,OFF 를 다시 보낸다 (위 TRACK_OFF_TRIES 설명) */
+  async function stopTracking() {
+    for (let i = 0; i < TRACK_OFF_TRIES; i += 1) {
+      if (lost) return err('NOT_CONNECTED');
+      const msg = await exchange(protocol.track(false), TRACK_OFF_WAIT_MS);
+      if (msg) {
+        tracking = false;
+        return msg;
+      }
+    }
+    // 끝내 답이 없음: 펌웨어도 다른 동작 명령을 받으면 따라가기를 멈추므로 꺼진 것으로 보고, 다음 명령 전에 순서를 맞춘다
+    tracking = false;
+    needResync = true;
+    return err('TIMEOUT');
+  }
+
   async function run(line) {
     if (lost) return err('NOT_CONNECTED');
+    // 따라가는 중에 다른 명령을 보내면 사라질 수 있으니 먼저 끈다 (PING 으로 순서 맞추기 전에도)
+    if (tracking) await stopTracking();
     if (needResync) {
       if (!(await resync())) {
         markLost('AIHand 가 응답하지 않아요');
@@ -201,6 +235,7 @@ export function createSerialRobot({
     }
     if (msg.type === 'ERR') onResult({ ok: false, text: `로봇 오류: ${msg.message}` });
     else onResult({ ok: true });
+    if (name === protocol.CMD.TRACK && msg.type === 'DONE') tracking = true; // TRACK,ON 만 run 으로 보낸다
     return msg;
   }
 
@@ -224,6 +259,17 @@ export function createSerialRobot({
     speed: (value) => send(protocol.speed(value)),
     /** WonderCam 모드 전환 ('TAG' | 'NUM' | 'FACE'). DONE,CAM 또는 ERR,NO_CAM 등으로 resolve */
     camMode: (mode) => send(protocol.cam(mode)),
+    /**
+     * 공 따라가기 켜기·끄기 (펌웨어 F5). 켜기 전에 카메라를 색 모드(CAM,COLOR)로 바꿔 둔다 (core/card).
+     * 끄기는 켜져 있을 때만 보낸다 (F4 이하에 보내면 로봇 오류가 뜨므로). 꺼져 있으면 null
+     */
+    track(on) {
+      if (on) return send(protocol.track(true));
+      const p = queue.then(() => (tracking && !lost ? stopTracking() : null));
+      queue = p.catch(() => {});
+      return p;
+    },
+    isTracking: () => tracking,
     /** 연결 확인. 펌웨어가 막 켜졌을 수도 있으니 RESYNC_TRIES 번까지 PING 을 보낸다 */
     async check() {
       const p = queue.then(resync);

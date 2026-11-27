@@ -13,12 +13,14 @@ export const CMD = Object.freeze({
   SPEED: 'SPEED',
   PING: 'PING',
   CAM: 'CAM',
+  TRACK: 'TRACK',
 });
 
 const REACT_KINDS = { ok: 'OK', retry: 'RETRY' };
 const SPEEDS = ['SLOW', 'NORMAL'];
 // WonderCam 모드: TAG(AprilTag, 색 카드) / NUM(숫자 인식, 숫자 카드 1~5, 펌웨어 F3) / FACE(얼굴 인식, 얼굴 로그인, 펌웨어 F4)
-export const CAM_MODES = ['TAG', 'NUM', 'FACE'];
+//   / COLOR(색 인식, 공 따라가기, 펌웨어 F5. 보내는 줄 없음)
+export const CAM_MODES = ['TAG', 'NUM', 'FACE', 'COLOR'];
 const CARD_NUMBER = /^[1-5]$/;
 const FACE_NUMBER = /^[1-9][0-9]?$/; // 학습된 얼굴 번호 (WonderCam 은 1~5, 넉넉히 1~99)
 const POSE_NAME = /^[A-Z][A-Z0-9_]*$/;
@@ -75,6 +77,15 @@ export function cam(mode) {
 }
 
 /**
+ * TRACK,ON | TRACK,OFF: 공 따라가기 (펌웨어 F5). 켜기 전에 CAM,COLOR. 응답 DONE,TRACK
+ * 색 모드가 아니면 ERR,CAM_MODE, F4 이하는 ERR,UNKNOWN_CMD.
+ * 켜져 있는 동안 펌웨어가 스스로 손목을 움직여서 그 순간 보낸 명령이 사라질 수 있다 → serial.js 가 TRACK,OFF 를 다시 보낸다
+ */
+export function track(on) {
+  return line(`${CMD.TRACK},${on ? 'ON' : 'OFF'}`);
+}
+
+/**
  * 로봇 → 웹 한 줄을 객체로 바꾼다.
  *   'DONE,POSE'  → { type: 'DONE', command: 'POSE' }
  *   'TAG,3'      → { type: 'TAG', id: '3' }     (WonderCam 에 태그 3번 카드가 보임)
@@ -84,7 +95,8 @@ export function cam(mode) {
  *   'FACE,2'     → { type: 'FACE', faceId: 2 }          (학습된 얼굴 2번이 보임)
  *   'FACE,UNKNOWN' → { type: 'FACE', faceId: 'unknown' } (모르는 얼굴만 보임)
  *   'FACE,NONE'  → { type: 'FACE', faceId: null }       (얼굴이 안 보임)
- *   'RAW,NUM,…'  → UNKNOWN (펌웨어 DEBUG_NUM 측정용 줄, 웹은 무시)
+ *   'RAW,NUM,…'  → UNKNOWN (펌웨어 DEBUG_NUM 측정용 줄, 웹은 무시. RAW,BALL 도 같음)
+ *   'BALL,NEAR'  → { type: 'BALL', near: true }  (공 따라가기 중 공이 손 가까이 옴, 펌웨어 F5)
  *   'PONG'       → { type: 'PONG' }
  *   'ERR,UNKNOWN_POSE' → { type: 'ERR', message: 'UNKNOWN_POSE' }
  *   그 밖        → { type: 'UNKNOWN', raw }
@@ -110,6 +122,9 @@ export function parseLine(raw) {
       if (rest === 'NONE') return { type: 'FACE', faceId: null };
       if (rest === 'UNKNOWN') return { type: 'FACE', faceId: 'unknown' };
       if (FACE_NUMBER.test(rest)) return { type: 'FACE', faceId: Number(rest) };
+      break;
+    case 'BALL':
+      if (rest === 'NEAR') return { type: 'BALL', near: true };
       break;
     case 'PONG':
       if (!rest) return { type: 'PONG' };

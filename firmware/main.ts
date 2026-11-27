@@ -1,4 +1,4 @@
-// AIHand 펌웨어 F4 (로봇 통신 프로토콜 v1 + WonderCam 태그·숫자·얼굴 인식)
+// AIHand 펌웨어 F5 (로봇 통신 프로토콜 v1 + WonderCam 태그·숫자·얼굴 인식 + 공 따라가기)
 // MakeCode(micro:bit) JavaScript 탭에 이 파일 전체를 붙여 넣는다.
 // Hiwonder 확장(StartbitV2, WonderCam 모두)은 추가하지 않는다. "Initialize StartbitV2" 블록도 쓰지 않는다.
 // WonderCam 은 공식 확장(github.com/Hiwonder/WonderCam)과 같은 I2C 읽기·쓰기를 이 파일 안에 직접 넣었다.
@@ -16,6 +16,15 @@
 //   CAM,TAG            → DONE,CAM       (WonderCam 태그 모드. 카메라 없음 ERR,NO_CAM / 전환 안 됨 ERR,CAM_MODE)
 //   CAM,NUM            → DONE,CAM       (WonderCam 숫자 인식 모드. 오류는 CAM,TAG 와 같음)
 //   CAM,FACE           → DONE,CAM       (WonderCam 얼굴 인식 모드, 얼굴 로그인. 오류는 CAM,TAG 와 같음)
+//   CAM,COLOR          → DONE,CAM       (WonderCam 색 인식 모드, 공 따라가기용. F5. 오류는 CAM,TAG 와 같음. 보내는 줄 없음)
+//   TRACK,ON           → DONE,TRACK     (손목이 Color ID 1(공)을 따라 돈다. 색 모드가 아니면 ERR,CAM_MODE. F5)
+//   TRACK,OFF          → DONE,TRACK     (따라가기 멈춤. 손목은 그 자리에 둔다)
+//                                        따라가다 공이 손 가까이 오면 스스로 멈추고 BALL,NEAR 를 보낸다:
+//                                        (1) 가운데에서 크게 잠깐 보임, 또는 (2) 가운데에서 꽤 크게 보이다가 사라짐 (손 바로 앞은 카메라에 안 보인다)
+//                                        따라가는 동안 micro:bit 가 스스로 손목 서보 명령을 보내므로, 그 순간(약 30ms)
+//                                        들어온 웹 명령은 사라질 수 있다. 웹은 TRACK,OFF 를 응답이 올 때까지 다시 보내고,
+//                                        다른 명령은 TRACK,OFF 다음에만 보낸다 (core/robot/serial.js).
+//                                        TRACK 말고 다른 동작 명령(HELLO·POSE·REACT·REST·CAM)이 오면 따라가기를 먼저 멈춘다
 //                                        켜질 때는 모드를 바꾸지 않는다. TAG·NUM·FACE 줄은 CAM 명령이 성공한 뒤부터 나온다
 //                                        카메라는 한 번에 한 모드: 태그 모드면 TAG 줄만, 숫자 모드면 NUM 줄만, 얼굴 모드면 FACE 줄만
 //   그 밖              → ERR,UNKNOWN_CMD / ERR,UNKNOWN_POSE / ERR,BAD_ARG
@@ -29,20 +38,26 @@
 //   FACE,UNKNOWN       학습되지 않은 얼굴만 보일 때 한 번 (보이던 학습된 얼굴에서 바뀔 때는 1초 넘게 이어져야)
 //   FACE,NONE          보이던 얼굴이 1초 넘게 안 보일 때 한 번
 //   RAW,NUM,<숫자>,<확신도×100>   DEBUG_NUM = true 일 때만. 기준값 MIN_CONF 정하기용 (웹은 무시)
+//   BALL,NEAR          공 따라가기 중 공이 손 가까이 옴 (따라가기는 이미 멈춤). 웹은 이때 쥔다 (F5)
+//   RAW,BALL,<x>,<크기>  DEBUG_BALL = true 일 때만. 공 덩어리 가운데 x·크기(w×h). BALL_NEAR_AREA 정하기용 (웹은 무시)
 //
 // DONE 은 정해진 시간이 지나면 보낸다. 서보가 실제로 도착했다는 뜻이 아니다 (부록 4).
 
-const FIRMWARE_VERSION = "F4" // 켜질 때 LED에 잠깐 보여준다 (프로토콜과 무관)
+const FIRMWARE_VERSION = "F5" // 켜질 때 LED에 잠깐 보여준다 (프로토콜과 무관)
 
 // 숫자 인식 확신도 기준값 정하기용. true 로 바꾸면 숫자 모드에서 카메라 결과가 바뀔 때마다
 // RAW,NUM,<숫자>,<확신도×100> 줄을 보낸다 (웹은 이 줄을 무시한다). 평소에는 false
 const DEBUG_NUM = false
+// 공 가까이 기준값 정하기용. true 면 공 따라가기 중 RAW,BALL,<x>,<크기> 를 보낸다 (웹은 무시). 평소에는 false
+const DEBUG_BALL = false
 
 // ---------- 안전 범위 (상수: 실행 중 바꾸는 명령을 두지 않는다) ----------
 const FINGER_MIN = 50
 const FINGER_MAX = 130
-const WRIST_MIN = 80 // 손목(6번) 실물 확인 범위 80~100 (hardware-check.md 2번)
-const WRIST_MAX = 100
+// 손목(6번): 80~100 은 실물 확인, 11/18 다른 본체로 0~180 천천히 걸림 없음.
+// 2026-11-27 공 따라가기 때문에 60~120 으로 넓힘 (A 결정, 처음 올린 뒤 실물로 끝까지 확인, hardware-check.md 2번)
+const WRIST_MIN = 60
+const WRIST_MAX = 120
 const WRIST = 6
 
 // 통로를 확장보드로 돌린 뒤 서보 명령을 다 보낼 때까지 기다리는 시간 (v8: 30ms)
@@ -50,6 +65,7 @@ const SETTLE_MS = 30
 
 // 속도 배수: NORMAL 1, SLOW 2 (모든 이동·대기 시간에 곱한다)
 let speedK = 1
+let wristAngle = 90 // 마지막으로 보낸 손목 각도 (공 따라가기용). 켜질 때는 서보를 움직이지 않으므로 90 으로 가정
 
 // ---------- USB 로 한 줄 보내기 ----------
 // 시리얼 통로가 확장보드 쪽으로 돌려져 있는 동안 보내면 글자가 확장보드로 가 버린다.
@@ -100,6 +116,7 @@ function move(ids: number[], angs: number[], ms: number, wait: number) {
         if (ids[n] == WRIST) a = Math.max(WRIST_MIN, Math.min(WRIST_MAX, a))
         else a = Math.max(FINGER_MIN, Math.min(FINGER_MAX, a))
         safe.push(a)
+        if (ids[n] == WRIST) wristAngle = a // 공 따라가기가 지금 손목 각도에서 이어 가도록
     }
     toBoard()
     servos(ids, safe, ms * speedK)
@@ -185,6 +202,41 @@ const FACE_UNKNOWN = 0xFF  // 번호 자리의 "모르는 얼굴"
 // 얼굴이 보이는 동안에도 0.24~0.6초짜리 "얼굴 없음"과 "모르는 얼굴"이 끼어들었다 (2026-11-15 실물).
 // 그래서 학습된 얼굴이 사라지거나 모르는 얼굴로 바뀐 것은 1초 넘게 이어질 때만 알린다
 const FACE_LOST_MS = 1000
+
+// 공 따라가기 (색 인식, 공식 예제 6.13 Color Tracking 과 같은 방식: 공이 화면 가운데 150~170 밖이면 조금씩 돌린다)
+// 카메라가 손목과 함께 돈다 (2026-11-27 실물 확인). 공 색은 카메라 레버로 Color ID 1 에 학습해 둔다 (초록 또는 파랑 공)
+const FUNC_COLOR = 5       // 5 = 색 인식
+const REG_COLOR = 0x1000   // 색 결과: [1] = 색 개수, [2..] = 색 번호들, 0x30 + 16×k 부터 k번째 색의 x·y·w·h (Int16LE)
+const COLOR_LEN = 400      // 공식 확장과 같은 길이
+const BALL_ID = 1          // 공 색 = Color ID 1
+const BALL_MIN_AREA = 300  // 이보다 작은 덩어리는 무시 (멀리 있는 같은 색 물건) [검증 필요]
+const TRACK_MS = 100       // 이 간격으로 공 위치를 읽는다
+const CENTER_LO = 150      // 화면 가로 0~320, 가운데 160. 150~170 이면 움직이지 않는다 (공식 예제)
+const CENTER_HI = 170
+const TRACK_GAIN = 0.06    // 가운데에서 벗어난 픽셀 × 0.06 = 이번에 돌릴 각도 (공식 예제)
+const TRACK_SIGN = 1       // 공이 화면 왼쪽(x 작음)이면 각도를 키운다(공식: 90 보다 크면 왼쪽). 반대로 돌면 -1 로 [검증 필요]
+const TRACK_MOVE_MS = 100  // 손목 한 번 움직이는 시간
+const TRACK_MAX_MS = 30000 // 이보다 오래 따라가면 저절로 멈춘다 (웹이 멈추지 못한 경우 안전장치)
+// 공이 손 가까이 왔다고 보는 기준 (화면 320×240 = 76800). 카메라가 손목과 함께 돌아서 공이 가까울수록 화면에서 크다.
+// 그런데 공을 손 바로 앞에 대면 카메라에서 공이 사라진다 (2026-11-27 실물). 그래서 두 가지 중 하나면 BALL,NEAR:
+//   (1) 크기 BALL_NEAR_AREA 이상으로 가운데(NEAR_X_LO~HI)에 NEAR_HOLD_MS 동안 보임
+//   (2) 크기 BALL_CLOSE_AREA 이상으로 가운데에 보이다가(사라지기 BIG_RECENT_MS 안) VANISH_MS 동안 계속 안 보임
+//       옆으로 치워서 사라진 것과 헷갈리지 않게 "가운데·꽤 큼" 다음에 사라질 때만. 잠깐 끊기는 것은 VANISH_MS 로 거른다
+const BALL_NEAR_AREA = 12000 // 임시값. DEBUG_BALL 로 공을 손바닥에 댈 때 크기를 재서 정한다 [검증 필요]
+const BALL_CLOSE_AREA = 5000 // 임시값. 사라지기 직전 크기로 정한다 [검증 필요]
+const NEAR_X_LO = 100
+const NEAR_X_HI = 220
+const NEAR_HOLD_MS = 300
+const BIG_RECENT_MS = 300
+const VANISH_MS = 400
+let nearSince = 0          // 공이 가까이 보이기 시작한 시각 (0 = 아님)
+let lastBigAt = 0          // 공이 가운데에서 꽤 크게 보인 마지막 시각 (0 = 아님)
+let goneSince = 0          // 공이 안 보이기 시작한 시각 (0 = 보이는 중)
+let ballArea = 0           // seeBall 이 마지막으로 본 공 크기
+let lastRawBall = ""
+let tracking = false
+let trackSince = 0
+let lastTrack = 0
 
 let camOk = false
 let camMode = 0            // 지금 모드: 0 = 없음, FUNC_TAG, FUNC_NUM, FUNC_FACE. CAM 명령이 성공했을 때만 바뀐다
@@ -332,6 +384,72 @@ function pollFace() {
     }
 }
 
+// 공(Color ID 1)의 가로 위치. 안 보이거나 너무 작으면 -1
+function seeBall(): number {
+    if (camRead(REG_FUNC, 1)[0] != FUNC_COLOR) return -1 // 카메라 메뉴에서 기능을 바꾼 경우
+    let r = camRead(REG_COLOR, COLOR_LEN)
+    let n = r[1]
+    for (let i = 2; i < 2 + n && i < r.length; i++) {
+        if (r[i] != BALL_ID) continue
+        let base = 0x30 + (i - 2) * 16
+        let x = r.getNumber(NumberFormat.Int16LE, base)
+        let w = r.getNumber(NumberFormat.Int16LE, base + 4)
+        let h = r.getNumber(NumberFormat.Int16LE, base + 6)
+        ballArea = w * h
+        if (DEBUG_BALL) {
+            let raw = "RAW,BALL," + x + "," + ballArea
+            if (raw != lastRawBall) { lastRawBall = raw; send(raw) }
+        }
+        if (ballArea < BALL_MIN_AREA) return -1
+        return x
+    }
+    return -1
+}
+
+// 공이 가운데에서 벗어났으면 손목을 조금 돌린다 (명령 처리와 같은 반복에서 차례로 부른다)
+// 공이 손 가까이 옴: 따라가기를 멈추고 알린다 (웹이 쥔다)
+function ballNear() {
+    tracking = false
+    nearSince = 0
+    lastBigAt = 0
+    goneSince = 0
+    send("BALL,NEAR")
+}
+
+function pollTrack() {
+    let now = input.runningTime()
+    if (now - trackSince > TRACK_MAX_MS) { tracking = false; return }
+    let x = seeBall()
+    if (x < 0) {
+        // (2) 가운데에서 꽤 크게 보이다가 사라짐 = 손 바로 앞에 댐
+        nearSince = 0
+        if (goneSince == 0) goneSince = now
+        if (lastBigAt > 0 && goneSince - lastBigAt <= BIG_RECENT_MS && now - goneSince >= VANISH_MS) ballNear()
+        return
+    }
+    goneSince = 0
+    let centered = x >= NEAR_X_LO && x <= NEAR_X_HI
+    lastBigAt = centered && ballArea >= BALL_CLOSE_AREA ? now : 0
+    // (1) 크고 가운데에 잠깐
+    if (centered && ballArea >= BALL_NEAR_AREA) {
+        if (nearSince == 0) nearSince = now
+        else if (now - nearSince >= NEAR_HOLD_MS) ballNear()
+        return // 가까이 있는 동안은 손목을 움직이지 않는다
+    }
+    nearSince = 0
+    let step = 0
+    if (x < CENTER_LO) step = Math.round((CENTER_LO - x) * TRACK_GAIN)
+    else if (x > CENTER_HI) step = -Math.round((x - CENTER_HI) * TRACK_GAIN)
+    if (step == 0) return
+    let a = Math.max(WRIST_MIN, Math.min(WRIST_MAX, wristAngle + TRACK_SIGN * step))
+    if (a == wristAngle) return
+    wristAngle = a
+    toBoard()
+    servos([WRIST], [a], TRACK_MOVE_MS)
+    basic.pause(SETTLE_MS)
+    toUSB()
+}
+
 // ---------- 명령 처리 ----------
 // 명령 하나 = 함수 하나. 새 명령은 cmdXxx 함수를 만들고 handle() 에 한 줄 추가한다.
 // (명령을 추가하면 docs/protocol.md 와 src/core/robot/protocol.js 도 함께 고친다)
@@ -371,6 +489,7 @@ function cmdCam(arg: string) {
     if (arg == "TAG") func = FUNC_TAG
     else if (arg == "NUM") func = FUNC_NUM
     else if (arg == "FACE") func = FUNC_FACE
+    else if (arg == "COLOR") func = FUNC_COLOR
     else { send("ERR,BAD_ARG"); return }
     camMode = 0
     shown = -1
@@ -380,6 +499,20 @@ function cmdCam(arg: string) {
     camMode = func
     lastRaw = ""
     send("DONE,CAM")
+}
+// TRACK,ON / TRACK,OFF: 공 따라가기. 켜려면 먼저 CAM,COLOR. 끌 때 손목은 그 자리에 둔다 (공을 대는 중일 수 있어서)
+function cmdTrack(arg: string) {
+    if (arg == "ON") {
+        if (camMode != FUNC_COLOR) { send("ERR,CAM_MODE"); return }
+        tracking = true
+        trackSince = input.runningTime()
+        nearSince = 0
+        lastBigAt = 0
+        goneSince = 0
+    } else if (arg == "OFF") {
+        tracking = false
+    } else { send("ERR,BAD_ARG"); return }
+    send("DONE,TRACK")
 }
 function cmdSpeed(arg: string) {
     if (arg == "SLOW") speedK = 2
@@ -394,6 +527,9 @@ function handle(line: string) {
     let name = comma < 0 ? line : line.substr(0, comma)
     let arg = comma < 0 ? "" : line.substr(comma + 1)
 
+    // 손이나 카메라를 움직이는 명령이 오면 공 따라가기를 먼저 멈춘다 (웹이 TRACK,OFF 를 못 보냈을 때의 안전장치)
+    if (name != "PING" && name != "TRACK" && name != "SPEED") tracking = false
+
     if (name == "PING") cmdPing(arg)
     else if (name == "HELLO") cmdHello(arg)
     else if (name == "POSE") cmdPose(arg)
@@ -401,6 +537,7 @@ function handle(line: string) {
     else if (name == "REST") cmdRest(arg)
     else if (name == "SPEED") cmdSpeed(arg)
     else if (name == "CAM") cmdCam(arg)
+    else if (name == "TRACK") cmdTrack(arg)
     else send("ERR,UNKNOWN_CMD")
 }
 
@@ -431,11 +568,17 @@ basic.forever(function () {
             buf = buf + c
         }
     }
-    if (camMode != 0 && input.runningTime() - lastPoll >= POLL_MS) {
+    if (tracking) {
+        if (input.runningTime() - lastTrack >= TRACK_MS) {
+            lastTrack = input.runningTime()
+            pollTrack()
+        }
+    } else if (camMode != 0 && input.runningTime() - lastPoll >= POLL_MS) {
         lastPoll = input.runningTime()
         if (camMode == FUNC_TAG) pollTag()
         else if (camMode == FUNC_NUM) pollNum()
-        else pollFace()
+        else if (camMode == FUNC_FACE) pollFace()
+        // FUNC_COLOR: 따라가기를 하지 않을 때는 아무것도 보내지 않는다
     }
     basic.pause(20)
 })

@@ -27,10 +27,27 @@ describe('cam (WonderCam 모드, 펌웨어 F2·F3·F4)', () => {
     expect(P.cam('TAG')).toBe('CAM,TAG\n');
     expect(P.cam('NUM')).toBe('CAM,NUM\n');
     expect(P.cam('FACE')).toBe('CAM,FACE\n');
+    expect(P.cam('COLOR')).toBe('CAM,COLOR\n'); // 공 따라가기, 펌웨어 F5
   });
   it('그 밖의 모드는 바로 에러', () => {
-    expect(() => P.cam('COLOR')).toThrow();
+    expect(() => P.cam('BALL')).toThrow();
     expect(() => P.cam('num')).toThrow();
+  });
+});
+
+describe('track (공 따라가기, 펌웨어 F5)', () => {
+  it('TRACK,ON / TRACK,OFF', () => {
+    expect(P.track(true)).toBe('TRACK,ON\n');
+    expect(P.track(false)).toBe('TRACK,OFF\n');
+    expect(P.commandName(P.track(true))).toBe('TRACK');
+  });
+  it('DONE,TRACK 응답', () => {
+    expect(P.parseLine('DONE,TRACK')).toEqual({ type: 'DONE', command: 'TRACK' });
+  });
+  it('BALL,NEAR (공이 손 가까이), RAW,BALL 측정 줄은 무시', () => {
+    expect(P.parseLine('BALL,NEAR')).toEqual({ type: 'BALL', near: true });
+    expect(P.parseLine('BALL,FAR').type).toBe('UNKNOWN');
+    expect(P.parseLine('RAW,BALL,160,9000').type).toBe('UNKNOWN');
   });
 });
 

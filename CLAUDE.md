@@ -101,6 +101,7 @@ export default {
 - `ctx.hand.preview(video, onActive)` → 연결 끊기 함수 반환. 프로그램 화면의 `<video>`에 웹캠 영상을 이어 준다 (사용자가 자기 손 보기). 웹캠이 꺼져 있으면 `onActive(false)`
 - `ctx.robot.showPose(name)`, `ctx.robot.react('ok' | 'retry')`, `ctx.robot.hello()`, `ctx.robot.rest()`
   - 모두 Promise를 반환하고, 로봇이 `DONE`을 보내면 resolve 된다
+- `ctx.robot.followBall(true | false)` → 공 따라가기 (공 주고받기, 펌웨어 F5). 켜면 WonderCam을 색 모드로 바꾸고 손목이 공(Color ID 1)을 따라 돈다. 실제로 켜졌으면 `true`, Mock·F4 이하면 `false`. 다른 로봇 명령을 보내면 core가 먼저 끈다
 - `ctx.card.onCard(cb)` → `cb({ color })`, 구독 해제 함수 반환
   - `color`: `'red' | 'blue' | 'yellow' | 'green'`. 사용자가 색깔 카드를 WonderCam에 보여주면 발생
   - 프로그램은 카드 ID를 모른다. ID→색 변환은 `core/card` 안에서만 한다 (카드 인식 방식은 [검증 필요])
@@ -172,7 +173,7 @@ ctx.log.record({
 
 텍스트 한 줄 = 명령 하나, `\n`으로 끝난다. 자세한 내용은 `docs/protocol.md`.
 
-- 웹 → 로봇: `HELLO`, `POSE,<이름>`, `REACT,OK`, `REACT,RETRY`, `REST`, `SPEED,SLOW|NORMAL`, `PING`, `CAM,TAG|NUM|FACE`
+- 웹 → 로봇: `HELLO`, `POSE,<이름>`, `REACT,OK`, `REACT,RETRY`, `REST`, `SPEED,SLOW|NORMAL`, `PING`, `CAM,TAG|NUM|FACE|COLOR`, `TRACK,ON|OFF`
 - 로봇 → 웹: `DONE,<명령>`, `TAG,<번호>|NONE`, `NUM,<1~5>|NONE`, `FACE,<번호>|UNKNOWN|NONE`, `PONG`, `ERR,<내용>`
 
 프로토콜을 바꾸는 변경은 `core/robot/protocol.js`, `firmware/`, `docs/protocol.md`를 함께 고친다.
