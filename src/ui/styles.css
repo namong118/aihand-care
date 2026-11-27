@@ -517,6 +517,8 @@ button.home-challenge:focus-visible { outline: 3px solid var(--step-fg); outline
 @media (max-width: 640px) {
   .home-greet h1 { font-size: 36px; }
   .home-cta { align-items: stretch; width: 100%; }
+  .home-cta-row .btn-main { flex: 1; padding: 0 20px; }
+  .home-find-btn { padding: 0 16px; white-space: normal; }
   .home-current { justify-content: flex-start; }
 }
 /* 활동 카드 (STEP 4 루틴 고르기가 씀: home-grid, home-card stepN). 흰 면 + STEP 색 알약·버튼 */
@@ -977,26 +979,19 @@ th { background: var(--c-page); color: var(--c-text-sub); font-weight: 600; }
 .course-row.is-notPlayed td:last-child { color: var(--c-text); font-style: italic; }
 
 /* ---------- 나의 시작 찾기 (find-start.js, 홈 입구는 home.js) ---------- */
-.home-find {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px 6px 16px;
-  border-radius: 16px;
-  background: var(--c-surface);
-  font-size: 18px;
-  color: var(--c-text-sub);
-}
+/* 홈 주 버튼 줄: "오늘의 활동 시작하기"(넓게) + "나의 시작 찾기"(좁게), 같은 높이 */
+.home-cta-row { display: flex; gap: 12px; align-items: stretch; }
 .home-find-btn {
-  min-height: 52px;
-  padding: 0 20px;
-  border-radius: 12px;
-  border: 2px solid var(--c-accent);
+  min-height: 76px;
+  padding: 0 28px;
+  border-radius: var(--r-start);
+  border: 3px solid var(--c-accent);
   background: var(--c-surface);
   color: var(--c-accent);
   font: inherit;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 .home-find-btn:hover { background: var(--c-accent-soft); }

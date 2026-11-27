@@ -90,15 +90,10 @@ function courseCard(p, order, app) {
   );
 }
 
-/** 나의 시작 찾기 입구. 누르면 먼저 로그인한다 (코스처럼, 손님도 할 수 있음) */
+/** 나의 시작 찾기 입구. 주 버튼 옆 흰 버튼. 누르면 먼저 로그인한다 (코스처럼, 손님도 할 수 있음) */
 function findStartEntry(app) {
   if (!app.openFindStart) return null;
-  return h(
-    'div',
-    { class: 'home-find' },
-    h('span', {}, '어디서부터 할지 모르겠다면'),
-    h('button', { type: 'button', class: 'home-find-btn', onClick: app.openFindStart }, '나의 시작 찾기'),
-  );
+  return h('button', { type: 'button', class: 'home-find-btn', onClick: app.openFindStart }, '나의 시작 찾기');
 }
 
 /**
@@ -126,13 +121,18 @@ export function renderHome(container, app) {
         h(
           'div',
           { class: 'home-cta' },
+          // 두 버튼을 나란히: 파란 주 버튼(코스) + 흰 테두리 버튼(나의 시작 찾기) (2026-11-27)
           h(
-            'button',
-            { type: 'button', class: 'btn-main', onClick: app.startCourse },
-            '오늘의 활동 시작하기',
-            svgIcon(`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="${NS}"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`),
+            'div',
+            { class: 'home-cta-row' },
+            h(
+              'button',
+              { type: 'button', class: 'btn-main', onClick: app.startCourse },
+              '오늘의 활동 시작하기',
+              svgIcon(`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="${NS}"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`),
+            ),
+            findStartEntry(app),
           ),
-          findStartEntry(app),
           // "지난 기록 보기"는 어르신이 보는 홈에서 설정 영역으로 옮김 (2026-11-26). 상단 바 결과 버튼은 그대로
           // 기본 활동의 난이도·속도. 도전 칸이 붙으면서 1280×720에 들어가게 아래 줄에서 이리로 옮김 (11/20)
           h(
