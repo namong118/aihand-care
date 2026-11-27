@@ -1,13 +1,14 @@
 // 도전 활동 "공 주고받기": 화면이 알려 준 손으로 공을 로봇에게 건네고, 알려 준 손으로 돌려받는다 (순수 함수, DOM·ctx 사용 금지)
 //
-// 손은 'right' | 'left' 로만 다룬다. 한 번 주고받기 = { give: 건네는 손, receive: 받는 손 }.
+// 손은 'right' | 'left' 로 다룬다. 한 번 주고받기 = { give: 건네는 손, receive: 받는 손 }.
+// 1단계만 손을 정하지 않는다: { give: 'any'(편한 손), receive: 'same'(같은 손) } (2026-11-27 A, 손 고르기 화면 뺌).
 // 어느 손을 썼는지는 확인하지 않는다 (센서 없음, 사용자를 믿는다). 그래서 맞고 틀림을 따지지 않는다.
 
 /** 한 회차에 주고받는 횟수 (로봇이 공을 쥐는 횟수. 약지 문제를 생각해 10번 이하로) */
 export const EXCHANGES = 4;
 
-/** 손 이름 (화면 글자) */
-export const HAND_TEXT = { right: '오른손', left: '왼손' };
+/** 손 이름 (화면 글자). any·same 은 1단계용 ("편한 손으로 건네고, 같은 손으로 받아요") */
+export const HAND_TEXT = { right: '오른손', left: '왼손', any: '편한 손', same: '같은 손' };
 
 /** 3단계에서 고르는 4가지 손 지시 */
 export const ALL_PAIRS = [
@@ -19,7 +20,7 @@ export const ALL_PAIRS = [
 
 /**
  * 단계별 값
- *   1단계: 한 손으로 건네고 받기 (시작할 때 고른 손), 지시가 계속 보임
+ *   1단계: 편한 한 손으로 건네고 같은 손으로 받기 (손을 고르지 않음), 지시가 계속 보임
  *   2단계: 건네는 손과 받는 손이 다름, 번마다 번갈아, 지시가 계속 보임
  *   3단계: 4가지 중 무작위 (바로 앞과 다르게), 지시를 보고 나면 가려짐
  */
@@ -47,7 +48,8 @@ export function otherHand(hand) {
 /**
  * 한 회차의 손 지시 목록.
  *   level: 1 | 2 | 3, count: 주고받는 횟수
- *   hand: 1단계에서 고른 손 (없으면 'right'), 2단계는 이 손으로 먼저 건넨다
+ *   hand: 2단계에서 먼저 건네는 손 (없으면 'right')
+ * 반환 예 (1단계): [{ give: 'any', receive: 'same' }, ...]
  * 반환 예 (2단계): [{ give: 'right', receive: 'left' }, { give: 'left', receive: 'right' }, ...]
  */
 export function makeInstructions(level, count = EXCHANGES, hand = 'right', rand = Math.random) {
@@ -56,7 +58,7 @@ export function makeInstructions(level, count = EXCHANGES, hand = 'right', rand 
   const list = [];
   for (let i = 0; i < count; i++) {
     if (mode === 'same') {
-      list.push({ give: first, receive: first });
+      list.push({ give: 'any', receive: 'same' });
     } else if (mode === 'alternate') {
       const give = i % 2 === 0 ? first : otherHand(first);
       list.push({ give, receive: otherHand(give) });
@@ -76,7 +78,7 @@ export function samePair(a, b) {
   return Boolean(a && b) && a.give === b.give && a.receive === b.receive;
 }
 
-/** 손 지시 한 줄 글자. 예: "오른손으로 건네고, 왼손으로 받아요" */
+/** 손 지시 한 줄 글자. 예: "오른손으로 건네고, 왼손으로 받아요", 1단계 "편한 손으로 건네고, 같은 손으로 받아요" */
 export function instructionText({ give, receive }) {
   return `${HAND_TEXT[give]}으로 건네고, ${HAND_TEXT[receive]}으로 받아요`;
 }

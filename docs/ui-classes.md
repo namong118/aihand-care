@@ -71,6 +71,21 @@ container.append(levelPicker({
 - 고른 단계는 활동 색 테두리와 "✔ 고름" 글자로 보여 줍니다 (색만으로 알리지 않음)
 - 예: `src/programs/challenge-baseball/screen.js`
 
+## 홈 밖 화면 (`src/ui/page.js`, 2026-11-27)
+
+설정, 활동 기록, 코스 시작·요약, 나의 시작 찾기, 로그인·등록, 사용자 지우기는 홈과 같은 모양으로 맞춥니다.
+
+| 부품 | 모양 |
+|---|---|
+| `pageHead(작은 안내, 제목, 오른쪽 버튼)` | 홈 인사말처럼 작은 회색 글자 + 큰 제목(44px). 오른쪽에 `headButton('← 홈으로')` |
+| `pageCard(제목, ...내용)` | 테두리 없는 둥근 흰 카드 |
+| `pageTile(이름, 설명, onClick, { step })` | 바로 가기 칸 (이름 + 설명 한 줄 + ›). `step: 'step1'`이면 그 활동 색 |
+| `pageList(줄들)` | 점 목록 (안내 문구). `ol.page-list`는 번호 목록 |
+| `pageActions(...버튼)` | 아래 버튼 줄 |
+
+- 여러 칸은 `.page-tile-grid`, 짧은 선택 버튼은 설정과 같은 `.choice`
+- 활동 화면(`act-*`)에는 쓰지 않습니다
+
 ## 7인치(1280×720)
 
 답 버튼과 건너뛰기는 코스 막대가 있어도 스크롤 없이 첫 화면에 보여야 합니다. 2026-11-16 Mock 화면 기준 맨 아래 버튼 위치: STEP 1 708px, STEP 2 716px, STEP 3 629px, STEP 4 653px.

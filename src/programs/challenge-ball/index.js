@@ -147,20 +147,20 @@ async function giveBack(ctx, screen, s, base) {
 }
 
 /** 그만하기로 끝: 기록하지 않는다 (끝까지 하지 않은 회차) */
-async function stopSession(ctx, screen, s, { level, hand, done }) {
+async function stopSession(ctx, screen, s, { level, done }) {
   await robot(ctx.robot.rest()); // 공은 이미 돌려줬다 (giveBack)
   if (!s.alive) return;
   screen.stopped(
     { done },
-    () => start(ctx, screen, s, level, hand),
+    () => start(ctx, screen, s, level),
     () => showLevels(ctx, screen, s),
   );
 }
 
-async function playSession(ctx, screen, s, level, hand) {
+async function playSession(ctx, screen, s, level) {
   const speed = ctx.settings.speed;
   const spec = levelSpec(level);
-  const pairs = makeInstructions(level, EXCHANGES, hand);
+  const pairs = makeInstructions(level, EXCHANGES);
   const startedAt = new Date().toISOString();
   const exchanges = []; // 끝까지 주고받은 번: { give, receive, retries, replays }
 
@@ -169,7 +169,7 @@ async function playSession(ctx, screen, s, level, hand) {
   if (!s.alive) return;
 
   const stopBtn = { label: '그만하기', variant: 'secondary', onClick: sender(s, 'stop') };
-  const stopHere = () => stopSession(ctx, screen, s, { level, hand, done: exchanges.length });
+  const stopHere = () => stopSession(ctx, screen, s, { level, done: exchanges.length });
 
   for (let i = 0; i < pairs.length; i++) {
     const pair = pairs[i];
@@ -322,28 +322,25 @@ async function playSession(ctx, screen, s, level, hand) {
     detail: {
       level,
       speed,
-      hand: level === 1 ? hand : null, // 1단계에서 고른 손
-      // 번마다: 건넨 손·받은 손('right'|'left', 지시 기준), 다시 건넨 수, 다시 보기 수
+      hand: null, // 1단계도 손을 고르지 않는다 (2026-11-27). 예전 기록에는 'right'|'left' 가 있을 수 있다
+      // 번마다: 건넨 손·받은 손(지시 기준: 'right'|'left', 1단계는 'any'·'same'), 다시 건넨 수, 다시 보기 수
       exchanges,
     },
   });
   screen.finished(
     { done: summary.done, level },
-    () => start(ctx, screen, s, level, hand),
+    () => start(ctx, screen, s, level),
     () => showLevels(ctx, screen, s),
   );
 }
 
-function start(ctx, screen, s, level, hand = 'right') {
-  playSession(ctx, screen, s, level, hand).catch((err) => console.error(err));
+function start(ctx, screen, s, level) {
+  playSession(ctx, screen, s, level).catch((err) => console.error(err));
 }
 
-/** 시작 화면 (단계 고르기). 1단계면 손도 고른다 */
+/** 시작 화면 (단계 고르기). 고르면 바로 시작한다 (1단계도 손을 고르지 않음) */
 function showLevels(ctx, screen, s) {
-  screen.levels({ selected: defaultLevel(ctx.settings.challengeLevel) }, (level) => {
-    if (level === 1) screen.chooseHand((hand) => start(ctx, screen, s, level, hand));
-    else start(ctx, screen, s, level);
-  });
+  screen.levels({ selected: defaultLevel(ctx.settings.challengeLevel) }, (level) => start(ctx, screen, s, level));
 }
 
 export default {

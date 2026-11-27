@@ -66,7 +66,7 @@ async function playRound(ctx, screen, s, level) {
   const startedAt = new Date().toISOString();
   const speed = ctx.settings.speed;
   const spec = levelSpec(level, speed);
-  // 나의 시작 찾기(ctx.settings.findStart)면 짧은 판: 2판만 (logic.js roundCount)
+  // 나의 시작 찾기(ctx.settings.findStart)면 짧은 판: 1판만 (logic.js roundCount)
   const ROUNDS = roundCount(ctx.settings.findStart);
   const answers = []; // summarizeRound 용 (물은 횟수만큼)
   const rounds = [];
@@ -172,7 +172,7 @@ export default {
     // cancels: 기다리는 중인 답 입력들, timers: 기다리는 타이머. unmount 할 때 모두 멈춘다
     const screen = createScreen(container, colors);
     session = { alive: true, cancels: new Set(), timers: new Set(), screen };
-    // 나의 시작 찾기면 단계 고르기 없이 짧은 판(1단계 2판)으로 바로 시작
+    // 나의 시작 찾기면 단계 고르기 없이 짧은 판(1단계 1판)으로 바로 시작
     if (ctx.settings.findStart) playRound(ctx, screen, session, FIND_START_GAME.level).catch((err) => console.error(err));
     else showIntro(ctx, screen, session);
   },

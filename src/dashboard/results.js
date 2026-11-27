@@ -4,6 +4,7 @@
 // 묶기·계산은 course-logic.js (테스트 있음), 여기서는 그리기만 한다.
 
 import { h, button, seconds } from '../ui/components.js';
+import { pageHead, headButton } from '../ui/page.js';
 import { summarize, downloadCSV } from '../core/log.js';
 import { CATALOG, CHALLENGES, findProgramInfo } from './catalog.js';
 import { groupByDay, filterDaysByUser, reactionTrend, challengeText, GUEST, WHO, TIME_ZONE } from './course-logic.js';
@@ -366,12 +367,19 @@ export function renderResults(container, { log, courses = [], users = [], filter
   const view = VIEWS.some((v) => v.id === filter.view) ? filter.view : filter.program ? 'rounds' : 'days';
   const current = { ...filter, view };
 
-  const bar = h('div', { class: 'program-bar' }, h('h1', {}, '활동 기록'), button('← 홈으로', onHome, { variant: 'secondary' }));
+  // 홈 밖 화면 공통 머리 (ui/page.js). 보는 방법은 설정의 선택 버튼과 같은 모양
+  const bar = pageHead('이 기계에 남은 활동을 모아 봐요', '활동 기록', headButton('← 홈으로', onHome));
 
   const tabs = h(
     'div',
-    { class: 'row result-tabs', role: 'group', 'aria-label': '보는 방법' },
-    VIEWS.map((v) => button(v.label, () => onFilter({ ...current, view: v.id }), { variant: 'choice', pressed: view === v.id })),
+    { class: 'page-tabs', role: 'group', 'aria-label': '보는 방법' },
+    VIEWS.map((v) =>
+      h(
+        'button',
+        { type: 'button', class: 'choice', 'aria-pressed': String(view === v.id), onClick: () => onFilter({ ...current, view: v.id }) },
+        view === v.id ? `✔ ${v.label}` : v.label,
+      ),
+    ),
   );
 
   let body;
@@ -380,5 +388,13 @@ export function renderResults(container, { log, courses = [], users = [], filter
   else if (view === 'rounds') body = roundsView(all, current, onFilter);
   else body = daysView(all, courses, users, current, onFilter);
 
-  container.append(bar, tabs, h('section', { class: 'section results', 'aria-label': VIEWS.find((v) => v.id === view).label }, body));
+  container.append(
+    h(
+      'div',
+      { class: 'page' },
+      bar,
+      tabs,
+      h('section', { class: 'page-card results', 'aria-label': VIEWS.find((v) => v.id === view).label }, body),
+    ),
+  );
 }

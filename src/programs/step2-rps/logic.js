@@ -135,6 +135,15 @@ export const QUESTIONS_PER_ROUND = 5;
 /** 한 문제에 답할 수 있는 횟수. 두 번째도 맞지 않으면 답을 함께 확인하고 넘어간다 */
 export const MAX_TRIES = 2;
 
+/**
+ * 이번 회차에서 한 문제에 답할 수 있는 횟수.
+ * 나의 시작 찾기(findStart)는 한 번만: 다시 하기를 권하지 않고, 맞지 않으면 답을 함께 확인한 뒤 넘어간다 (2026-11-27 A).
+ * 그래야 기록(status 'shown', done 0)대로 쉬운 단계가 추천된다
+ */
+export function maxTries(findStart = false) {
+  return findStart ? 1 : MAX_TRIES;
+}
+
 /** 화면에 손 이름과 함께 보여 줄 그림 글자 (색이 아니라 모양으로도 구분되게) */
 export const HAND_EMOJI = {
   ROCK: '✊',

@@ -12,7 +12,7 @@
 import {
   HANDS,
   QUESTIONS_PER_ROUND,
-  MAX_TRIES,
+  maxTries,
   findCondition,
   judge,
   roundQuestions,
@@ -123,8 +123,9 @@ async function playQuestion(ctx, screen, s, q, index, total) {
   const tries = []; // 답마다 맞았는지
   const answers = []; // 기록용: 낸 손, 입력 방법, 승패, 걸린 시간
   let skipped = false;
+  const tryCount = maxTries(ctx.settings.findStart); // 나의 시작 찾기는 한 번만 (다시 하기 없음)
 
-  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+  for (let attempt = 1; attempt <= tryCount; attempt++) {
     // 1) "가위, 바위, 보!" 와 함께 로봇이 손을 낸다 (다시 할 때도 로봇이 다시 보여 준다)
     await countdown(ctx, screen, s, progress);
     if (!s.alive) return null;
@@ -177,7 +178,7 @@ async function playQuestion(ctx, screen, s, q, index, total) {
       break;
     }
 
-    if (attempt < MAX_TRIES) {
+    if (attempt < tryCount) {
       // 처음 맞지 않음: 도움말을 보여 주고, 준비되면 "다시 하기"
       const hint = hintFor(q.conditionId);
       speak(retryText(q.conditionId));
@@ -187,7 +188,7 @@ async function playQuestion(ctx, screen, s, q, index, total) {
       continue;
     }
 
-    // 두 번째도 맞지 않음: 답을 함께 확인하고 로봇이 그 손을 보여 준다.
+    // 두 번째도(나의 시작 찾기는 처음에) 맞지 않음: 답을 함께 확인하고 로봇이 그 손을 보여 준다.
     // 정답이 둘인 조건(어려움의 "이기지 마세요"·"지지 마세요")은 두 손을 차례로 보여 준다 (#18)
     const text = explain(q.conditionId, q.robotHand);
     speak(text);

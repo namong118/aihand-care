@@ -27,10 +27,10 @@ export function levelSpec(level, speed = 'NORMAL') {
 }
 
 /**
- * 나의 시작 찾기 짧은 판 (ctx.settings.findStart): 단계 고르기 없이 1단계를 2판만.
- * 두 판 모두 같은 색을 고르셔야 "해냄" (대시보드 find-start-logic.js outcomeOf)
+ * 나의 시작 찾기 짧은 판 (ctx.settings.findStart): 단계 고르기 없이 1단계를 1판만.
+ * 같은 색을 고르시면 "해냄" (대시보드 find-start-logic.js outcomeOf)
  */
-export const FIND_START_GAME = { level: 1, rounds: 2 };
+export const FIND_START_GAME = { level: 1, rounds: 1 };
 
 /** 한 회차 판 수. 나의 시작 찾기면 FIND_START_GAME.rounds, 아니면 ROUNDS */
 export function roundCount(findStart = false) {

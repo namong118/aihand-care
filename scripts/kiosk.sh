@@ -11,6 +11,9 @@ APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 # 주소가 바뀌면 이전 기록이 안 보인다.
 PORT=4173
 URL="http://localhost:${PORT}/aihand-care/"
+# Chromium 은 시연 화면으로 연다: ?kiosk 면 개발자 입력·가상 로봇손을 숨긴다 (src/main.js KIOSK).
+# 주소 뒤 ?kiosk 는 저장소(localStorage)를 나누지 않는다 (기록은 그대로 보임)
+KIOSK_URL="${URL}?kiosk"
 
 # 키오스크 전용 Chromium 프로필. 평소 쓰는 Chromium과 섞이지 않고,
 # 활동 기록·카메라 허용·AIHand 포트 허용이 여기 남는다. (시크릿 모드는 끄면 기록이 지워져서 쓰지 않는다)
@@ -90,7 +93,7 @@ export LANGUAGE=ko
 # ssh에서 실행할 때를 위해 데스크톱 화면 정보를 채운다 (부팅 때 자동 실행에서는 이미 있다)
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
-echo "Chromium 실행: $URL"
+echo "Chromium 실행: $KIOSK_URL"
 chromium \
   --user-data-dir="$PROFILE_DIR" \
   --ozone-platform=wayland \
@@ -105,6 +108,6 @@ chromium \
   --disable-features=Translate \
   --check-for-update-interval=31536000 \
   --disable-component-update \
-  "$URL"
+  "$KIOSK_URL"
 
 echo "==== $(date '+%F %T') Chromium 종료 (앱 서버는 켜 둔 채로 둠)"

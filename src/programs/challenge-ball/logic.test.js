@@ -46,6 +46,7 @@ describe('otherHand · samePair · instructionText', () => {
   it('지시 글자', () => {
     expect(instructionText({ give: 'right', receive: 'left' })).toBe('오른손으로 건네고, 왼손으로 받아요');
     expect(instructionText({ give: 'left', receive: 'left' })).toBe('왼손으로 건네고, 왼손으로 받아요');
+    expect(instructionText({ give: 'any', receive: 'same' })).toBe('편한 손으로 건네고, 같은 손으로 받아요');
   });
 });
 
@@ -55,17 +56,17 @@ describe('makeInstructions', () => {
     expect(EXCHANGES).toBeLessThanOrEqual(10);
   });
 
-  it('1단계: 고른 손 하나로만 건네고 받기', () => {
-    expect(makeInstructions(1, 3, 'right')).toEqual([
-      { give: 'right', receive: 'right' },
-      { give: 'right', receive: 'right' },
-      { give: 'right', receive: 'right' },
+  it('1단계: 손을 정하지 않고 편한 손으로 건네고 같은 손으로 받기', () => {
+    expect(makeInstructions(1, 3)).toEqual([
+      { give: 'any', receive: 'same' },
+      { give: 'any', receive: 'same' },
+      { give: 'any', receive: 'same' },
     ]);
-    expect(makeInstructions(1, 2, 'left').every((p) => p.give === 'left' && p.receive === 'left')).toBe(true);
+    expect(makeInstructions(1, 1, 'left')).toEqual([{ give: 'any', receive: 'same' }]);
   });
 
-  it('손을 모르는 값으로 주면 오른손', () => {
-    expect(makeInstructions(1, 1, 'up')).toEqual([{ give: 'right', receive: 'right' }]);
+  it('손을 모르는 값으로 주면 2단계는 오른손부터', () => {
+    expect(makeInstructions(2, 1, 'up')).toEqual([{ give: 'right', receive: 'left' }]);
   });
 
   it('2단계: 건네는 손과 받는 손이 다르고, 번마다 번갈아', () => {
