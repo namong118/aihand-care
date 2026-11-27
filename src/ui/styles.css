@@ -94,7 +94,13 @@ body {
   background: var(--c-page);
   color: var(--c-text);
   word-break: keep-all;
+  /* 터치 화면에서 끌거나 길게 누르면 글자가 파랗게 선택되던 문제 (2026-11-27 실물 테스트).
+     글자를 고를 일이 없는 앱이라 막는다. 글자를 적는 칸(호칭 등록 등)은 아래에서 다시 허용 */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
+input, textarea, [contenteditable="true"] { user-select: text; -webkit-user-select: text; }
 button { font-family: inherit; }
 [hidden] { display: none !important; }
 
