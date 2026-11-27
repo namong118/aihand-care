@@ -180,7 +180,8 @@ export default {
   mount(container, ctx) {
     session = { alive: true, answer: null, waits: new Set() };
     const s = session;
-    const screen = createScreen(container);
+    const screen = createScreen(container, ctx.hand);
+    s.screen = screen;
     // 나의 시작 찾기면 단계 고르기 없이 짧은 판(1단계, 끝 숫자 10~13)으로 바로 시작
     if (ctx.settings.findStart) start(ctx, screen, s, FIND_START_GAME.level);
     else showLevels(ctx, screen, s);
@@ -193,6 +194,7 @@ export default {
     for (const stop of s.waits) stop.abort();
     s.waits.clear();
     s.answer?.(null);
+    s.screen?.close(); // 내 손 캠 화면 끊기
     session = null;
   },
 };

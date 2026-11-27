@@ -3,6 +3,7 @@
 
 import { h, button, message, firstOnly } from '../../ui/components.js';
 import { levelPicker } from '../../ui/level-picker.js';
+import { camBox, withCam } from '../../ui/cam-box.js';
 import { countFrom, goodSpots, josa } from './logic.js';
 
 /** 끝 화면 버튼 두 개. 두 번 빨리 눌러도 처음 누른 것 하나만 받는다 (firstOnly) */
@@ -20,12 +21,20 @@ const LEVEL_DESC = {
 
 const FINGER_TEXT = { 1: '손가락 하나', 2: '손가락 둘', 3: '손가락 셋', 4: '손가락 넷' };
 
-export function createScreen(container) {
+/** hand: ctx.hand (내 차례 화면 오른쪽 내 손 캠 화면에 쓴다, 2026-11-27 A). 없으면 캠 화면 없이 */
+export function createScreen(container, hand = null) {
   container.innerHTML = '';
   const area = h('div', { class: 'program-body' });
   container.append(area);
+  let cam = null; // 내 차례 화면의 내 손 캠 화면 (화면을 바꾸면 끊는다)
+
+  function closeCam() {
+    cam?.close();
+    cam = null;
+  }
 
   function set(...children) {
+    closeCam();
     area.innerHTML = '';
     area.append(...children.flat().filter(Boolean));
   }
@@ -122,22 +131,28 @@ export function createScreen(container) {
      */
     myTurn({ level, end, maxStep, now, owners, fresh, robotSaid, allowed, holdSec }, onPick, onStop) {
       handLine = h('p', { class: 'act-label', style: { 'text-align': 'center', margin: '0', 'min-height': '24px' } }, '');
+      const nextCam = camBox(hand); // 오른쪽 내 손 캠 화면: 손가락이 잘 보이는지 (2026-11-27 실물 테스트)
       set(
         head({ level, end, maxStep }),
         track({ end, owners, fresh }),
-        card(
+        withCam(
           h(
-            'p',
-            { class: 'act-text', style: { 'text-align': 'center', margin: '0', 'font-weight': '600' } },
-            robotSaid ? `로봇이 ${robotSaid.join(', ')}까지 셌어요. ` : '',
-            `내 차례예요. ${now + 1}부터 몇 개를 셀까요?`,
+            'div',
+            { class: 'act-card', style: { flex: '1', 'justify-content': 'center' } },
+            h(
+              'p',
+              { class: 'act-text', style: { 'text-align': 'center', margin: '0', 'font-weight': '600' } },
+              robotSaid ? `로봇이 ${robotSaid.join(', ')}까지 셌어요. ` : '',
+              `내 차례예요. ${now + 1}부터 몇 개를 셀까요?`,
+            ),
+            h(
+              'p',
+              { class: 'act-label', style: { 'text-align': 'center', margin: '0' } },
+              `손가락 개수를 ${holdSec}초 보여 주거나 아래 버튼을 눌러 주세요`,
+            ),
+            handLine,
           ),
-          h(
-            'p',
-            { class: 'act-label', style: { 'text-align': 'center', margin: '0' } },
-            `손가락 개수를 ${holdSec}초 보여 주거나 아래 버튼을 눌러 주세요`,
-          ),
-          handLine,
+          nextCam,
         ),
         h(
           'div',
@@ -167,6 +182,7 @@ export function createScreen(container) {
           ),
         ),
       );
+      cam = nextCam; // set 이 지난 화면 캠을 끊은 뒤에 이번 것을 둔다
     },
 
     /** 웹캠으로 지금 보이는 손가락 (내 차례에만). count: 1~4 | null, kind: 'none'|'other'|'count' */
@@ -222,6 +238,11 @@ export function createScreen(container) {
             : null,
         h('div', { class: 'row' }, ...endButtons(onAgain, onLevels)),
       );
+    },
+
+    /** 화면을 떠날 때 (unmount): 내 손 캠 화면 끊기 */
+    close() {
+      closeCam();
     },
   };
 }

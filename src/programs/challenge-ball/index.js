@@ -346,7 +346,8 @@ export default {
     // answer: 지금 기다리는 버튼 입력, queued: 기다리기 전에 누른 버튼, timers: 기다리는 타이머,
     // waits: 기다리는 손 입력(AbortController), holding: 로봇이 공을 쥐고 있는지
     session = { alive: true, answer: null, queued: null, timers: new Set(), waits: new Set(), holding: false, active: null, ctx };
-    const screen = createScreen(container);
+    const screen = createScreen(container, ctx.hand);
+    session.screen = screen;
     showIntro(ctx, screen, session);
   },
 
@@ -364,6 +365,7 @@ export default {
       s.holding = false;
       robot(s.ctx.robot.showPose('PAPER'));
     }
+    s.screen?.close(); // 내 손 캠 화면 끊기
     session = null;
   },
 };

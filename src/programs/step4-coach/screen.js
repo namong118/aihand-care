@@ -4,6 +4,7 @@
 import { h, button, message } from '../../ui/components.js';
 import { handIcon } from '../../ui/icons.js';
 import { speak } from '../../ui/voice.js';
+import { camBox, withCam } from '../../ui/cam-box.js';
 import { stepLine, OLD_HAND_TEXT, REST_DONE_TEXT, REST_SKIPPED_TEXT, REST_SKIPPED_VOICE, FINISH_TEXT } from './logic.js';
 
 const METHOD_TEXT = {
@@ -70,7 +71,8 @@ function onceButton(label, onClick, opts) {
   return btn;
 }
 
-export function createScreen(container, poses) {
+/** hand: ctx.hand (동작 화면 오른쪽 내 손 캠 화면에 쓴다, 2026-11-27 A). 없으면 캠 화면 없이 */
+export function createScreen(container, poses, hand = null) {
   container.innerHTML = '';
   const area = h('div', { class: 'program-body' });
   container.append(area);
@@ -82,8 +84,15 @@ export function createScreen(container, poses) {
   let oldNotice = null;
   let gaugeCard = null;
   let oldSpoken = false; // 이번 동작에서 미리 든 손 안내를 읽었는지 (동작마다 한 번만 읽는다)
+  let cam = null; // 동작 화면의 내 손 캠 화면 (화면을 바꾸면 끊는다)
+
+  function closeCam() {
+    cam?.close();
+    cam = null;
+  }
 
   function set(...children) {
+    closeCam();
     area.innerHTML = '';
     gaugeBar = null;
     gaugeText = null;
@@ -190,26 +199,36 @@ export function createScreen(container, poses) {
         { class: 'gauge', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0' },
         gaugeBar,
       );
+      closeCam();
+      cam = camBox(hand); // 오른쪽 내 손 캠 화면: 손이 카메라에 잘 보이는지 (2026-11-27 실물 테스트)
       area.innerHTML = '';
       area.append(
         h('div', { class: 'act-head' }, h('span', { class: 'act-progress' }, where)),
-        h(
-          'div',
-          { class: 'act-card act-card-row' },
-          h('span', { class: 'act-art act-art-lg' }, handIcon(step.pose, 58)),
+        // 왼쪽: 동작 안내 + 유지 게이지, 오른쪽: 내 손 캠 화면 (2026-11-27 A)
+        withCam(
           h(
             'div',
-            { style: { display: 'flex', 'flex-direction': 'column', gap: '6px', flex: '1 1 300px', 'min-width': '0' } },
-            h('p', { class: 'act-question', style: { 'font-size': '36px', 'line-height': '1.3' } }, sayOf(step)),
-            h('p', { class: 'act-text' }, `손모양: ${labelOf(step.pose)} — 로봇처럼 ${holdSec}초 동안 해 주세요.`),
+            { style: { display: 'flex', 'flex-direction': 'column', gap: '12px', flex: '1' } },
+            h(
+              'div',
+              { class: 'act-card act-card-row', style: { flex: '1' } },
+              h('span', { class: 'act-art act-art-lg' }, handIcon(step.pose, 58)),
+              h(
+                'div',
+                { style: { display: 'flex', 'flex-direction': 'column', gap: '6px', flex: '1 1 300px', 'min-width': '0' } },
+                h('p', { class: 'act-question', style: { 'font-size': '36px', 'line-height': '1.3' } }, sayOf(step)),
+                h('p', { class: 'act-text' }, `손모양: ${labelOf(step.pose)} — 로봇처럼 ${holdSec}초 동안 해 주세요.`),
+              ),
+              countText,
+            ),
+            h(
+              'div',
+              { style: HOLD_PANEL_STYLE },
+              (gaugeCard = h('div', { class: 'act-card', style: { ...HOLD_LAYER_STYLE, gap: '10px', padding: '20px 32px' } }, gauge, gaugeText)),
+              oldNotice,
+            ),
           ),
-          countText,
-        ),
-        h(
-          'div',
-          { style: HOLD_PANEL_STYLE },
-          (gaugeCard = h('div', { class: 'act-card', style: { ...HOLD_LAYER_STYLE, gap: '10px', padding: '20px 32px' } }, gauge, gaugeText)),
-          oldNotice,
+          cam,
         ),
         h(
           'div',
@@ -293,6 +312,11 @@ export function createScreen(container, poses) {
           onChoose ? onceButton('다른 손운동 고르기', first(onChoose), { variant: 'secondary' }) : null,
         ),
       );
+    },
+
+    /** 화면을 떠날 때 (unmount): 내 손 캠 화면 끊기 */
+    close() {
+      closeCam();
     },
   };
 }

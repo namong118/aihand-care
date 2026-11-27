@@ -157,7 +157,8 @@ export default {
     // waits: 기다리는 중인 손 입력들. unmount 할 때 모두 멈춘다
     session = { alive: true, waits: new Set() };
     const s = session;
-    const screen = createScreen(container, poses);
+    const screen = createScreen(container, poses, ctx.hand);
+    s.screen = screen;
     // 루틴이 여러 개면 고르는 화면부터, 1개면 바로 그 루틴 소개
     if (needsChooser(routines)) showChooser(ctx, screen, s);
     else showIntro(ctx, screen, s, routines[0]);
@@ -168,6 +169,7 @@ export default {
     session.alive = false;
     stopSpeaking();
     session.waits.forEach((w) => w.abort());
+    session.screen?.close(); // 내 손 캠 화면 끊기
     session = null;
   },
 };

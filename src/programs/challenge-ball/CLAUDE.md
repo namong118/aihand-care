@@ -63,6 +63,7 @@
 - 화면을 넘기는 버튼은 두 번 눌러도 처음 하나만 받는다 (`firstOnly`). [다시 보기]는 화면을 넘기지 않으므로 여러 번 눌러도 된다 (`repeat: true`)
 - 로봇이 움직이는 동안 누른 버튼은 줄 서 있다가 다음 기다리기에서 바로 받는다 (`sender`·`s.queued`). 새 화면을 그리면 버리되, [그만하기]는 남겨 둔다
 - 손 인식(웹캠)은 받기에서만 쓴다 (`ctx.hand.waitForPose`, 기다리는 동안 `ctx.hand.onPose`로 안내). 확정 규칙을 따로 만들지 않는다. WonderCam(`ctx.card`)은 쓰지 않는다
+- **내 손 캠 화면** (2026-11-27): 받을 차례(`active: 'receive'`) 화면에만 오른쪽에 거울 웹캠 영상 + "지금 손" 글자. 공통 부품 `src/ui/cam-box.js`, unmount 때 `screen.close()`
 - `unmount()`에서 손 입력 기다리기(`s.waits`)를 모두 abort 한다
 
 ## 기록 (`ctx.log.record`)

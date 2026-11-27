@@ -270,18 +270,25 @@ export function createScreen(container, hand = null) {
     question({ index, total, robotHand, conditionText, attempt, holdSec }, onAnswer, onSkip) {
       set(
         h('div', { class: 'act-head' }, progress(index, total), attempt > 1 ? h('span', { class: 'act-tag' }, '한 번 더 생각해 보는 중') : null),
-        h(
-          'div',
-          { class: 'act-card act-card-row' },
-          robotBox(robotHand),
+        // 오른쪽에 내 손 캠 화면 (2026-11-27 A, 실물 테스트: 손이 잘 보이는지 알 수 없었음)
+        withCam(
           h(
             'div',
-            { style: { display: 'flex', 'flex-direction': 'column', gap: '6px', flex: '1 1 300px', 'min-width': '0' } },
-            h('span', { class: 'act-label' }, '이번 말'),
-            h('p', { class: 'act-question' }, `“${conditionText}”`),
+            { style: { display: 'flex', 'flex-direction': 'column', gap: '12px', flex: '1' } },
+            h(
+              'div',
+              { class: 'act-card act-card-row', style: { flex: '1' } },
+              robotBox(robotHand),
+              h(
+                'div',
+                { style: { display: 'flex', 'flex-direction': 'column', gap: '6px', flex: '1 1 300px', 'min-width': '0' } },
+                h('span', { class: 'act-label' }, '이번 말'),
+                h('p', { class: 'act-question' }, `“${conditionText}”`),
+              ),
+            ),
+            handNoticeBox(),
           ),
         ),
-        handNoticeBox(),
         h(
           'div',
           { class: 'act-answers', role: 'group', 'aria-label': '내 손 고르기', style: { 'grid-template-columns': 'repeat(3, minmax(0, 1fr))' } },

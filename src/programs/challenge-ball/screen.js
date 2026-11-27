@@ -4,17 +4,26 @@
 // 단계는 하나뿐이다 (2026-11-27 실물 테스트): 단계 고르기·"N단계" 표시가 없다.
 
 import { h, button, message, firstOnly } from '../../ui/components.js';
+import { camBox, withCam } from '../../ui/cam-box.js';
 import { HAND_TEXT } from './logic.js';
 
-export function createScreen(container) {
+/** hand: ctx.hand (받는 화면 오른쪽 내 손 캠 화면에 쓴다, 2026-11-27 A). 없으면 캠 화면 없이 */
+export function createScreen(container, hand = null) {
   container.innerHTML = '';
   const area = h('div', { class: 'program-body' });
   container.append(area);
 
   let promptEl = null; // "셋, 둘, 하나" 를 바꿔 쓰는 줄
   let panel = null; // 건네는 손 → 받는 손 칸 (다시 보기 때 다시 그림)
+  let cam = null; // 받는 화면의 내 손 캠 화면 (화면을 바꾸면 끊는다)
+
+  function closeCam() {
+    cam?.close();
+    cam = null;
+  }
 
   function set(...children) {
+    closeCam();
     area.innerHTML = '';
     area.append(...children.flat().filter(Boolean));
   }
@@ -69,8 +78,9 @@ export function createScreen(container) {
     const moving = buttons.filter((b) => !b.repeat);
     const once = firstOnly(...moving.map((b) => b.onClick));
     const handlers = buttons.map((b) => (b.repeat ? b.onClick : once[moving.indexOf(b)]));
-    set(
-      head({ level, index, count }),
+    // 받을 차례에만 오른쪽에 내 손 캠 화면 (웹캠으로 받는 손을 보므로, 2026-11-27 실물 테스트)
+    const nextCam = active === 'receive' ? camBox(hand) : null;
+    const main = [
       panel,
       h(
         'div',
@@ -78,6 +88,10 @@ export function createScreen(container) {
         promptEl,
         sub ? h('p', { class: 'act-text', style: { 'text-align': 'center' } }, sub) : null,
       ),
+    ];
+    set(
+      head({ level, index, count }),
+      nextCam ? withCam(h('div', { style: { display: 'flex', 'flex-direction': 'column', gap: '12px' } }, main), nextCam) : main,
       buttons.length
         ? h(
             'div',
@@ -86,6 +100,7 @@ export function createScreen(container) {
           )
         : null,
     );
+    cam = nextCam; // set 이 지난 화면 캠을 끊은 뒤에 이번 것을 둔다
   }
 
   return {
@@ -144,6 +159,11 @@ export function createScreen(container) {
         message(done > 0 ? `이번에는 여기까지 할게요. 공을 ${done}번 주고받았어요.` : '이번에는 여기까지 할게요.', 'info'),
         h('div', { class: 'row' }, button('처음부터 하기', again)),
       );
+    },
+
+    /** 화면을 떠날 때 (unmount): 내 손 캠 화면 끊기 */
+    close() {
+      closeCam();
     },
   };
 }
